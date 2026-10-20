@@ -17,3 +17,4 @@ node_modules/
 # local run state
 .bridge/
 *.log
+*.egg-info/
