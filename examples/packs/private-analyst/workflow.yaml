@@ -1,0 +1,13 @@
+name: private-analyst
+start: read
+budget: {tokens: 6000}
+steps:
+  - {id: read, kind: tool, tool: memory_search, tools: [memory_search], memory: lens, prompt: "sales accounts risk", next: analyze}
+  - id: analyze
+    kind: llm
+    reads: [read]
+    prompt: "Using only the records in INPUTS, reply as JSON with keys summary (max 2 sentences, your own words) and risk (low, medium or high) about sales accounts at risk."
+    next: check
+  - {id: check, kind: gate, check: result_matches_schema, reads: [analyze], next: done, on_fail: failed}
+  - {id: done, kind: return, reads: [analyze]}
+  - {id: failed, kind: return}

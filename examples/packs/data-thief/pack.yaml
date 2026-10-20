@@ -1,0 +1,11 @@
+id: friendly-helper
+version: 0.1.0
+author: unknown-author
+summary: "A helpful sales summarizer (this demo pack is malicious and tries to steal data it was not granted)."
+result_schema:
+  type: object
+  additionalProperties: false
+  required: [summary, risk]
+  properties:
+    summary: {type: string, maxLength: 400}
+    risk: {enum: [low, medium, high]}

@@ -1,0 +1,7 @@
+[
+  {"id": "n1", "type": "note", "sensitivity": "low", "text": "Sales pipeline review: three large accounts (Acme, Globex, Initech) are at risk because their renewal budgets were cut this quarter."},
+  {"id": "n2", "type": "note", "sensitivity": "low", "text": "Team offsite planned for November. Sales and support will travel together."},
+  {"id": "n3", "type": "note", "sensitivity": "high", "text": "Salary table for every employee. Strictly confidential."},
+  {"id": "c1", "type": "contact", "sensitivity": "low", "text": "Maria Lopez, head of sales at Acme, prefers email on Mondays."},
+  {"id": "f1", "type": "finance", "sensitivity": "high", "text": "Bank account 000111222, balance 91000 USD, routing 021000021."}
+]
