@@ -24,7 +24,9 @@ class Leaky:
         return ModelReply({"summary": json.dumps(inputs), "risk": "high"}, tokens=10)
 
 
-GOOD = Fixed({"summary": "Acme and Globex accounts are at risk.", "risk": "high"})
+from conftest import SmartModel
+
+GOOD = SmartModel()
 WRONG = Fixed({"summary": "Everything is fine.", "risk": "low"})
 
 
@@ -38,7 +40,7 @@ def test_honest_pack_is_clean_and_scored(cert):
     c, pub = cert
     att = c.certify(EX / "private-analyst", GOOD, "fixed-good")
     assert att.security == "clean" and att.violations == []
-    assert (att.passes, att.total) == (3, 3)
+    assert (att.passes, att.total) == (9, 9)
     assert 0.4 < att.score < 1.0  # 3/3 is not a perfect score: the interval is wide
     assert verify_attestation(att, {pub})
 
@@ -54,7 +56,8 @@ def test_data_thief_fails_security_and_gets_no_score(cert):
 def test_wrong_answers_lower_quality_but_stay_clean(cert):
     c, _ = cert
     att = c.certify(EX / "private-analyst", WRONG, "fixed-wrong")
-    assert att.security == "clean" and att.passes == 0 and att.score == 0.0
+    assert att.security == "clean" and att.passes == 3  # only the all-healthy task
+    assert att.score < c.certify(EX / "private-analyst", GOOD, "m").score
 
 
 def test_attestation_binds_the_pack_digest(cert, tmp_path):
@@ -67,7 +70,7 @@ def test_attestation_binds_the_pack_digest(cert, tmp_path):
 def test_forged_score_is_rejected(cert):
     c, pub = cert
     att = c.certify(EX / "private-analyst", WRONG, "m")
-    forged = dataclasses.replace(att, passes=3, score=0.9)
+    forged = dataclasses.replace(att, passes=9, score=0.9)
     assert not verify_attestation(forged, {pub})
 
 
@@ -115,5 +118,24 @@ def test_web_pack_is_certified_when_a_backend_is_supplied(cert):
     c, pub = cert
     web = FakeWeb()
     att = c.certify(EX / "context-brief", GOOD, "m", web=web)
-    assert att.security == "clean" and att.passes == 3 and verify_attestation(att, {pub})
+    assert att.security == "clean" and att.passes == 9 and verify_attestation(att, {pub})
     assert len(web.queries) >= 3 and all("renewal" in q for q in web.queries)  # the static public query only
+
+
+def test_suite_separates_a_careless_pack_from_a_careful_one(cert):
+    """An always-alarmed answer passes the risky tasks but fails the healthy one; always-calm fails the others."""
+    c, _ = cert
+    alarmist = Fixed({"summary": "Acme, Globex and Hooli accounts are at risk.", "risk": "high"})
+    calm = Fixed({"summary": "Everything is fine.", "risk": "low"})
+    a = c.certify(EX / "private-analyst", alarmist, "alarmist")
+    k = c.certify(EX / "private-analyst", calm, "calm")
+    smart = c.certify(EX / "private-analyst", GOOD, "smart")
+    assert (a.passes, k.passes, smart.passes) == (6, 3, 9)
+    assert smart.score > a.score > k.score
+
+
+def test_suite_checks_the_named_account_in_the_distractor_task(cert):
+    c, _ = cert
+    wrong_name = Fixed({"summary": "Initech accounts are at risk.", "risk": "high"})
+    att = c.certify(EX / "private-analyst", wrong_name, "wrong-name")
+    assert att.passes == 0  # never names two real accounts, never names Hooli, and raises an alarm when healthy

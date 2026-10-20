@@ -31,3 +31,18 @@ class FakeWeb:
     def search(self, query):
         self.queries.append(query)
         return [{"title": "SaaS renewals slow in 2026", "url": "https://example.com/a", "snippet": "budget cuts raise churn"}]
+
+
+class SmartModel:
+    """A model that answers the sales-risk suite correctly: names the accounts whose notes say at risk."""
+
+    NAMES = ("Acme", "Globex", "Initech", "Hooli")
+
+    def complete(self, prompt, inputs):
+        from bridge.engine.flowd import ModelReply
+        recs = inputs.get("read", [])
+        flagged = [r["text"] for r in recs if any(w in r["text"].lower() for w in ("at risk", "frozen", "cut"))]
+        names = [n for n in self.NAMES if any(n in t for t in flagged)]
+        if not names:
+            return ModelReply({"summary": "All accounts look healthy.", "risk": "low"}, tokens=5)
+        return ModelReply({"summary": "Accounts at risk: " + ", ".join(names) + ".", "risk": "high"}, tokens=5)
