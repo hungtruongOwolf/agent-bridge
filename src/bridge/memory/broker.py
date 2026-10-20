@@ -137,5 +137,10 @@ class MemoryBroker:
         return Result(Verdict.KILL)
 
     @property
+    def lens_texts(self) -> list[str]:
+        """Text of every staged record (the Result Guard checks outputs for verbatim copies)."""
+        return [r.text for r in self._staged.values()]
+
+    @property
     def killed(self) -> bool:
         return self._killed
