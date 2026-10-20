@@ -40,10 +40,13 @@ class RunReport:
     journal_entries: int = 0
     journal_head: str = ""
     journal_ok: bool = False
+    run_id: str = ""
+    proposals_raw: list = field(default_factory=list)
 
 
 def run_pack(pack_dir: Path, vault: Vault, lens: Lens, model: Model, *, seed: str, cell=None,
-             expected_digest: str | None = None, journal_path: Path | None = None) -> RunReport:
+             expected_digest: str | None = None, journal_path: Path | None = None,
+             run_id: str | None = None) -> RunReport:
     pack_dir = Path(pack_dir)
     digest = tree_digest(pack_dir)
     if expected_digest is not None and digest != expected_digest:
@@ -71,4 +74,5 @@ def run_pack(pack_dir: Path, vault: Vault, lens: Lens, model: Model, *, seed: st
         outcome=res.outcome.value, result=res.result if res.outcome is Outcome.COMPLETE else None,
         reasons=res.reasons, tokens=res.tokens, journal_entries=len(journal.entries),
         journal_head=journal.head, journal_ok=True,
+        run_id=run_id or seed, proposals_raw=res.proposals,
     )

@@ -15,7 +15,8 @@ def test_seed_builds_a_ranked_market_that_survives_restart(tmp_path):
     w = open_world(tmp_path / "state")
     seed(w, PACKS, Fixed(), "fixed", log=lambda *_: None)
     rows = {r["id"]: r for r in w.market.ranked()}
-    assert rows["private-analyst"]["status"] == "certified" and rows["private-analyst"]["rank"] == 1
+    assert rows["private-analyst"]["status"] == "certified" and rows["deal-brief"]["status"] == "certified"
+    assert sorted(r["rank"] for r in rows.values() if "rank" in r) == [1, 2]
     assert rows["friendly-helper"]["status"] == "flagged"
 
     again = open_world(tmp_path / "state")  # same keys, registry and attestations are reloaded

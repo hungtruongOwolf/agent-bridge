@@ -14,7 +14,8 @@ from pathlib import Path
 from ..engine.flowd import ModelReply
 from ..engine.nebius import NebiusModel, load_api_key
 from ..memory.broker import Lens
-from ..memory.vault import Record, Vault
+from ..memory.quarantine import Quarantine, QuarantineError
+from ..memory.vault import Vault
 from ..pack.digest import tree_digest
 from ..runner import run_pack
 from ..world import World
@@ -31,20 +32,32 @@ class LeakyModel:
 
 
 class App:
-    def __init__(self, world: World, packs_dir: Path, vault_path: Path, env_file: Path, cell=None):
+    def __init__(self, world: World, packs_dir: Path, vault_path: Path, env_file: Path, cell=None,
+                 model_factory=None):
         self.world, self.vault_path, self.env_file, self.cell = world, Path(vault_path), Path(env_file), cell
+        self.model_factory = model_factory or (lambda: NebiusModel(load_api_key(self.env_file)))
         self.token = secrets.token_urlsafe(16)
         self.dirs = {tree_digest(d): d for d in sorted(Path(packs_dir).iterdir()) if (d / "pack.yaml").exists()}
         self.runs = 0
+        # the live vault is a copy in the state dir, so accepted memories survive restarts
+        self.vault_file = self.world.state / "vault.json"
+        if not self.vault_file.exists():
+            Vault.load(self.vault_path).save(self.vault_file)
+        self.quarantine = Quarantine()
 
     def vault(self) -> Vault:
-        return Vault([Record(**r) for r in json.loads(self.vault_path.read_text(encoding="utf-8"))])
+        return Vault.load(self.vault_file)
+
+    def _proposals(self) -> list[dict]:
+        return [{"id": p.id, "type": p.type, "text": p.text, "run_id": p.run_id} for p in self.quarantine.pending()]
 
     def state(self) -> dict:
         v = self.vault()
         return {
             "market": self.world.market.ranked(),
-            "vault": [{"id": r.id, "type": r.type, "sensitivity": r.sensitivity, "text": r.text} for r in v.all()],
+            "vault": [{"id": r.id, "type": r.type, "sensitivity": r.sensitivity, "text": r.text,
+                       "trust": r.trust_tier, "from_run": (r.origin or {}).get("run_id")} for r in v.all()],
+            "proposals": self._proposals(),
             "model": "NVIDIA Nemotron on Nebius",
         }
 
@@ -64,11 +77,37 @@ class App:
         if body.get("model") == "leak":
             model = LeakyModel()
         else:
-            model = NebiusModel(load_api_key(self.env_file))
+            model = self.model_factory()
         self.runs += 1
+        run_id = f"run-{self.runs}-{secrets.token_hex(3)}"
         rep = run_pack(pack_dir, self.vault(), Lens(types=types, max_sensitivity=sens), model,
-                       seed=f"web-{self.runs}-{secrets.token_hex(4)}", cell=self.cell, expected_digest=rec.digest)
-        return rep.__dict__
+                       seed=run_id, cell=self.cell, expected_digest=rec.digest, run_id=run_id)
+        out = dict(rep.__dict__)
+        raw = out.pop("proposals_raw")
+        added, problems = self.quarantine.add(run_id, rep.digest, raw) if rep.outcome == "COMPLETE" else ([], [])
+        out["proposals"] = [{"id": p.id, "type": p.type, "text": p.text} for p in added]
+        out["proposal_problems"] = problems
+        return out
+
+    def decide(self, body: dict) -> dict:
+        try:
+            if body.get("action") == "accept":
+                v = self.vault()
+                rec = self.quarantine.accept(body.get("id", ""), v)
+                v.save(self.vault_file)
+                return {"accepted": rec.id}
+            if body.get("action") == "reject":
+                self.quarantine.reject(body.get("id", ""))
+                return {"rejected": body.get("id")}
+        except QuarantineError as e:
+            raise ValueError(str(e)) from e
+        raise ValueError("action must be accept or reject")
+
+    def revert(self, body: dict) -> dict:
+        v = self.vault()
+        out = self.quarantine.revert_run(str(body.get("run_id", "")), v)
+        v.save(self.vault_file)
+        return out
 
 
 def make_handler(app: App):
@@ -115,6 +154,10 @@ def make_handler(app: App):
                 body = json.loads(self.rfile.read(n) or b"{}")
                 if self.path == "/api/run":
                     return self._json(200, app.run(body))
+                if self.path == "/api/proposal":
+                    return self._json(200, app.decide(body))
+                if self.path == "/api/revert":
+                    return self._json(200, app.revert(body))
                 if self.path == "/api/star":
                     stars = app.world.registry.star(body["key"], str(body.get("user", "you"))[:40])
                     return self._json(200, {"stars": stars})
