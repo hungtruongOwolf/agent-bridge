@@ -177,6 +177,12 @@ def make_handler(app: App):
             except ValueError:
                 n = 0
             if n > 20000:
+                left = min(n, 1_000_000)  # drain a bounded amount so the client sees the 413, not a reset
+                while left > 0:
+                    chunk = self.rfile.read(min(65536, left))
+                    if not chunk:
+                        break
+                    left -= len(chunk)
                 self.close_connection = True
                 return self._json(413, {"error": "too large"})
             raw = self.rfile.read(n) if n > 0 else b""
