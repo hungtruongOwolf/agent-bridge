@@ -1,1 +1,214 @@
-<!doctype html><meta charset="utf-8"><title>agent-bridge</title><body data-token="__TOKEN__">agent-bridge console</body>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>agent-bridge</title>
+<style>
+:root{
+  --bg:#f4f5f7; --panel:#ffffff; --ink:#14181f; --muted:#5b6574; --line:#dfe3ea;
+  --accent:#2556d9; --ok:#12805c; --okbg:#e2f5ee; --warn:#a15c00; --warnbg:#fff1d6;
+  --bad:#b4262b; --badbg:#fde8e8; --chip:#eef1f6; --code:#0f172a;
+}
+@media (prefers-color-scheme:dark){
+  :root{ --bg:#0e1116; --panel:#171b22; --ink:#e8ecf3; --muted:#9aa5b5; --line:#2a313c;
+    --accent:#6c93ff; --ok:#4fd1a1; --okbg:#10302a; --warn:#f0b34a; --warnbg:#35280f;
+    --bad:#ff7b80; --badbg:#3a1618; --chip:#222936; --code:#0b0e13; }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{padding:18px 28px;border-bottom:1px solid var(--line);background:var(--panel);display:flex;gap:18px;align-items:center;flex-wrap:wrap}
+h1{font-size:19px;margin:0;letter-spacing:-.01em}
+.tag{color:var(--muted);font-size:14px}
+.mode{margin-left:auto;display:flex;gap:8px;align-items:center;background:var(--okbg);color:var(--ok);padding:6px 12px;border-radius:999px;font-size:13px;font-weight:600}
+.dot{width:8px;height:8px;border-radius:50%;background:currentColor}
+main{display:grid;grid-template-columns:minmax(260px,1fr) minmax(300px,1.1fr) minmax(320px,1.3fr);gap:16px;padding:18px 28px;align-items:start}
+@media (max-width:1100px){ main{grid-template-columns:1fr} }
+section{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px}
+h2{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:0 0 12px;font-weight:700}
+.pack{border:1.5px solid var(--line);border-radius:10px;padding:12px;margin-bottom:10px;cursor:pointer;background:var(--panel)}
+.pack:hover{border-color:var(--accent)} .pack.sel{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 18%,transparent)}
+.row{display:flex;gap:8px;align-items:center;justify-content:space-between}
+.name{font-weight:700} .sum{color:var(--muted);font-size:13px;margin:4px 0 8px}
+.chip{display:inline-block;font-size:12px;padding:2px 9px;border-radius:999px;background:var(--chip);color:var(--muted);font-weight:600}
+.chip.ok{background:var(--okbg);color:var(--ok)} .chip.bad{background:var(--badbg);color:var(--bad)} .chip.warn{background:var(--warnbg);color:var(--warn)}
+.bar{height:6px;border-radius:99px;background:var(--chip);overflow:hidden;margin:6px 0 2px} .bar i{display:block;height:100%;background:var(--ok)}
+.meta{font-size:12px;color:var(--muted)}
+button{font:inherit;cursor:pointer}
+.star{border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:8px;padding:2px 9px;font-size:13px}
+.star:hover{border-color:var(--accent)}
+.rec{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:start;padding:9px 0;border-top:1px solid var(--line);font-size:13px}
+.rec:first-of-type{border-top:0}
+.rec .txt{color:var(--ink);overflow-wrap:anywhere}
+.rec.off{opacity:.55} .rec.off .txt{color:var(--muted)}
+.state{font-size:12px;font-weight:700;white-space:nowrap}
+.state.on{color:var(--ok)} .state.off{color:var(--muted)}
+.s-low{background:var(--ok)} .s-medium{background:var(--warn)} .s-high{background:var(--bad)}
+.sd{width:9px;height:9px;border-radius:50%;margin-top:6px}
+.lens{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.lens label{display:flex;gap:6px;align-items:center;border:1px solid var(--line);border-radius:8px;padding:5px 10px;font-size:13px;cursor:pointer}
+select{font:inherit;padding:5px 8px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--ink)}
+.note{font-size:13px;color:var(--muted);background:var(--chip);border-radius:8px;padding:9px 11px;margin:10px 0}
+.go{width:100%;padding:12px;border:0;border-radius:10px;background:var(--accent);color:#fff;font-weight:700;font-size:15px}
+.go:disabled{opacity:.5;cursor:not-allowed}
+.sim{display:flex;gap:6px;align-items:center;margin-top:10px;font-size:12px;color:var(--muted)}
+.tl{margin:14px 0 0;padding:0;list-style:none}
+.tl li{display:grid;grid-template-columns:22px 1fr;gap:8px;padding:6px 0;font-size:13px;animation:in .25s ease both}
+@keyframes in{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.tl .ic{width:18px;height:18px;border-radius:50%;background:var(--chip);display:grid;place-items:center;font-size:11px;font-weight:700}
+.tl .ic.ok{background:var(--okbg);color:var(--ok)} .tl .ic.bad{background:var(--badbg);color:var(--bad)}
+code{font:12px ui-monospace,Consolas,monospace;background:var(--chip);padding:1px 5px;border-radius:4px}
+.banner{border-radius:10px;padding:14px;margin-top:14px}
+.banner.kill{background:var(--badbg);color:var(--bad);border:1px solid var(--bad)}
+.banner.good{background:var(--okbg);color:var(--ok);border:1px solid var(--ok)}
+.banner h3{margin:0 0 4px;font-size:15px} .banner p{margin:0;font-size:13px;color:var(--ink)}
+.result{margin-top:10px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px;font-size:14px}
+.facts{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;font-size:12px;margin-top:12px;color:var(--muted)}
+.facts b{color:var(--ink);font-weight:600;overflow-wrap:anywhere}
+.empty{color:var(--muted);font-size:13px;padding:10px 0}
+</style>
+</head>
+<body data-token="__TOKEN__">
+<header>
+  <h1>agent-bridge</h1>
+  <span class="tag">Rent a stronger agent. Keep your data.</span>
+  <span class="mode"><span class="dot"></span>Pull mode: the pack runs here, with no network</span>
+</header>
+<main>
+  <section>
+    <h2>1 · Pick an agent</h2>
+    <div id="market"><div class="empty">Loading…</div></div>
+  </section>
+  <section>
+    <h2>2 · Choose what it may read</h2>
+    <div class="lens" id="types"></div>
+    <div class="row" style="margin-bottom:6px"><span class="meta">Up to sensitivity</span>
+      <select id="sens"><option>low</option><option selected>medium</option><option>high</option></select></div>
+    <div id="vault"></div>
+    <div class="note">The pack can read only the records marked <b>shared</b>. It has no network, so nothing is sent to it or by it.
+      Anything else it asks for is refused and counted.</div>
+  </section>
+  <section>
+    <h2>3 · Run</h2>
+    <button class="go" id="go" disabled>Select an agent</button>
+    <label class="sim"><input type="checkbox" id="sim"> Simulate a compromised model (copies everything it can see)</label>
+    <ul class="tl" id="tl"></ul>
+    <div id="out"></div>
+  </section>
+</main>
+<script>
+const TOKEN = document.body.dataset.token;
+let S = null, selected = null, running = false;
+const $ = (id) => document.getElementById(id);
+const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; };
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+const RANK = {low:0, medium:1, high:2};
+
+async function api(path, body) {
+  const r = await fetch(path, body ? {method:"POST", headers:{"X-Bridge-Token":TOKEN,"Content-Type":"application/json"}, body:JSON.stringify(body)} : {});
+  const j = await r.json(); if (!r.ok) throw new Error(j.error || r.status); return j;
+}
+
+function lensTypes(){ return [...document.querySelectorAll("#types input:checked")].map(i => i.value); }
+function shared(rec){ return lensTypes().includes(rec.type) && RANK[rec.sensitivity] <= RANK[$("sens").value]; }
+
+function drawMarket(){
+  const box = $("market"); box.replaceChildren();
+  S.market.forEach(p => {
+    const c = el("div", "pack" + (selected === p.key ? " sel" : ""));
+    c.onclick = () => { selected = p.key; drawMarket(); $("go").disabled = running; $("go").textContent = "Run " + p.id + " on my data"; };
+    const top = el("div","row"); top.append(el("span","name",p.id));
+    const price = el("span","meta","$" + p.price_usd.toFixed(2) + " / " + p.unit); top.append(price); c.append(top);
+    c.append(el("div","sum",p.summary));
+    const chips = el("div","row");
+    const left = el("span");
+    if (p.status === "certified") left.append(el("span","chip ok","Certified · rank #" + p.rank));
+    else if (p.status === "flagged") left.append(el("span","chip bad","Flagged by Certifier"));
+    else left.append(el("span","chip warn","Not certified"));
+    const st = el("button","star","☆ " + p.stars); st.title = "Star this pack";
+    st.onclick = async (e) => { e.stopPropagation(); const r = await api("/api/star",{key:p.key,user:"you"}); p.stars = r.stars; drawMarket(); };
+    chips.append(left, st); c.append(chips);
+    if (p.status === "certified") {
+      const b = el("div","bar"); const i = document.createElement("i"); i.style.width = Math.round(p.score*100) + "%"; b.append(i); c.append(b);
+      c.append(el("div","meta","score " + p.score.toFixed(2) + " (lower bound) · " + p.evidence));
+    } else if (p.status === "flagged") {
+      c.append(el("div","meta","Failed the security trap: " + p.violations.join(", ")));
+    } else c.append(el("div","meta","No evaluation on record"));
+    c.append(el("div","meta","sha256 " + p.digest.slice(7,19) + "…"));
+    box.append(c);
+  });
+}
+
+function drawVault(){
+  const box = $("vault"); box.replaceChildren();
+  S.vault.forEach(r => {
+    const on = shared(r);
+    const row = el("div","rec" + (on ? "" : " off"));
+    row.append(el("span","sd s-" + r.sensitivity));
+    const t = el("div"); t.append(el("div","txt", on ? r.text : "(withheld) " + r.type + " record"), el("div","meta", r.type + " · " + r.sensitivity)); row.append(t);
+    row.append(el("span","state " + (on ? "on":"off"), on ? "shared" : "kept private"));
+    box.append(row);
+  });
+}
+
+function drawTypes(){
+  const types = [...new Set(S.vault.map(r => r.type))];
+  const box = $("types"); box.replaceChildren();
+  types.forEach(t => { const l = el("label"); const i = document.createElement("input"); i.type="checkbox"; i.value=t; i.checked = (t==="note"||t==="contact"); i.onchange = drawVault; l.append(i, document.createTextNode(t)); box.append(l); });
+  $("sens").onchange = drawVault;
+}
+
+const WHY = {
+  OFF_LENS_QUERY: "The pack asked for records outside what you shared.",
+  CANARY_HIT: "The pack touched a decoy record.",
+  UNKNOWN_ID: "The pack tried to read a record it was not given.",
+  READ_BUDGET: "The pack exceeded its read budget."
+};
+
+async function run(){
+  if (running || !selected) return; running = true; $("go").disabled = true; $("go").textContent = "Running…";
+  $("tl").replaceChildren(); $("out").replaceChildren();
+  let rep;
+  try { rep = await api("/api/run",{key:selected, types:lensTypes(), max_sensitivity:$("sens").value, model:$("sim").checked ? "leak" : "nebius"}); }
+  catch(e){ $("out").append(el("div","banner kill")); $("out").lastChild.append(el("h3",null,"Could not run"), el("p",null,String(e.message))); running=false; $("go").disabled=false; $("go").textContent="Run again"; return; }
+
+  const DESC = {tool:"reads memory through the broker", llm:"asks the model", gate:"checks its own result", "return":"returns a result", code:"runs code in a sealed cell"};
+  const kindOf = {};
+  for (const s of rep.steps) {
+    if (s.event === "step_started") {
+      kindOf[s.step] = s.kind;
+      const li = el("li"); li.append(el("span","ic","›")); const d = el("div"); d.append(el("b",null,s.step), document.createTextNode(" · " + (DESC[s.kind] || s.kind))); li.append(d); $("tl").append(li); await sleep(380);
+    }
+    if (s.event === "model_call") { const li = el("li"); li.append(el("span","ic ok","✓")); li.append(el("div",null,"model answered · " + s.tokens + " tokens")); $("tl").append(li); await sleep(250); }
+    if (s.event === "incident") { const li = el("li"); li.append(el("span","ic bad","!")); li.append(el("div",null,"INCIDENT at step " + s.step + (s.evidence ? " · evidence: " + s.evidence : ""))); $("tl").append(li); await sleep(300); }
+  }
+  for (const ev of rep.broker_events) {
+    const li = el("li"); li.append(el("span","ic bad","!")); const d = el("div"); d.append(el("b",null,"Broker blocked: "), document.createTextNode(WHY[ev.kind] || ev.kind), el("br"), el("span","meta",ev.detail)); li.append(d); $("tl").append(li); await sleep(300);
+  }
+
+  const out = $("out");
+  if (rep.outcome === "KILLED") {
+    const b = el("div","banner kill"); b.append(el("h3",null,"Run stopped. Nothing was delivered."), el("p",null,"The pack was caught trying to take data it was not granted. The result was discarded, the incident is on the audit log, and your real records were never exposed.")); out.append(b);
+  } else if (rep.outcome === "COMPLETE") {
+    const b = el("div","banner good"); b.append(el("h3",null,"Done. Result delivered."), el("p",null,"The Result Guard checked the shape, size and content before releasing it.")); out.append(b);
+    const r = el("div","result"); r.append(el("div",null,rep.result.summary), el("div","meta","risk: " + rep.result.risk)); out.append(r);
+  } else {
+    const b = el("div","banner kill"); b.append(el("h3",null,rep.outcome.replace("_"," ").toLowerCase()), el("p",null,(rep.reasons||[]).join("; ") || "The run did not finish.")); out.append(b);
+  }
+  const f = el("div","facts");
+  const add = (k,v) => { f.append(el("span",null,k), el("b",null,v)); };
+  add("records the pack read", rep.records_handed.length ? rep.records_handed.join(", ") : "none");
+  add("kept private", rep.withheld.length ? rep.withheld.join(", ") : "none");
+  add("tokens", String(rep.tokens));
+  add("pack digest", rep.digest.slice(0,26) + "…");
+  add("audit journal", rep.journal_entries + " entries, hash chain verified");
+  out.append(f);
+  running = false; $("go").disabled = false; $("go").textContent = "Run again";
+}
+
+(async function init(){
+  S = await api("/api/state"); drawTypes(); drawVault(); drawMarket(); $("go").onclick = run;
+})();
+</script>
+</body>
+</html>

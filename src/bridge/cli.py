@@ -91,6 +91,20 @@ def seed_cmd(args) -> int:
     return 0
 
 
+def serve_cmd(args) -> int:
+    from .web.server import App, serve
+
+    world = open_world(args.state)
+    app = App(world, Path(args.packs), Path(args.vault), Path(args.env))
+    httpd = serve(app, args.port)
+    print(f"console on http://127.0.0.1:{args.port}  (Ctrl+C to stop)")
+    try:
+        httpd.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     for stream in (sys.stdout, sys.stderr):
         stream.reconfigure(encoding="utf-8", errors="replace")
@@ -111,6 +125,13 @@ def main(argv: list[str] | None = None) -> int:
     sd.add_argument("--state", default=".bridge")
     sd.add_argument("--env", default=".env")
     sd.set_defaults(fn=seed_cmd)
+    sv = sub.add_parser("serve", help="start the local web console")
+    sv.add_argument("--packs", default="examples/packs")
+    sv.add_argument("--vault", default="examples/vault.json")
+    sv.add_argument("--state", default=".bridge")
+    sv.add_argument("--env", default=".env")
+    sv.add_argument("--port", type=int, default=8787)
+    sv.set_defaults(fn=serve_cmd)
     args = ap.parse_args(argv)
     return args.fn(args)
 
