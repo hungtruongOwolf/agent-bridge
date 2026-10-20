@@ -113,7 +113,8 @@ class MemoryBroker:
                 return Result(Verdict.DENY, out)
             self._served += 1
             self.reads.append(r.id)
-            out.append({"id": r.id, "type": r.type, "text": r.text})
+            out.append({"id": r.id, "type": r.type, "text": r.text,
+                        "trust": "user" if r.trust_tier == 3 else "endorsed-foreign"})
         return Result(Verdict.ALLOW, out)
 
     def _bait(self, type: str) -> Result:
