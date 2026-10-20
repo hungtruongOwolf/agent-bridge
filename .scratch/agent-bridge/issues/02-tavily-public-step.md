@@ -1,6 +1,6 @@
 # 02 Tavily public step
 
-Status: open
+Status: resolved (2026-10-20)
 Milestone: M1
 Blocked by: none
 
