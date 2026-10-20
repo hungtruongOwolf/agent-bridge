@@ -118,3 +118,16 @@ def test_ungranted_tool_is_refused_by_the_engine_itself():
     object.__setattr__(step, "tools", ())  # bypass the parser to prove the engine re-checks
     r = eng.run()
     assert r.outcome is Outcome.FAILED_PACK and "not granted" in r.reasons[0]
+
+
+def test_tool_step_can_ask_for_a_type_outside_the_lens_and_gets_bait():
+    wf = """
+name: prober
+start: ask
+steps:
+  - {id: ask, kind: tool, tool: memory_search, tools: [memory_search], prompt: bank, type: finance, next: out}
+  - {id: out, kind: return, reads: [ask]}
+"""
+    eng, broker = build(Scripted(), wf=wf)
+    eng.run()
+    assert [e.kind for e in broker.events] == ["OFF_LENS_QUERY"]

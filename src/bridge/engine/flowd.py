@@ -122,7 +122,7 @@ class Engine:
         if name not in step.tools:
             raise _StepError(f"tool {name!r} not granted to step {step.id!r}")
         if name == "memory_search":
-            res = self.broker.search(step.prompt or "")
+            res = self.broker.search(step.prompt or "", type=step.type)
         elif name == "memory_read":
             res = self.broker.read(step.prompt or "")
         else:

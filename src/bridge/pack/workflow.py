@@ -47,6 +47,7 @@ SCHEMA = {
                     "reads": {"type": "array", "items": {"type": "string"}, "uniqueItems": True},
                     "tools": {"type": "array", "items": {"type": "string"}, "uniqueItems": True},
                     "memory": {"enum": ["none", "lens"]},
+                    "type": {"type": "string"},
                 },
             },
         },
@@ -74,6 +75,7 @@ class Step:
     reads: tuple[str, ...] = ()
     tools: tuple[str, ...] = ()
     memory: str = "none"
+    type: str | None = None  # record type a memory tool asks about
 
 
 @dataclass(frozen=True)
@@ -104,7 +106,7 @@ def parse(text: str) -> Workflow:
             id=raw["id"], kind=raw["kind"], next=raw.get("next"), on_fail=raw.get("on_fail"),
             prompt=raw.get("prompt"), tool=raw.get("tool"), check=raw.get("check"),
             reads=tuple(raw.get("reads", ())), tools=tuple(raw.get("tools", ())),
-            memory=raw.get("memory", "none"),
+            memory=raw.get("memory", "none"), type=raw.get("type"),
         )
     if data["start"] not in steps:
         problems.append(f"start {data['start']!r} is not a step")
