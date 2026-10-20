@@ -26,6 +26,7 @@ class Outcome(str, Enum):
     COMPLETE = "COMPLETE"
     PARTIAL_BUDGET = "PARTIAL_BUDGET"
     FAILED_PACK = "FAILED_PACK"  # bad output, gate chain ended in a failing return, step error
+    FAILED_INFRA = "FAILED_INFRA"  # the model call failed: not the pack's fault, nobody is struck
     KILLED = "KILLED"
 
 
@@ -110,6 +111,8 @@ class Engine:
                     out = self._tool(step)
             except _Killed as k:
                 return self._finish(Outcome.KILLED, reasons=[k.reason])
+            except _InfraError as e:
+                return self._finish(Outcome.FAILED_INFRA, reasons=[str(e)])
             except _StepError as e:
                 return self._finish(Outcome.FAILED_PACK, reasons=[str(e)])
             outputs[sid] = out
@@ -119,7 +122,11 @@ class Engine:
 
     # -- step kinds ---------------------------------------------------------------------------
     def _llm(self, step: Step, inputs: dict[str, Any]) -> Any:
-        reply = self.model.complete(step.prompt or "", inputs)
+        try:
+            reply = self.model.complete(step.prompt or "", inputs)
+        except Exception as e:  # any model/network failure is infrastructure, never the pack's fault
+            self.journal.append("model_error", {"step": step.id, "type": type(e).__name__})
+            raise _InfraError(f"model call failed: {type(e).__name__}") from e
         self.tokens += reply.tokens
         self.usd += reply.usd
         self.journal.append("model_call", {"step": step.id, "tokens": reply.tokens, "usd": reply.usd})
@@ -177,4 +184,8 @@ class _Killed(Exception):
 
 
 class _StepError(Exception):
+    pass
+
+
+class _InfraError(Exception):
     pass

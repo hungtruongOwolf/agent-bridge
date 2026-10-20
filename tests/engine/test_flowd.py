@@ -174,3 +174,15 @@ def test_code_step_without_a_cell_fails_closed():
     eng, _ = build(Scripted(), wf=CODE_WF)
     r = eng.run()
     assert r.outcome is Outcome.FAILED_PACK and "no Cell" in r.reasons[0]
+
+
+def test_model_failure_is_an_infra_failure_not_a_pack_failure():
+    class Down:
+        def complete(self, prompt, inputs):
+            raise TimeoutError("provider down")
+
+    eng, _ = build(Down())
+    r = eng.run()
+    assert r.outcome is Outcome.FAILED_INFRA and "TimeoutError" in r.reasons[0]
+    assert any(e["kind"] == "model_error" for e in eng.journal.entries)
+    assert eng.journal.entries[-1]["kind"] == "run_finished"

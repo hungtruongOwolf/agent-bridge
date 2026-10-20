@@ -21,7 +21,7 @@ from .pack.digest import tree_digest
 from .pack.workflow import parse
 from .world import open_world, seed as seed_world
 
-ICON = {Outcome.COMPLETE: "OK", Outcome.PARTIAL_BUDGET: "PARTIAL", Outcome.FAILED_PACK: "FAILED", Outcome.KILLED: "KILLED"}
+ICON = {Outcome.COMPLETE: "OK", Outcome.PARTIAL_BUDGET: "PARTIAL", Outcome.FAILED_PACK: "FAILED", Outcome.FAILED_INFRA: "INFRA-FAILED", Outcome.KILLED: "KILLED"}
 
 
 class LeakyModel:
