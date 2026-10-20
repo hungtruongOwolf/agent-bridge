@@ -85,8 +85,7 @@ def seed_cmd(args) -> int:
     world = open_world(args.state)
     model = NebiusModel(load_api_key(args.env))
     seed_world(world, Path(args.packs), model, model.model)
-    print(f"
-marketplace ready in {args.state}/")
+    print(f"\nmarketplace ready in {args.state}/")
     for r in world.market.ranked():
         print(f"  {r.get('rank', '-'):>2}  {r['status']:<11} {r['id']:<17} score={r['score']}  stars={r['stars']}")
     return 0
