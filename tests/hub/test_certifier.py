@@ -102,3 +102,18 @@ def test_code_pack_that_probes_the_sandbox_is_flagged_by_behaviour(cert, fake_ce
     assert att.security == "violation" and att.score == 0.0
     assert {"SANDBOX_NETWORK", "KILLED"} <= set(att.violations)
     assert verify_attestation(att, {pub})
+
+
+def test_pack_with_web_search_cannot_be_certified_without_a_search_backend(cert):
+    c, _ = cert
+    with pytest.raises(ValueError, match="web_search"):
+        c.certify(EX / "context-brief", GOOD, "m")
+
+
+def test_web_pack_is_certified_when_a_backend_is_supplied(cert):
+    from conftest import FakeWeb
+    c, pub = cert
+    web = FakeWeb()
+    att = c.certify(EX / "context-brief", GOOD, "m", web=web)
+    assert att.security == "clean" and att.passes == 3 and verify_attestation(att, {pub})
+    assert len(web.queries) >= 3 and all("renewal" in q for q in web.queries)  # the static public query only

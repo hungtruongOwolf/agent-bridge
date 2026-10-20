@@ -22,6 +22,7 @@ DEMO_PACKS = {
     "private-analyst": Listing(price_usd=0.40, unit="task", speciality="sales-analysis"),
     "deal-brief": Listing(price_usd=0.60, unit="task", speciality="sales-analysis"),
     "exfil-kit": Listing(price_usd=0.10, unit="task", speciality="sales-analysis"),
+    "context-brief": Listing(price_usd=0.80, unit="task", speciality="sales-analysis"),
     "data-thief": Listing(price_usd=0.05, unit="task", speciality="sales-analysis"),
 }
 
@@ -54,10 +55,10 @@ def open_world(state: Path | str = ".bridge") -> World:
     return World(state, registry, market, author, Certifier(cert_key, sales_risk_suite(), runs_per_task=3))
 
 
-def seed(world: World, packs_dir: Path, model: Model, model_name: str, *, cell=None, log=print) -> None:
+def seed(world: World, packs_dir: Path, model: Model, model_name: str, *, cell=None, web=None, log=print) -> None:
     for name, listing in DEMO_PACKS.items():
         rec = world.registry.publish(Path(packs_dir) / name, world.author_key, listing)
         log(f"published {rec.key}  {rec.digest[:19]}...")
-        att = world.certifier.certify(Path(packs_dir) / name, model, model_name, cell=cell)
+        att = world.certifier.certify(Path(packs_dir) / name, model, model_name, cell=cell, web=web)
         world.market.add_attestation(att)
         log(f"certified {name}: security={att.security} passes={att.passes}/{att.total} score={att.score}")

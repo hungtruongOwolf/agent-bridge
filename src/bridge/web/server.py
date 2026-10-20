@@ -13,6 +13,7 @@ from pathlib import Path
 
 from ..engine.flowd import ModelReply
 from ..engine.nebius import NebiusModel, load_api_key
+from ..engine.tavily import TavilySearch, load_tavily_key
 from ..memory.broker import Lens
 from ..memory.quarantine import Quarantine, QuarantineError
 from ..memory.vault import Vault
@@ -43,10 +44,23 @@ class LazyModel:
         return self._model.complete(prompt, inputs)
 
 
+class LazySearch:
+    """Builds the Tavily client on first use, so packs that never search need no Tavily key."""
+
+    def __init__(self, factory):
+        self._factory, self._client = factory, None
+
+    def search(self, query):
+        if self._client is None:
+            self._client = self._factory()
+        return self._client.search(query)
+
+
 class App:
     def __init__(self, world: World, packs_dir: Path, vault_path: Path, env_file: Path, cell=None,
-                 model_factory=None):
+                 model_factory=None, web=None):
         self.world, self.vault_path, self.env_file, self.cell = world, Path(vault_path), Path(env_file), cell
+        self.web = web or LazySearch(lambda: TavilySearch(load_tavily_key(self.env_file)))
         self.model_factory = model_factory or (lambda: NebiusModel(load_api_key(self.env_file)))
         self.token = secrets.token_urlsafe(16)
         self.dirs = {tree_digest(d): d for d in sorted(Path(packs_dir).iterdir()) if (d / "pack.yaml").exists()}
@@ -93,7 +107,7 @@ class App:
         self.runs += 1
         run_id = f"run-{self.runs}-{secrets.token_hex(3)}"
         rep = run_pack(pack_dir, self.vault(), Lens(types=types, max_sensitivity=sens), model,
-                       seed=run_id, cell=self.cell, expected_digest=rec.digest, run_id=run_id)
+                       seed=run_id, cell=self.cell, expected_digest=rec.digest, run_id=run_id, web=self.web)
         out = dict(rep.__dict__)
         raw = out.pop("proposals_raw")
         added, problems = self.quarantine.add(run_id, rep.digest, raw) if rep.outcome == "COMPLETE" else ([], [])
@@ -157,13 +171,19 @@ def make_handler(app: App):
             self._json(404, {"error": "not found"})
 
         def do_POST(self):
+            # always consume the (bounded) body first, so an early 403 never resets the client's connection
+            try:
+                n = int(self.headers.get("Content-Length") or 0)
+            except ValueError:
+                n = 0
+            if n > 20000:
+                self.close_connection = True
+                return self._json(413, {"error": "too large"})
+            raw = self.rfile.read(n) if n > 0 else b""
             if not self._host_ok() or self.headers.get("X-Bridge-Token") != app.token:
                 return self._json(403, {"error": "forbidden"})
             try:
-                n = int(self.headers.get("Content-Length") or 0)
-                if n > 20000:
-                    return self._json(413, {"error": "too large"})
-                body = json.loads(self.rfile.read(n) or b"{}")
+                body = json.loads(raw or b"{}")
                 if self.path == "/api/run":
                     return self._json(200, app.run(body))
                 if self.path == "/api/proposal":

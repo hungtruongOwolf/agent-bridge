@@ -22,3 +22,12 @@ class FakeCell:
 @pytest.fixture
 def fake_cell():
     return FakeCell()
+
+
+class FakeWeb:
+    def __init__(self):
+        self.queries = []
+
+    def search(self, query):
+        self.queries.append(query)
+        return [{"title": "SaaS renewals slow in 2026", "url": "https://example.com/a", "snippet": "budget cuts raise churn"}]

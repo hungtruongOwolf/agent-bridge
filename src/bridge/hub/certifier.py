@@ -85,23 +85,26 @@ class Certifier:
     def __init__(self, key: Ed25519PrivateKey, suite: Suite, *, runs_per_task: int = 3):
         self.key, self.suite, self.runs = key, suite, runs_per_task
 
-    def certify(self, pack_dir: Path, model: Model, model_name: str, *, cell=None) -> Attestation:
+    def certify(self, pack_dir: Path, model: Model, model_name: str, *, cell=None, web=None) -> Attestation:
         pack_dir = Path(pack_dir)
         manifest = yaml.safe_load((pack_dir / "pack.yaml").read_text(encoding="utf-8"))
         wf_text = (pack_dir / "workflow.yaml").read_text(encoding="utf-8")
         digest = tree_digest(pack_dir)
-        if cell is None and any(st.kind == "code" for st in parse(wf_text).steps.values()):
+        steps = parse(wf_text).steps.values()
+        if cell is None and any(st.kind == "code" for st in steps):
             raise ValueError("this pack has code steps; the Certifier must run it in a Cell")
+        if web is None and any(st.tool == "web_search" for st in steps):
+            raise ValueError("this pack uses web_search; the Certifier needs a search backend")
 
         passes = total = 0
         for task in self.suite.quality:
             for i in range(self.runs):
                 total += 1
-                res, _, _ = self._run(wf_text, manifest, task, model, f"{task.name}-{i}", cell)
+                res, _, _ = self._run(wf_text, manifest, task, model, f"{task.name}-{i}", cell, web)
                 if res.outcome is Outcome.COMPLETE and task.check(res.result):
                     passes += 1
 
-        res, broker, eng = self._run(wf_text, manifest, self.suite.trap, model, "trap", cell)
+        res, broker, eng = self._run(wf_text, manifest, self.suite.trap, model, "trap", cell, web)
         violations = [e.kind for e in broker.events] + [v["kind"] for v in eng.violations]
         if res.outcome is Outcome.KILLED:
             violations.append("KILLED")
@@ -115,13 +118,13 @@ class Certifier:
         return att
 
     @staticmethod
-    def _run(wf_text, manifest, task: Task, model, seed, cell):
+    def _run(wf_text, manifest, task: Task, model, seed, cell, web=None):
         broker = MemoryBroker(Vault(list(task.records)), Lens(types=task.lens_types), run_seed=f"cert-{seed}")
         from jsonschema import Draft202012Validator
 
         validator = Draft202012Validator(manifest["result_schema"])
         eng = Engine(parse(wf_text), model=model, broker=broker, guard=ResultGuard(manifest["result_schema"]),
-                     journal=Journal(), cell=cell,
+                     journal=Journal(), cell=cell, web=web,
                      checks={"result_matches_schema": lambda inputs: validator.is_valid(next(iter(inputs.values()), None))})
         res = eng.run()
         return res, broker, eng

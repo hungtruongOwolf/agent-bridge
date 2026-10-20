@@ -14,6 +14,7 @@ import yaml
 from .engine.flowd import Engine, ModelReply, Outcome
 from .engine.journal import Journal
 from .engine.nebius import NebiusModel, load_api_key
+from .engine.tavily import TavilySearch, load_tavily_key
 from .guard.result_guard import ResultGuard
 from .memory.broker import Lens, MemoryBroker
 from .memory.vault import Record, Vault
@@ -62,6 +63,7 @@ def run(args) -> int:
 
     journal = Journal(Path(args.journal)) if args.journal else Journal()
     engine = Engine(wf, model=model, broker=broker, guard=guard, journal=journal, cell=DockerCell(),
+                    web=TavilySearch(load_tavily_key(args.env)) if "web_search" in (pack / "workflow.yaml").read_text(encoding="utf-8") else None,
                     checks={"result_matches_schema": _check_schema(manifest["result_schema"])})
     result = engine.run()
 
@@ -85,7 +87,8 @@ def run(args) -> int:
 def seed_cmd(args) -> int:
     world = open_world(args.state)
     model = NebiusModel(load_api_key(args.env))
-    seed_world(world, Path(args.packs), model, model.model, cell=DockerCell())
+    seed_world(world, Path(args.packs), model, model.model, cell=DockerCell(),
+               web=TavilySearch(load_tavily_key(args.env)))
     print(f"\nmarketplace ready in {args.state}/")
     for r in world.market.ranked():
         print(f"  {r.get('rank', '-'):>2}  {r['status']:<11} {r['id']:<17} score={r['score']}  stars={r['stars']}")

@@ -10,7 +10,7 @@ from bridge.engine.flowd import ModelReply
 from bridge.web import server
 from bridge.world import open_world, seed
 
-from conftest import FakeCell
+from conftest import FakeCell, FakeWeb
 
 EX = Path(__file__).resolve().parent.parent.parent / "examples"
 
@@ -24,8 +24,8 @@ class Fixed:
 def srv(tmp_path_factory):
     state = tmp_path_factory.mktemp("state")
     world = open_world(state)
-    seed(world, EX / "packs", Fixed(), "fixed", cell=FakeCell(), log=lambda *_: None)
-    app = server.App(world, EX / "packs", EX / "vault.json", state / ".env", cell=FakeCell())
+    seed(world, EX / "packs", Fixed(), "fixed", cell=FakeCell(), web=FakeWeb(), log=lambda *_: None)
+    app = server.App(world, EX / "packs", EX / "vault.json", state / ".env", cell=FakeCell(), web=FakeWeb())
     httpd = server.serve(app, port=0)
     threading.Thread(target=httpd.serve_forever, daemon=True).start()
     yield app, f"http://127.0.0.1:{httpd.server_address[1]}"
@@ -113,8 +113,8 @@ class Briefer:
 @pytest.fixture
 def mem_app(tmp_path):
     world = open_world(tmp_path / "state")
-    seed(world, EX / "packs", Fixed(), "fixed", cell=FakeCell(), log=lambda *_: None)
-    app = server.App(world, EX / "packs", EX / "vault.json", tmp_path / ".env", model_factory=Briefer, cell=FakeCell())
+    seed(world, EX / "packs", Fixed(), "fixed", cell=FakeCell(), web=FakeWeb(), log=lambda *_: None)
+    app = server.App(world, EX / "packs", EX / "vault.json", tmp_path / ".env", model_factory=Briefer, cell=FakeCell(), web=FakeWeb())
     httpd = server.serve(app, port=0)
     threading.Thread(target=httpd.serve_forever, daemon=True).start()
     yield app, f"http://127.0.0.1:{httpd.server_address[1]}"
@@ -187,3 +187,16 @@ def test_code_pack_run_is_killed_for_probing_the_cell_and_report_lists_each_atte
     assert code == 200 and rep["outcome"] == "KILLED" and rep["result"] is None
     kinds = {e["kind"] for e in rep["broker_events"]}
     assert {"SANDBOX_NETWORK", "SANDBOX_PROCESS", "SANDBOX_WRITE"} <= kinds
+
+
+def test_web_pack_run_uses_the_public_search_and_keeps_records_private(mem_app):
+    app, url = mem_app
+    code, rep = call(url + "/api/run", {"key": key_of(app, "context-brief"), "types": ["note", "contact"]}, app.token)
+    assert code == 200 and rep["outcome"] == "COMPLETE"
+    assert app.web.queries[-1] == "B2B SaaS renewal budget cuts trends 2026"  # no private text in the query
+    assert "000111222" not in json.dumps(rep)
+
+
+def test_oversized_body_is_refused(srv):
+    app, url = srv
+    assert call(url + "/api/run", {"key": "x" * 30000}, app.token)[0] in (413,)
