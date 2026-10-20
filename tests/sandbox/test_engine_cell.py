@@ -45,10 +45,12 @@ steps:
 """
 
 
-def test_code_step_cannot_send_its_inputs_over_the_network():
+def test_code_step_cannot_send_its_inputs_over_the_network_and_is_killed_for_trying():
     vault = Vault([Record("n1", "note", "low", "Sales pipeline: accounts at risk")])
     broker = MemoryBroker(vault, Lens(types=frozenset({"note"})), run_seed="s")
     eng = Engine(parse(WF), model=None, broker=broker, guard=ResultGuard(SCHEMA), journal=Journal(),
                  cell=DockerCell(timeout=40))
     r = eng.run()
-    assert r.outcome is Outcome.COMPLETE and r.result == {"net": "blocked"}
+    assert r.outcome is Outcome.KILLED and r.result is None  # the attempt itself is the evidence
+    assert {v["kind"] for v in eng.violations} == {"SANDBOX_NETWORK"}
+    assert any(e["kind"] == "incident" for e in eng.journal.entries)

@@ -81,3 +81,26 @@ def test_huge_output_is_refused():
 
 def test_non_object_result_refused(cell):
     assert not cell.run("result = [1, 2]", {}).ok
+
+
+def test_sensor_reports_network_process_and_write_attempts(cell):
+    script = (
+        "import socket, subprocess\n"
+        "for f in (lambda: socket.create_connection(('1.1.1.1', 443), timeout=2),\n"
+        "          lambda: open('/etc/x', 'w'),\n"
+        "          lambda: subprocess.run(['ls'])):\n"
+        "    try:\n        f()\n    except Exception:\n        pass\n"
+        "result = {'done': True}\n"
+    )
+    r = cell.run(script, {})
+    kinds = {a.split(":", 1)[0] for a in r.attempts}
+    assert r.ok and {"network", "dns", "write", "process"} <= kinds
+
+
+def test_clean_script_reports_no_attempts(cell):
+    assert cell.run("result = {'n': len(inputs['xs'])}", {"xs": [1, 2]}).attempts == []
+
+
+def test_writing_under_tmp_is_not_an_attempt(cell):
+    r = cell.run("open('/tmp/scratch.txt', 'w').write('x')\nresult = {}", {})
+    assert r.ok and r.attempts == []

@@ -95,12 +95,12 @@ class Certifier:
         for task in self.suite.quality:
             for i in range(self.runs):
                 total += 1
-                res, _ = self._run(wf_text, manifest, task, model, f"{task.name}-{i}", cell)
+                res, _, _ = self._run(wf_text, manifest, task, model, f"{task.name}-{i}", cell)
                 if res.outcome is Outcome.COMPLETE and task.check(res.result):
                     passes += 1
 
-        res, broker = self._run(wf_text, manifest, self.suite.trap, model, "trap", cell)
-        violations = [e.kind for e in broker.events]
+        res, broker, eng = self._run(wf_text, manifest, self.suite.trap, model, "trap", cell)
+        violations = [e.kind for e in broker.events] + [v["kind"] for v in eng.violations]
         if res.outcome is Outcome.KILLED:
             violations.append("KILLED")
         violations = sorted(set(violations))
@@ -121,7 +121,8 @@ class Certifier:
         eng = Engine(parse(wf_text), model=model, broker=broker, guard=ResultGuard(manifest["result_schema"]),
                      journal=Journal(), cell=cell,
                      checks={"result_matches_schema": lambda inputs: validator.is_valid(next(iter(inputs.values()), None))})
-        return eng.run(), broker
+        res = eng.run()
+        return res, broker, eng
 
 
 def verify_attestation(att: Attestation, trusted_certifiers: set[str]) -> bool:

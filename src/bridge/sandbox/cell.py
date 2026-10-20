@@ -14,15 +14,39 @@ from __future__ import annotations
 import json
 import subprocess
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 BOOT = r"""
 import json, sys
+sys.dont_write_bytecode = True
+attempts = []
+
+def _hook(event, args):
+    try:
+        if event == "socket.connect":
+            attempts.append("network:" + str(args[1]))
+        elif event == "socket.getaddrinfo":
+            attempts.append("dns:" + str(args[0]))
+        elif event in ("subprocess.Popen", "os.system", "os.exec", "os.fork", "os.posix_spawn"):
+            attempts.append("process:" + event)
+        elif event == "open":
+            path, mode = args[0], args[1]
+            writing = isinstance(mode, str) and any(ch in mode for ch in "wax+")
+            if isinstance(path, str) and writing and not path.startswith("/tmp"):
+                attempts.append("write:" + path)
+    except Exception:
+        pass
+
 payload = json.load(sys.stdin)
 g = {"inputs": payload["inputs"]}
-exec(compile(payload["script"], "<pack>", "exec"), g)
-out = json.dumps(g["result"])
-sys.stdout.write("\n@@RESULT@@" + out)
+code = compile(payload["script"], "<pack>", "exec")
+sys.addaudithook(_hook)
+try:
+    exec(code, g)
+    out = json.dumps(g["result"])
+finally:
+    sys.stdout.write(chr(10) + "@@ATTEMPTS@@" + json.dumps(attempts))
+sys.stdout.write(chr(10) + "@@RESULT@@" + out)
 """
 
 WSL_DOCKER = ["wsl", "-d", "Ubuntu-22.04", "-u", "root", "--", "/usr/bin/docker"]
@@ -40,6 +64,18 @@ class CellResult:
     value: dict | None = None
     error: str = ""
     timed_out: bool = False
+    attempts: list[str] = field(default_factory=list)  # sandbox probes seen by the in-cell sensor
+
+
+def _attempts(text: str) -> list[str]:
+    if "@@ATTEMPTS@@" not in text:
+        return []
+    raw = text.split("@@ATTEMPTS@@", 1)[1].splitlines()[0]
+    try:
+        items = json.loads(raw)
+    except json.JSONDecodeError:
+        return []
+    return [str(i)[:120] for i in items][:50] if isinstance(items, list) else []
 
 
 class DockerCell:
@@ -86,13 +122,14 @@ class DockerCell:
         if len(out) > self.max_output:
             return CellResult(False, error=f"cell output larger than {self.max_output} bytes")
         text = out.decode("utf-8", errors="replace")
+        attempts = _attempts(text)
         if p.returncode != 0 or "@@RESULT@@" not in text:
             last = (p.stderr.decode("utf-8", errors="replace").strip().splitlines() or ["no output"])[-1]
-            return CellResult(False, error=f"cell failed (exit {p.returncode}): {last[:200]}")
+            return CellResult(False, error=f"cell failed (exit {p.returncode}): {last[:200]}", attempts=attempts)
         try:
             value = json.loads(text.split("@@RESULT@@", 1)[1])
         except json.JSONDecodeError:
-            return CellResult(False, error="cell result is not valid JSON")
+            return CellResult(False, error="cell result is not valid JSON", attempts=attempts)
         if not isinstance(value, dict):
-            return CellResult(False, error="cell result must be a JSON object")
-        return CellResult(True, value=value)
+            return CellResult(False, error="cell result must be a JSON object", attempts=attempts)
+        return CellResult(True, value=value, attempts=attempts)

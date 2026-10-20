@@ -74,6 +74,7 @@ class Engine:
         self.cell = cell  # runs `code` steps; needs run(script, inputs) -> CellResult
         self.tokens = 0
         self.usd = 0.0
+        self.violations: list[dict] = []  # sandbox probes seen inside Cells: {kind, detail}
 
     def run(self) -> RunResult:
         j = self.journal
@@ -137,7 +138,16 @@ class Engine:
         if self.cell is None:
             raise _StepError("no Cell available to run code steps")
         res = self.cell.run(step.script or "", inputs)
-        self.journal.append("cell_run", {"step": step.id, "ok": res.ok, "timed_out": res.timed_out})
+        self.journal.append("cell_run", {"step": step.id, "ok": res.ok, "timed_out": res.timed_out,
+                                         "attempts": res.attempts})
+        kinds = {"network": "SANDBOX_NETWORK", "dns": "SANDBOX_NETWORK", "process": "SANDBOX_PROCESS",
+                 "write": "SANDBOX_WRITE"}
+        for a in res.attempts:
+            self.violations.append({"kind": kinds.get(a.split(":", 1)[0], "SANDBOX_PROBE"), "detail": a})
+        if any(v["kind"] in ("SANDBOX_NETWORK", "SANDBOX_PROCESS") for v in self.violations):
+            # trying to reach the network or start a process from a sealed cell is deterministic evidence
+            self.journal.append("incident", {"step": step.id, "evidence": "sandbox-probe"})
+            raise _Killed("sandbox probe: " + self.violations[0]["detail"])
         if not res.ok:
             raise _StepError(f"code step {step.id!r}: {res.error}")
         return res.value
