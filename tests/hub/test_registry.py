@@ -39,7 +39,7 @@ def test_republish_same_content_is_idempotent(pack, key):
 def test_same_version_different_content_refused(pack, key):
     reg = Registry()
     reg.publish(pack, key)
-    (pack / "workflow.yaml").write_text((pack / "workflow.yaml").read_text(encoding="utf-8") + "# edited\n", encoding="utf-8")
+    (pack / "workflow.yaml").write_bytes((pack / "workflow.yaml").read_bytes() + b"# edited\n")
     with pytest.raises(RegistryError, match="bump the version"):
         reg.publish(pack, key)
 
