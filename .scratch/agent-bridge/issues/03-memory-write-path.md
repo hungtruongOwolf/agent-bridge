@@ -1,6 +1,6 @@
 # 03 Memory write path (proposals, quarantine, accept)
 
-Status: open
+Status: resolved (2026-10-20)
 Milestone: M1
 
 The vault becomes updatable. A pack never writes memory. After a run it may return typed proposals (id-free, schema-limited: type, short text, source run). Proposals land in a quarantine tier Q, tagged with origin (pack digest, run id) and a taint flag. Only the user can promote one: accepted items enter the vault with trust tier 1 (endorsed-foreign) and an immutable origin. Rejected and expired items are dropped. Quarantined items are never served to a pack. Reverting a run removes its quarantine items and any vault records whose origin is that run, leaving user-authored records alone.

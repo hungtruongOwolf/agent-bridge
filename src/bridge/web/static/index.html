@@ -66,6 +66,11 @@ code{font:12px ui-monospace,Consolas,monospace;background:var(--chip);padding:1p
 .facts{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;font-size:12px;margin-top:12px;color:var(--muted)}
 .facts b{color:var(--ink);font-weight:600;overflow-wrap:anywhere}
 .empty{color:var(--muted);font-size:13px;padding:10px 0}
+.prop{border:1px dashed var(--warn);background:var(--warnbg);border-radius:10px;padding:10px;margin-bottom:8px;font-size:13px}
+.prop .acts{display:flex;gap:8px;margin-top:8px}
+.btn{border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:8px;padding:5px 12px;font-size:13px;font-weight:600}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+.chip.src{background:var(--warnbg);color:var(--warn);margin-left:6px}
 </style>
 </head>
 <body data-token="__TOKEN__">
@@ -85,6 +90,8 @@ code{font:12px ui-monospace,Consolas,monospace;background:var(--chip);padding:1p
     <div class="row" style="margin-bottom:6px"><span class="meta">Up to sensitivity</span>
       <select id="sens"><option>low</option><option selected>medium</option><option>high</option></select></div>
     <div id="vault"></div>
+    <h2 style="margin-top:18px">Waiting for your decision</h2>
+    <div id="review"><div class="empty">Nothing yet. After a run, an agent may suggest something to remember. It is only saved if you accept.</div></div>
     <div class="note">The pack can read only the records marked <b>shared</b>. It has no network, so nothing is sent to it or by it.
       Anything else it asks for is refused and counted.</div>
   </section>
@@ -145,16 +152,31 @@ function drawVault(){
     const on = shared(r);
     const row = el("div","rec" + (on ? "" : " off"));
     row.append(el("span","sd s-" + r.sensitivity));
-    const t = el("div"); t.append(el("div","txt", on ? r.text : "(withheld) " + r.type + " record"), el("div","meta", r.type + " · " + r.sensitivity)); row.append(t);
+    const t = el("div"); t.append(el("div","txt", on ? r.text : "(withheld) " + r.type + " record"));
+    const m = el("div","meta", r.type + " · " + r.sensitivity); if (r.trust === 1) m.append(el("span","chip src","from a pack · you accepted it")); t.append(m); row.append(t);
     row.append(el("span","state " + (on ? "on":"off"), on ? "shared" : "kept private"));
     box.append(row);
   });
 }
 
-function drawTypes(){
+function drawReview(){
+  const box = $("review"); box.replaceChildren();
+  if (!S.proposals.length) { box.append(el("div","empty","Nothing yet. After a run, an agent may suggest something to remember. It is only saved if you accept.")); return; }
+  S.proposals.forEach(p => {
+    const c = el("div","prop"); c.append(el("div",null,"“" + p.text + "”"), el("div","meta","suggested as a " + p.type + " by the last agent you ran"));
+    const a = el("div","acts"); const ok = el("button","btn pri","Remember"); const no = el("button","btn","Discard");
+    ok.onclick = async () => { await api("/api/proposal",{id:p.id,action:"accept"}); await refresh(); };
+    no.onclick = async () => { await api("/api/proposal",{id:p.id,action:"reject"}); await refresh(); };
+    a.append(ok,no); c.append(a); box.append(c);
+  });
+}
+async function refresh(){ S = await api("/api/state"); drawTypes(true); drawVault(); drawReview(); drawMarket(); }
+
+function drawTypes(keep){
   const types = [...new Set(S.vault.map(r => r.type))];
+  const prev = keep ? new Set(lensTypes()) : null;
   const box = $("types"); box.replaceChildren();
-  types.forEach(t => { const l = el("label"); const i = document.createElement("input"); i.type="checkbox"; i.value=t; i.checked = (t==="note"||t==="contact"); i.onchange = drawVault; l.append(i, document.createTextNode(t)); box.append(l); });
+  types.forEach(t => { const l = el("label"); const i = document.createElement("input"); i.type="checkbox"; i.value=t; i.checked = prev ? prev.has(t) : (t==="note"||t==="contact"); i.onchange = drawVault; l.append(i, document.createTextNode(t)); box.append(l); });
   $("sens").onchange = drawVault;
 }
 
@@ -203,11 +225,19 @@ async function run(){
   add("pack digest", rep.digest.slice(0,26) + "…");
   add("audit journal", rep.journal_entries + " entries, hash chain verified");
   out.append(f);
+  if (rep.outcome === "COMPLETE" && rep.proposals.length) {
+    const n = el("div","note","This agent suggested something to remember. Review it on the left, under “Waiting for your decision”.");
+    out.append(n);
+    const undo = el("button","btn","Undo everything from this run");
+    undo.onclick = async () => { const r = await api("/api/revert",{run_id:rep.run_id}); undo.textContent = "Undone (" + r.removed_from_vault + " saved, " + r.dropped_pending + " pending removed)"; undo.disabled = true; await refresh(); };
+    out.append(undo);
+  }
+  await refresh();
   running = false; $("go").disabled = false; $("go").textContent = "Run again";
 }
 
 (async function init(){
-  S = await api("/api/state"); drawTypes(); drawVault(); drawMarket(); $("go").onclick = run;
+  S = await api("/api/state"); drawTypes(); drawVault(); drawReview(); drawMarket(); $("go").onclick = run;
 })();
 </script>
 </body>
