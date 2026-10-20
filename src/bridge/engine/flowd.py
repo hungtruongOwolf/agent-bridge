@@ -4,6 +4,7 @@ The pack supplies the program; this engine is trusted platform code. Rules it en
   - a step sees only the outputs it declares in `reads` (no shared blackboard);
   - a step may only call tools in its own `tools` grant;
   - memory is reached only through the MemoryBroker, never directly;
+  - `code` steps run only inside a Cell (no network, only their declared reads);
   - every step start and commit is journaled;
   - when the budget is exhausted the run ends as PARTIAL with no further model call;
   - the final result goes through the Result Guard; a canary hit or a broker kill ends
@@ -59,6 +60,7 @@ class Engine:
         journal: Journal | None = None,
         checks: dict[str, Callable[[Any], bool]] | None = None,
         max_steps: int = 100,
+        cell=None,
     ):
         self.wf = workflow
         self.model = model
@@ -67,6 +69,7 @@ class Engine:
         self.journal = journal or Journal()
         self.checks = checks or {}
         self.max_steps = max_steps
+        self.cell = cell  # runs `code` steps; needs run(script, inputs) -> CellResult
         self.tokens = 0
         self.usd = 0.0
 
@@ -99,7 +102,12 @@ class Engine:
                 continue
 
             try:
-                out = self._llm(step, inputs) if step.kind == "llm" else self._tool(step)
+                if step.kind == "llm":
+                    out = self._llm(step, inputs)
+                elif step.kind == "code":
+                    out = self._code(step, inputs)
+                else:
+                    out = self._tool(step)
             except _Killed as k:
                 return self._finish(Outcome.KILLED, reasons=[k.reason])
             except _StepError as e:
@@ -116,6 +124,15 @@ class Engine:
         self.usd += reply.usd
         self.journal.append("model_call", {"step": step.id, "tokens": reply.tokens, "usd": reply.usd})
         return reply.content
+
+    def _code(self, step: Step, inputs: dict[str, Any]) -> Any:
+        if self.cell is None:
+            raise _StepError("no Cell available to run code steps")
+        res = self.cell.run(step.script or "", inputs)
+        self.journal.append("cell_run", {"step": step.id, "ok": res.ok, "timed_out": res.timed_out})
+        if not res.ok:
+            raise _StepError(f"code step {step.id!r}: {res.error}")
+        return res.value
 
     def _tool(self, step: Step) -> Any:
         name = step.tool or ""

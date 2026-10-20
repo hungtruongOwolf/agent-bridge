@@ -131,3 +131,46 @@ steps:
     eng, broker = build(Scripted(), wf=wf)
     eng.run()
     assert [e.kind for e in broker.events] == ["OFF_LENS_QUERY"]
+
+
+CODE_WF = """
+name: calc
+start: read
+steps:
+  - {id: read, kind: tool, tool: memory_search, tools: [memory_search], prompt: sales, next: calc}
+  - {id: calc, kind: code, script: "result = {'summary': 'n=' + str(len(inputs['read']))}", reads: [read], next: done}
+  - {id: done, kind: return, reads: [calc]}
+"""
+
+
+class FakeCell:
+    def __init__(self, ok=True, value=None, error=""):
+        self.ok, self.value, self.error, self.calls = ok, value, error, []
+
+    def run(self, script, inputs):
+        from bridge.sandbox.cell import CellResult
+        self.calls.append((script, inputs))
+        return CellResult(self.ok, self.value, self.error)
+
+
+def test_code_step_runs_in_the_cell_with_only_its_reads():
+    eng, _ = build(Scripted(), wf=CODE_WF)
+    eng.cell = FakeCell(value={"summary": "n=1"})
+    r = eng.run()
+    assert r.outcome is Outcome.COMPLETE and r.result == {"summary": "n=1"}
+    script, inputs = eng.cell.calls[0]
+    assert list(inputs) == ["read"]
+    assert any(e["kind"] == "cell_run" for e in eng.journal.entries)
+
+
+def test_cell_failure_fails_the_run_without_delivering():
+    eng, _ = build(Scripted(), wf=CODE_WF)
+    eng.cell = FakeCell(ok=False, error="cell exceeded 30s")
+    r = eng.run()
+    assert r.outcome is Outcome.FAILED_PACK and "exceeded" in r.reasons[0]
+
+
+def test_code_step_without_a_cell_fails_closed():
+    eng, _ = build(Scripted(), wf=CODE_WF)
+    r = eng.run()
+    assert r.outcome is Outcome.FAILED_PACK and "no Cell" in r.reasons[0]

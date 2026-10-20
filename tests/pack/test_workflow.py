@@ -67,3 +67,29 @@ def test_duplicate_id_rejected():
 
 def test_bad_yaml_rejected():
     fails("name: [", "not valid YAML")
+
+
+CODE = """
+name: calc
+start: calc
+steps:
+  - {id: calc, kind: code, script: "result = {'n': 1}", reads: [], next: done}
+  - {id: done, kind: return, reads: [calc]}
+"""
+
+
+def test_code_step_parses():
+    assert parse(CODE).steps["calc"].script == "result = {'n': 1}"
+
+
+def test_code_step_needs_a_script():
+    fails(CODE.replace("script: \"result = {'n': 1}\", ", ""), "needs `script`")
+
+
+def test_code_step_gets_no_memory_or_tools():
+    fails(CODE.replace("reads: [],", "memory: lens,"), "no tools and no memory")
+    fails(CODE.replace("reads: [],", "tools: [memory_search],"), "no tools and no memory")
+
+
+def test_script_only_on_code_steps():
+    fails(GOOD.replace("{id: done, kind: return}", "{id: done, kind: return, script: x}"), "only code steps")

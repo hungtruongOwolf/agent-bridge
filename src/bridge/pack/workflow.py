@@ -1,6 +1,6 @@
 """Workflow program: a closed language of typed steps, validated before anything runs.
 
-v1 slice of the design (design-harness-workflow.md): kinds llm, tool, gate, return.
+v1 slice of the design (design-harness-workflow.md): kinds llm, tool, code, gate, return.
 Rules enforced here: unique step ids, known kinds, every edge points at a real step,
 no cycles (loops are a later step kind), every path ends in `return`, and every step
 declares the capabilities it needs (nothing is implicit).
@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 import yaml
 from jsonschema import Draft202012Validator
 
-KINDS = ("llm", "tool", "gate", "return")
+KINDS = ("llm", "tool", "code", "gate", "return")
 
 SCHEMA = {
     "type": "object",
@@ -44,6 +44,7 @@ SCHEMA = {
                     "prompt": {"type": "string"},
                     "tool": {"type": "string"},
                     "check": {"type": "string"},
+                    "script": {"type": "string"},
                     "reads": {"type": "array", "items": {"type": "string"}, "uniqueItems": True},
                     "tools": {"type": "array", "items": {"type": "string"}, "uniqueItems": True},
                     "memory": {"enum": ["none", "lens"]},
@@ -72,6 +73,7 @@ class Step:
     prompt: str | None = None
     tool: str | None = None
     check: str | None = None
+    script: str | None = None  # python source for a `code` step; runs in a Cell
     reads: tuple[str, ...] = ()
     tools: tuple[str, ...] = ()
     memory: str = "none"
@@ -104,7 +106,7 @@ def parse(text: str) -> Workflow:
             continue
         steps[raw["id"]] = Step(
             id=raw["id"], kind=raw["kind"], next=raw.get("next"), on_fail=raw.get("on_fail"),
-            prompt=raw.get("prompt"), tool=raw.get("tool"), check=raw.get("check"),
+            prompt=raw.get("prompt"), tool=raw.get("tool"), check=raw.get("check"), script=raw.get("script"),
             reads=tuple(raw.get("reads", ())), tools=tuple(raw.get("tools", ())),
             memory=raw.get("memory", "none"), type=raw.get("type"),
         )
@@ -128,6 +130,13 @@ def parse(text: str) -> Workflow:
             problems.append(f"step {s.id!r}: tool {s.tool!r} is not in its `tools` grant")
         if s.kind == "llm" and not s.prompt:
             problems.append(f"step {s.id!r}: llm step needs `prompt`")
+        if s.kind == "code":
+            if not s.script:
+                problems.append(f"step {s.id!r}: code step needs `script`")
+            if s.tools or s.memory != "none":
+                problems.append(f"step {s.id!r}: code steps get no tools and no memory, only declared reads")
+        elif s.script:
+            problems.append(f"step {s.id!r}: only code steps may have `script`")
         if s.kind == "gate" and not s.check:
             problems.append(f"step {s.id!r}: gate step needs `check`")
         if s.memory == "lens" and s.kind not in ("llm", "tool"):
