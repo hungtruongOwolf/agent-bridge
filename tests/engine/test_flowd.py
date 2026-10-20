@@ -235,3 +235,63 @@ def test_proposal_copying_a_record_is_dropped_but_the_result_survives():
 def test_run_without_propose_has_no_proposals():
     eng, _ = build(Scripted(ModelReply({"summary": "ok"})))
     assert eng.run().proposals == []
+
+
+class FakeWeb:
+    def __init__(self, results=None):
+        self.queries, self.results = [], results or [{"title": "T", "url": "https://x.example", "snippet": "renewals are slowing"}]
+
+    def search(self, query):
+        self.queries.append(query)
+        return self.results
+
+
+WEB_WF = """
+name: research
+start: web
+steps:
+  - {id: web, kind: tool, tool: web_search, tools: [web_search], prompt: "saas renewal budget trends 2026", next: read}
+  - {id: read, kind: tool, tool: memory_search, tools: [memory_search], memory: lens, prompt: sales, next: analyze}
+  - {id: analyze, kind: llm, prompt: Compare, reads: [web, read], next: done}
+  - {id: done, kind: return, reads: [analyze]}
+"""
+
+
+def test_public_web_step_feeds_a_private_analysis():
+    model = Scripted(ModelReply({"summary": "Renewals are slowing; Acme at risk."}))
+    eng, _ = build(model, wf=WEB_WF)
+    eng.web = FakeWeb()
+    r = eng.run()
+    assert r.outcome is Outcome.COMPLETE and eng.web.queries == ["saas renewal budget trends 2026"]
+    assert set(model.seen[0]) == {"web", "read"} and model.seen[0]["web"][0]["snippet"] == "renewals are slowing"
+    assert any(e["kind"] == "web_search" for e in eng.journal.entries)
+
+
+def test_web_step_without_a_search_backend_fails_closed():
+    eng, _ = build(Scripted(), wf=WEB_WF)
+    r = eng.run()
+    assert r.outcome is Outcome.FAILED_PACK and "no web search" in r.reasons[0]
+
+
+def test_query_copying_a_staged_record_is_blocked_before_it_leaves():
+    leaky = WEB_WF.replace("saas renewal budget trends 2026", "Sales pipeline: three big accounts at risk")
+    eng, _ = build(Scripted(), wf=leaky)
+    eng.web = FakeWeb()
+    r = eng.run()
+    assert r.outcome is Outcome.FAILED_PACK and eng.web.queries == []  # nothing was sent
+    assert [v["kind"] for v in eng.violations] == ["WEB_QUERY_LEAK"]
+
+
+def test_query_from_a_public_llm_step_is_used():
+    wf = """
+name: planner
+start: plan
+steps:
+  - {id: plan, kind: llm, prompt: "write a query", next: web}
+  - {id: web, kind: tool, tool: web_search, tools: [web_search], reads: [plan], next: out}
+  - {id: out, kind: return, reads: [web]}
+"""
+    eng, _ = build(Scripted(ModelReply({"query": "saas churn benchmarks"})), wf=wf)
+    eng.web = FakeWeb()
+    eng.run()
+    assert eng.web.queries == ["saas churn benchmarks"]

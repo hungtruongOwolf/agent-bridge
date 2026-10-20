@@ -152,10 +152,37 @@ def parse(text: str) -> Workflow:
             problems.append(f"step {s.id!r}: only llm/tool steps may read the memory lens")
 
     if not problems:
+        problems += _scope_problems(steps)
+    if not problems:
         problems += _graph_problems(steps, data["start"])
     if problems:
         raise WorkflowError(problems)
     return Workflow(name=data["name"], start=data["start"], steps=steps, budget=data.get("budget", {}))
+
+
+def _scope_problems(steps: dict[str, Step]) -> list[str]:
+    """A step that reaches the web is PUBLIC: it may not read memory, nor any step that did.
+
+    A step is private if it reads the memory lens or reads a private step. Web results may flow INTO
+    private steps (research, then analysis) but private data may never flow OUT to a web step.
+    """
+    private = {sid for sid, s in steps.items() if s.memory == "lens"}
+    changed = True
+    while changed:
+        changed = False
+        for sid, s in steps.items():
+            if sid not in private and any(r in private for r in s.reads):
+                private.add(sid)
+                changed = True
+    problems = []
+    for s in steps.values():
+        if s.kind == "tool" and s.tool == "web_search":
+            if s.memory != "none":
+                problems.append(f"step {s.id!r}: a web_search step is public and cannot read the memory lens")
+            for r in s.reads:
+                if r in private:
+                    problems.append(f"step {s.id!r}: a web_search step cannot read {r!r}, which holds private data")
+    return problems
 
 
 def _edges(s: Step) -> list[str]:

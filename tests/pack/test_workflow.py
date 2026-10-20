@@ -119,3 +119,61 @@ def test_propose_must_name_an_llm_step():
 
 def test_propose_step_must_be_read():
     fails(PROP.replace("reads: [a, b]", "reads: [a]"), "also be in `reads`")
+
+
+WEB = """
+name: research
+start: web
+steps:
+  - {id: web, kind: tool, tool: web_search, tools: [web_search], prompt: "saas renewal trends 2026", next: read}
+  - {id: read, kind: tool, tool: memory_search, tools: [memory_search], memory: lens, prompt: sales, next: analyze}
+  - {id: analyze, kind: llm, prompt: Compare, reads: [web, read], next: done}
+  - {id: done, kind: return, reads: [analyze]}
+"""
+
+
+def test_public_research_then_private_analysis_is_allowed():
+    assert parse(WEB).steps["web"].tool == "web_search"
+
+
+def test_web_step_cannot_read_the_memory_lens():
+    fails(WEB.replace("tools: [web_search], prompt", "tools: [web_search], memory: lens, prompt"), "public and cannot read the memory lens")
+
+
+def test_web_step_cannot_read_a_private_step():
+    text = """
+name: leak
+start: read
+steps:
+  - {id: read, kind: tool, tool: memory_search, tools: [memory_search], memory: lens, prompt: sales, next: q}
+  - {id: q, kind: llm, prompt: "write a search query", reads: [read], next: web}
+  - {id: web, kind: tool, tool: web_search, tools: [web_search], reads: [q], next: done}
+  - {id: done, kind: return, reads: [web]}
+"""
+    fails(text, "holds private data")
+
+
+def test_privacy_taint_is_transitive():
+    text = """
+name: leak2
+start: read
+steps:
+  - {id: read, kind: tool, tool: memory_search, tools: [memory_search], memory: lens, prompt: sales, next: a}
+  - {id: a, kind: llm, prompt: x, reads: [read], next: b}
+  - {id: b, kind: llm, prompt: y, reads: [a], next: web}
+  - {id: web, kind: tool, tool: web_search, tools: [web_search], reads: [b], next: done}
+  - {id: done, kind: return, reads: [web]}
+"""
+    fails(text, "holds private data")
+
+
+def test_web_query_may_come_from_a_public_llm_step():
+    text = """
+name: ok
+start: plan
+steps:
+  - {id: plan, kind: llm, prompt: "reply with a search query about SaaS renewals", next: web}
+  - {id: web, kind: tool, tool: web_search, tools: [web_search], reads: [plan], next: done}
+  - {id: done, kind: return, reads: [web]}
+"""
+    assert parse(text).steps["web"].reads == ("plan",)

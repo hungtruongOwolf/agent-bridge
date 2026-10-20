@@ -16,7 +16,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Callable, Protocol
 
-from ..guard.result_guard import ResultGuard
+from ..guard.result_guard import ResultGuard, longest_shared_run
 from ..memory.broker import MemoryBroker, Verdict
 from ..pack.workflow import Step, Workflow
 from .journal import Journal
@@ -63,6 +63,7 @@ class Engine:
         checks: dict[str, Callable[[Any], bool]] | None = None,
         max_steps: int = 100,
         cell=None,
+        web=None,
     ):
         self.wf = workflow
         self.model = model
@@ -71,6 +72,7 @@ class Engine:
         self.journal = journal or Journal()
         self.checks = checks or {}
         self.max_steps = max_steps
+        self.web = web  # object with search(query) -> list[dict]; the only network a pack can use
         self.cell = cell  # runs `code` steps; needs run(script, inputs) -> CellResult
         self.tokens = 0
         self.usd = 0.0
@@ -110,7 +112,7 @@ class Engine:
                 elif step.kind == "code":
                     out = self._code(step, inputs)
                 else:
-                    out = self._tool(step)
+                    out = self._tool(step, inputs)
             except _Killed as k:
                 return self._finish(Outcome.KILLED, reasons=[k.reason])
             except _InfraError as e:
@@ -152,10 +154,12 @@ class Engine:
             raise _StepError(f"code step {step.id!r}: {res.error}")
         return res.value
 
-    def _tool(self, step: Step) -> Any:
+    def _tool(self, step: Step, inputs: dict[str, Any]) -> Any:
         name = step.tool or ""
         if name not in step.tools:
             raise _StepError(f"tool {name!r} not granted to step {step.id!r}")
+        if name == "web_search":
+            return self._web(step, inputs)
         if name == "memory_search":
             res = self.broker.search(step.prompt or "", type=step.type)
         elif name == "memory_read":
@@ -168,6 +172,25 @@ class Engine:
         return res.records
 
     # -- end of run ---------------------------------------------------------------------------
+    def _web(self, step: Step, inputs: dict[str, Any]) -> Any:
+        if self.web is None:
+            raise _StepError("no web search is configured")
+        query = step.prompt or ""
+        if not query and step.reads:
+            src = inputs.get(step.reads[0])
+            query = src.get("query", "") if isinstance(src, dict) else ""
+        if not isinstance(query, str) or not query.strip():
+            raise _StepError("web_search needs a query")
+        # defence in depth: whatever the scope rules allow, a query may not carry the user's records out
+        for text in self.broker.lens_texts:
+            if longest_shared_run(query, text) > 25:
+                self.violations.append({"kind": "WEB_QUERY_LEAK", "detail": "query repeats text from a staged record"})
+                self.journal.append("incident", {"step": step.id, "evidence": "web-query-leak"})
+                raise _StepError("web query blocked: it repeats text from your records")
+        results = self.web.search(query)
+        self.journal.append("web_search", {"step": step.id, "query": query, "results": len(results)})
+        return results
+
     def _deliver(self, step: Step, inputs: dict[str, Any]) -> RunResult:
         result = inputs[step.reads[0]] if step.reads and step.reads[0] in inputs else {}
         lens_texts = self.broker.lens_texts
