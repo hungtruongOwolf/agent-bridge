@@ -208,7 +208,7 @@ async function run(){
     if (s.event === "incident") { const li = el("li"); li.append(el("span","ic bad","!")); li.append(el("div",null,"INCIDENT at step " + s.step + (s.evidence ? " · evidence: " + s.evidence : ""))); $("tl").append(li); await sleep(300); }
   }
   for (const ev of rep.broker_events) {
-    const li = el("li"); li.append(el("span","ic bad","!")); const d = el("div"); d.append(el("b",null,"Broker blocked: "), document.createTextNode(WHY[ev.kind] || ev.kind), el("br"), el("span","meta",ev.detail)); li.append(d); $("tl").append(li); await sleep(300);
+    const li = el("li"); li.append(el("span","ic bad","!")); const d = el("div"); d.append(el("b",null,"Blocked: "), document.createTextNode(WHY[ev.kind] || ev.kind), el("br"), el("span","meta",ev.detail)); li.append(d); $("tl").append(li); await sleep(300);
   }
 
   const out = $("out");
