@@ -1,0 +1,11 @@
+id: context-brief
+version: 0.1.0
+author: demo
+summary: "Looks up public market trends first (web), then compares them with your private notes. Your records never go into a search."
+result_schema:
+  type: object
+  additionalProperties: false
+  required: [summary, risk]
+  properties:
+    summary: {type: string, maxLength: 400}
+    risk: {enum: [low, medium, high]}
