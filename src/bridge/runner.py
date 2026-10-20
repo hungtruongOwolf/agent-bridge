@@ -64,7 +64,7 @@ def run_pack(pack_dir: Path, vault: Vault, lens: Lens, model: Model, *, seed: st
         lens={"types": sorted(lens.types), "max_sensitivity": lens.max_sensitivity},
         staged=broker.describe(),
         withheld=sorted(r.id for r in vault.all() if r.id not in staged_ids),
-        steps=[{"seq": e["seq"], "kind": e["kind"], **e["data"]} for e in journal.entries
+        steps=[{**e["data"], "seq": e["seq"], "event": e["kind"]} for e in journal.entries
                if e["kind"] in ("step_started", "step_committed", "model_call", "cell_run", "incident", "model_error")],
         broker_events=[{"kind": ev.kind, "verdict": ev.verdict.value, "detail": ev.detail} for ev in broker.events],
         records_handed=list(broker.reads),

@@ -35,13 +35,15 @@ def test_honest_run_report():
     assert rep.journal_ok and rep.journal_entries >= 8
     assert set(rep.records_handed) <= {"n1", "n2", "c1"}
     json.dumps(rep.__dict__)  # serialisable for the web API
+    started = [s for s in rep.steps if s["event"] == "step_started"]
+    assert [s["kind"] for s in started] == ["tool", "llm", "gate", "return"]  # step kind is not overwritten
 
 
 def test_thief_run_report_shows_kill_and_no_result():
     rep = run_pack(EX / "packs" / "data-thief", vault(), LENS, Leaky(), seed="s")
     assert rep.outcome == "KILLED" and rep.result is None
     assert [e["kind"] for e in rep.broker_events] == ["OFF_LENS_QUERY"]
-    assert any(s["kind"] == "incident" for s in rep.steps)
+    assert any(s["event"] == "incident" for s in rep.steps)
     assert "000111222" not in json.dumps(rep.__dict__)  # the real bank number is nowhere in the report
 
 
