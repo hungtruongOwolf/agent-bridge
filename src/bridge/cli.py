@@ -19,6 +19,7 @@ from .memory.broker import Lens, MemoryBroker
 from .memory.vault import Record, Vault
 from .pack.digest import tree_digest
 from .pack.workflow import parse
+from .world import open_world, seed as seed_world
 
 ICON = {Outcome.COMPLETE: "OK", Outcome.PARTIAL_BUDGET: "PARTIAL", Outcome.FAILED_PACK: "FAILED", Outcome.KILLED: "KILLED"}
 
@@ -80,6 +81,17 @@ def run(args) -> int:
     return 0 if result.outcome is Outcome.COMPLETE else 2
 
 
+def seed_cmd(args) -> int:
+    world = open_world(args.state)
+    model = NebiusModel(load_api_key(args.env))
+    seed_world(world, Path(args.packs), model, model.model)
+    print(f"
+marketplace ready in {args.state}/")
+    for r in world.market.ranked():
+        print(f"  {r.get('rank', '-'):>2}  {r['status']:<11} {r['id']:<17} score={r['score']}  stars={r['stars']}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     for stream in (sys.stdout, sys.stderr):
         stream.reconfigure(encoding="utf-8", errors="replace")
@@ -95,6 +107,11 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--seed", default="demo-run-1")
     r.add_argument("--journal", help="write the run journal to this file")
     r.set_defaults(fn=run)
+    sd = sub.add_parser("seed", help="publish the example packs and have the Certifier evaluate them")
+    sd.add_argument("--packs", default="examples/packs")
+    sd.add_argument("--state", default=".bridge")
+    sd.add_argument("--env", default=".env")
+    sd.set_defaults(fn=seed_cmd)
     args = ap.parse_args(argv)
     return args.fn(args)
 
