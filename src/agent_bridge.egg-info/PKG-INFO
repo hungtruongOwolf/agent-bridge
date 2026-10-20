@@ -1,0 +1,12 @@
+Metadata-Version: 2.4
+Name: agent-bridge
+Version: 0.0.1
+Summary: Marketplace of agent + harness packs with Pull-mode isolation
+License: MIT
+Requires-Python: >=3.11
+License-File: LICENSE
+Requires-Dist: PyYAML>=6
+Requires-Dist: jsonschema>=4
+Provides-Extra: dev
+Requires-Dist: pytest>=8; extra == "dev"
+Dynamic: license-file

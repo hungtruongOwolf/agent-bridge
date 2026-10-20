@@ -1,0 +1,5 @@
+PyYAML>=6
+jsonschema>=4
+
+[dev]
+pytest>=8

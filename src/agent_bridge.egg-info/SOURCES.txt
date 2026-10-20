@@ -1,0 +1,10 @@
+LICENSE
+README.md
+pyproject.toml
+src/agent_bridge.egg-info/PKG-INFO
+src/agent_bridge.egg-info/SOURCES.txt
+src/agent_bridge.egg-info/dependency_links.txt
+src/agent_bridge.egg-info/requires.txt
+src/agent_bridge.egg-info/top_level.txt
+src/bridge/__init__.py
+tests/test_smoke.py
