@@ -29,7 +29,11 @@ class ModelError(Exception):
 
 
 def load_api_key(env_file: Path | str = ".env") -> str:
-    for line in Path(env_file).read_text(encoding="utf-8").splitlines():
+    try:
+        lines = Path(env_file).read_text(encoding="utf-8").splitlines()
+    except OSError as e:
+        raise ModelError("no .env file with NEBIUS_API_KEY") from e
+    for line in lines:
         if line.startswith("NEBIUS_API_KEY="):
             key = line.split("=", 1)[1].strip()
             if key:

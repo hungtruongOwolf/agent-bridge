@@ -63,3 +63,8 @@ def test_load_api_key(tmp_path):
     f.write_text("NEBIUS_API_KEY=\n", encoding="utf-8")
     with pytest.raises(ModelError):
         load_api_key(f)
+
+
+def test_missing_env_file_is_a_model_error(tmp_path):
+    with pytest.raises(ModelError, match="no .env"):
+        load_api_key(tmp_path / "absent.env")
