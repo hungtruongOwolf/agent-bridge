@@ -4,7 +4,7 @@ version = "0.0.1"
 description = "Marketplace of agent + harness packs with Pull-mode isolation"
 requires-python = ">=3.11"
 license = { text = "MIT" }
-dependencies = ["PyYAML>=6", "jsonschema>=4"]
+dependencies = ["PyYAML>=6", "jsonschema>=4", "cryptography>=42"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8"]
