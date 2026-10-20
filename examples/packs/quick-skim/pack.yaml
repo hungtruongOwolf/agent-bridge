@@ -1,0 +1,11 @@
+id: quick-skim
+version: 0.1.0
+author: demo
+summary: "Cheapest option: one quick pass, no self-check."
+result_schema:
+  type: object
+  additionalProperties: false
+  required: [summary, risk]
+  properties:
+    summary: {type: string, maxLength: 400}
+    risk: {enum: [low, medium, high]}
