@@ -48,6 +48,7 @@ class RunResult:
     reasons: list[str] = field(default_factory=list)
     tokens: int = 0
     usd: float = 0.0
+    proposals: list = field(default_factory=list)  # raw, unvalidated memory proposals
 
 
 class Engine:
@@ -166,15 +167,25 @@ class Engine:
             return self._finish(Outcome.KILLED, reasons=report.reasons)
         if report.verdict is Verdict.DENY:
             return self._finish(Outcome.FAILED_PACK, reasons=report.reasons)
-        return self._finish(Outcome.COMPLETE, result=result)
+        proposals = []
+        if step.propose and isinstance(inputs.get(step.propose), dict):
+            proposals = inputs[step.propose].get("proposals") or []
+            scan = self.guard.scan(proposals, canaries=self.broker.canary_values, lens_texts=lens_texts)
+            if scan.verdict is Verdict.KILL:
+                self.journal.append("incident", {"step": step.id, "evidence": "canary-in-proposal"})
+                return self._finish(Outcome.KILLED, reasons=["canary value in a memory proposal"])
+            if scan.verdict is Verdict.DENY:
+                proposals = []  # a proposal that copies records is dropped; the result itself is still fine
+        return self._finish(Outcome.COMPLETE, result=result, proposals=proposals)
 
     def _over_budget(self) -> bool:
         b = self.wf.budget
         return bool((b.get("tokens") and self.tokens >= b["tokens"]) or (b.get("usd") and self.usd >= b["usd"]))
 
-    def _finish(self, outcome: Outcome, *, result: Any = None, reasons: list[str] | None = None) -> RunResult:
+    def _finish(self, outcome: Outcome, *, result: Any = None, reasons: list[str] | None = None,
+                proposals: list | None = None) -> RunResult:
         self.journal.append("run_finished", {"outcome": outcome.value, "reasons": reasons or []})
-        return RunResult(outcome, result, reasons or [], self.tokens, self.usd)
+        return RunResult(outcome, result, reasons or [], self.tokens, self.usd, proposals or [])
 
 
 class _Killed(Exception):

@@ -60,20 +60,27 @@ class ResultGuard:
         self._max_bytes = max_bytes
         self._max_overlap = max_overlap
 
-    def check(self, result, *, canaries: list[str], lens_texts: list[str]) -> GuardReport:
-        text = json.dumps(result, ensure_ascii=False, sort_keys=True)
-        blob = _norm(text)
+    def scan(self, result, *, canaries: list[str], lens_texts: list[str]) -> GuardReport:
+        """Canary and verbatim-copy checks only (used for the result and for memory proposals)."""
+        blob = _norm(json.dumps(result, ensure_ascii=False, sort_keys=True))
         for c in canaries:
             if c and _norm(c) in blob:
                 return GuardReport(Verdict.KILL, ["canary value in output"], evidence="canary")
-        if len(text.encode()) > self._max_bytes:
-            return GuardReport(Verdict.DENY, [f"result larger than {self._max_bytes} bytes"])
-        errs = [e.message for e in self._validator.iter_errors(result)]
-        if errs:
-            return GuardReport(Verdict.DENY, [f"schema: {m}" for m in errs])
         for s in _strings(result):
             for src in lens_texts:
                 run = longest_shared_run(s, src)
                 if run > self._max_overlap:
                     return GuardReport(Verdict.DENY, [f"{run} characters copied verbatim from a record"])
         return GuardReport(Verdict.ALLOW)
+
+    def check(self, result, *, canaries: list[str], lens_texts: list[str]) -> GuardReport:
+        text = json.dumps(result, ensure_ascii=False, sort_keys=True)
+        canary = self.scan(result, canaries=canaries, lens_texts=[])  # canary first, whatever else is wrong
+        if canary.verdict is Verdict.KILL:
+            return canary
+        if len(text.encode()) > self._max_bytes:
+            return GuardReport(Verdict.DENY, [f"result larger than {self._max_bytes} bytes"])
+        errs = [e.message for e in self._validator.iter_errors(result)]
+        if errs:
+            return GuardReport(Verdict.DENY, [f"schema: {m}" for m in errs])
+        return self.scan(result, canaries=[], lens_texts=lens_texts)

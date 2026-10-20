@@ -93,3 +93,29 @@ def test_code_step_gets_no_memory_or_tools():
 
 def test_script_only_on_code_steps():
     fails(GOOD.replace("{id: done, kind: return}", "{id: done, kind: return, script: x}"), "only code steps")
+
+
+PROP = """
+name: remember
+start: a
+steps:
+  - {id: a, kind: llm, prompt: x, next: b}
+  - {id: b, kind: llm, prompt: y, next: done}
+  - {id: done, kind: return, reads: [a, b], propose: b}
+"""
+
+
+def test_propose_parses():
+    assert parse(PROP).steps["done"].propose == "b"
+
+
+def test_propose_must_be_on_a_return_step():
+    fails(PROP.replace("next: b}", "next: b, propose: b}"), "only return steps")
+
+
+def test_propose_must_name_an_llm_step():
+    fails(PROP.replace("propose: b", "propose: done"), "must name an llm step")
+
+
+def test_propose_step_must_be_read():
+    fails(PROP.replace("reads: [a, b]", "reads: [a]"), "also be in `reads`")

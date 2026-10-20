@@ -45,6 +45,7 @@ SCHEMA = {
                     "tool": {"type": "string"},
                     "check": {"type": "string"},
                     "script": {"type": "string"},
+                    "propose": {"type": "string"},
                     "reads": {"type": "array", "items": {"type": "string"}, "uniqueItems": True},
                     "tools": {"type": "array", "items": {"type": "string"}, "uniqueItems": True},
                     "memory": {"enum": ["none", "lens"]},
@@ -78,6 +79,7 @@ class Step:
     tools: tuple[str, ...] = ()
     memory: str = "none"
     type: str | None = None  # record type a memory tool asks about
+    propose: str | None = None  # `return` only: llm step whose output holds memory proposals
 
 
 @dataclass(frozen=True)
@@ -108,7 +110,7 @@ def parse(text: str) -> Workflow:
             id=raw["id"], kind=raw["kind"], next=raw.get("next"), on_fail=raw.get("on_fail"),
             prompt=raw.get("prompt"), tool=raw.get("tool"), check=raw.get("check"), script=raw.get("script"),
             reads=tuple(raw.get("reads", ())), tools=tuple(raw.get("tools", ())),
-            memory=raw.get("memory", "none"), type=raw.get("type"),
+            memory=raw.get("memory", "none"), type=raw.get("type"), propose=raw.get("propose"),
         )
     if data["start"] not in steps:
         problems.append(f"start {data['start']!r} is not a step")
@@ -130,6 +132,13 @@ def parse(text: str) -> Workflow:
             problems.append(f"step {s.id!r}: tool {s.tool!r} is not in its `tools` grant")
         if s.kind == "llm" and not s.prompt:
             problems.append(f"step {s.id!r}: llm step needs `prompt`")
+        if s.propose:
+            if s.kind != "return":
+                problems.append(f"step {s.id!r}: only return steps may `propose`")
+            elif s.propose not in steps or steps[s.propose].kind != "llm":
+                problems.append(f"step {s.id!r}: propose must name an llm step")
+            elif s.propose not in s.reads:
+                problems.append(f"step {s.id!r}: propose step must also be in `reads`")
         if s.kind == "code":
             if not s.script:
                 problems.append(f"step {s.id!r}: code step needs `script`")

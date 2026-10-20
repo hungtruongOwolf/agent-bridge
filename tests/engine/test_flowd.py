@@ -186,3 +186,52 @@ def test_model_failure_is_an_infra_failure_not_a_pack_failure():
     assert r.outcome is Outcome.FAILED_INFRA and "TimeoutError" in r.reasons[0]
     assert any(e["kind"] == "model_error" for e in eng.journal.entries)
     assert eng.journal.entries[-1]["kind"] == "run_finished"
+
+
+PROPOSE_WF = """
+name: remember
+start: read
+steps:
+  - {id: read, kind: tool, tool: memory_search, tools: [memory_search], prompt: sales, next: analyze}
+  - {id: analyze, kind: llm, prompt: Summarize, reads: [read], next: remember}
+  - {id: remember, kind: llm, prompt: What is worth remembering, reads: [read], next: done}
+  - {id: done, kind: return, reads: [analyze, remember], propose: remember}
+"""
+
+
+class Two:
+    def __init__(self, a, b):
+        self.r = [a, b]
+
+    def complete(self, prompt, inputs):
+        return self.r.pop(0)
+
+
+def test_proposals_are_returned_separately_from_the_result():
+    prop = {"proposals": [{"type": "note", "text": "Acme renewal at risk"}]}
+    eng, _ = build(Two(ModelReply({"summary": "ok"}), ModelReply(prop)), wf=PROPOSE_WF)
+    r = eng.run()
+    assert r.outcome is Outcome.COMPLETE and r.result == {"summary": "ok"}
+    assert r.proposals == prop["proposals"]
+
+
+def test_canary_inside_a_proposal_kills_the_run():
+    eng, broker = build(Scripted(), wf=PROPOSE_WF)
+    decoy = broker.search("x", type="finance").records[0]["text"]
+    eng.model = Two(ModelReply({"summary": "ok"}), ModelReply({"proposals": [{"type": "note", "text": decoy}]}))
+    r = eng.run()
+    assert r.outcome is Outcome.KILLED and r.result is None and r.proposals == []
+
+
+def test_proposal_copying_a_record_is_dropped_but_the_result_survives():
+    eng, _ = build(Scripted(), wf=PROPOSE_WF)
+    eng.guard = ResultGuard(SCHEMA, max_overlap=10)
+    copy = {"proposals": [{"type": "note", "text": "Sales pipeline: three big accounts at risk"}]}
+    eng.model = Two(ModelReply({"summary": "fine"}), ModelReply(copy))
+    r = eng.run()
+    assert r.outcome is Outcome.COMPLETE and r.proposals == []
+
+
+def test_run_without_propose_has_no_proposals():
+    eng, _ = build(Scripted(ModelReply({"summary": "ok"})))
+    assert eng.run().proposals == []
