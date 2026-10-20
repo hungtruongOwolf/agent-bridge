@@ -10,6 +10,10 @@ Ranking rules (deliberately simple and explainable):
 """
 from __future__ import annotations
 
+import json
+from dataclasses import asdict
+from pathlib import Path
+
 from .certifier import Attestation, verify_attestation
 from .registry import PackRecord, Registry
 
@@ -19,12 +23,19 @@ class MarketError(Exception):
 
 
 class Marketplace:
-    def __init__(self, registry: Registry, trusted_certifiers: set[str]):
+    def __init__(self, registry: Registry, trusted_certifiers: set[str], path: Path | None = None):
         self.registry = registry
         self.trusted = trusted_certifiers
+        self.path = Path(path) if path else None
         self._atts: dict[str, Attestation] = {}  # pack digest -> best verified attestation
+        if self.path and self.path.exists():
+            for raw in json.loads(self.path.read_text(encoding="utf-8")):
+                try:  # a stored attestation is re-verified on load; a bad one is simply not trusted
+                    self.add_attestation(Attestation(**raw), _save=False)
+                except MarketError:
+                    pass
 
-    def add_attestation(self, att: Attestation) -> None:
+    def add_attestation(self, att: Attestation, *, _save: bool = True) -> None:
         if not verify_attestation(att, self.trusted):
             raise MarketError("attestation signature is not from a trusted Certifier")
         if not any(r.digest == att.pack_digest for r in self.registry.records.values()):
@@ -32,6 +43,8 @@ class Marketplace:
         current = self._atts.get(att.pack_digest)
         if current is None or att.total >= current.total:  # keep the better-evidenced one
             self._atts[att.pack_digest] = att
+            if _save and self.path:
+                self.path.write_text(json.dumps([asdict(a) for a in self._atts.values()], indent=2), encoding="utf-8")
 
     def status(self, rec: PackRecord) -> str:
         att = self._atts.get(rec.digest)

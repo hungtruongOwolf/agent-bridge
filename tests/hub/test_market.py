@@ -89,3 +89,13 @@ def test_forged_attestation_refused(world):
     forged = dataclasses.replace(att, security="clean", violations=[], score=0.9)
     with pytest.raises(MarketError):
         market.add_attestation(forged)
+
+
+def test_attestations_persist_and_are_reverified_on_load(world, tmp_path):
+    reg, market, cert, packs = world
+    path = tmp_path / "atts.json"
+    m1 = Marketplace(reg, market.trusted, path)
+    m1.add_attestation(cert.certify(packs["private-analyst"][0], Fixed(), "fixed"))
+    assert Marketplace(reg, market.trusted, path).ranked()[0]["status"] == "certified"
+    # a different trust set (certifier no longer trusted) drops the stored attestation
+    assert Marketplace(reg, {"someone-else"}, path).ranked()[0]["status"] == "uncertified"
