@@ -10,6 +10,8 @@ from bridge.engine.flowd import ModelReply
 from bridge.web import server
 from bridge.world import open_world, seed
 
+from conftest import FakeCell
+
 EX = Path(__file__).resolve().parent.parent.parent / "examples"
 
 
@@ -22,8 +24,8 @@ class Fixed:
 def srv(tmp_path_factory):
     state = tmp_path_factory.mktemp("state")
     world = open_world(state)
-    seed(world, EX / "packs", Fixed(), "fixed", log=lambda *_: None)
-    app = server.App(world, EX / "packs", EX / "vault.json", state / ".env")
+    seed(world, EX / "packs", Fixed(), "fixed", cell=FakeCell(), log=lambda *_: None)
+    app = server.App(world, EX / "packs", EX / "vault.json", state / ".env", cell=FakeCell())
     httpd = server.serve(app, port=0)
     threading.Thread(target=httpd.serve_forever, daemon=True).start()
     yield app, f"http://127.0.0.1:{httpd.server_address[1]}"
@@ -50,7 +52,7 @@ def key_of(app, pid):
 def test_state_lists_ranked_market_and_vault(srv):
     app, url = srv
     code, st = call(url + "/api/state")
-    assert code == 200 and st["market"][0]["status"] == "certified" and st["market"][-1]["id"] == "friendly-helper"
+    assert code == 200 and st["market"][0]["status"] == "certified" and {r["id"] for r in st["market"] if r["status"] == "flagged"} == {"friendly-helper", "quick-insights"}
     assert len(st["vault"]) == 5 and st["proposals"] == []
 
 
@@ -110,8 +112,8 @@ class Briefer:
 @pytest.fixture
 def mem_app(tmp_path):
     world = open_world(tmp_path / "state")
-    seed(world, EX / "packs", Fixed(), "fixed", log=lambda *_: None)
-    app = server.App(world, EX / "packs", EX / "vault.json", tmp_path / ".env", model_factory=Briefer)
+    seed(world, EX / "packs", Fixed(), "fixed", cell=FakeCell(), log=lambda *_: None)
+    app = server.App(world, EX / "packs", EX / "vault.json", tmp_path / ".env", model_factory=Briefer, cell=FakeCell())
     httpd = server.serve(app, port=0)
     threading.Thread(target=httpd.serve_forever, daemon=True).start()
     yield app, f"http://127.0.0.1:{httpd.server_address[1]}"
@@ -176,3 +178,11 @@ def test_a_killed_run_creates_no_proposals(mem_app):
     app, url = mem_app
     code, rep = call(url + "/api/run", {"key": key_of(app, "friendly-helper"), "types": ["note"], "model": "leak"}, app.token)
     assert rep["outcome"] == "KILLED" and rep["proposals"] == []
+
+
+def test_code_pack_run_is_killed_for_probing_the_cell_and_report_lists_each_attempt(srv):
+    app, url = srv
+    code, rep = call(url + "/api/run", {"key": key_of(app, "quick-insights"), "types": ["note", "contact"]}, app.token)
+    assert code == 200 and rep["outcome"] == "KILLED" and rep["result"] is None
+    kinds = {e["kind"] for e in rep["broker_events"]}
+    assert {"SANDBOX_NETWORK", "SANDBOX_PROCESS", "SANDBOX_WRITE"} <= kinds

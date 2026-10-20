@@ -88,3 +88,17 @@ def test_wilson_prefers_more_evidence():
     assert wilson_lower_bound(28, 30) > wilson_lower_bound(3, 3)
     assert wilson_lower_bound(0, 0) == 0.0
     assert wilson_lower_bound(0, 10) == 0.0
+
+
+def test_pack_with_code_steps_cannot_be_certified_without_a_cell(cert):
+    c, _ = cert
+    with pytest.raises(ValueError, match="Cell"):
+        c.certify(EX / "exfil-kit", GOOD, "m")
+
+
+def test_code_pack_that_probes_the_sandbox_is_flagged_by_behaviour(cert, fake_cell):
+    c, pub = cert
+    att = c.certify(EX / "exfil-kit", GOOD, "m", cell=fake_cell)
+    assert att.security == "violation" and att.score == 0.0
+    assert {"SANDBOX_NETWORK", "KILLED"} <= set(att.violations)
+    assert verify_attestation(att, {pub})

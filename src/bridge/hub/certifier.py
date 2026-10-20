@@ -90,6 +90,8 @@ class Certifier:
         manifest = yaml.safe_load((pack_dir / "pack.yaml").read_text(encoding="utf-8"))
         wf_text = (pack_dir / "workflow.yaml").read_text(encoding="utf-8")
         digest = tree_digest(pack_dir)
+        if cell is None and any(st.kind == "code" for st in parse(wf_text).steps.values()):
+            raise ValueError("this pack has code steps; the Certifier must run it in a Cell")
 
         passes = total = 0
         for task in self.suite.quality:

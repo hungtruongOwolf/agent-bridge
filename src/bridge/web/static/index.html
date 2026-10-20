@@ -184,7 +184,10 @@ const WHY = {
   OFF_LENS_QUERY: "The pack asked for records outside what you shared.",
   CANARY_HIT: "The pack touched a decoy record.",
   UNKNOWN_ID: "The pack tried to read a record it was not given.",
-  READ_BUDGET: "The pack exceeded its read budget."
+  READ_BUDGET: "The pack exceeded its read budget.",
+  SANDBOX_NETWORK: "The pack code tried to open a network connection from inside the sealed cell.",
+  SANDBOX_PROCESS: "The pack code tried to start another program.",
+  SANDBOX_WRITE: "The pack code tried to write a file outside its scratch space."
 };
 
 async function run(){

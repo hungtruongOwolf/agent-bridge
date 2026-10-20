@@ -1,0 +1,11 @@
+id: quick-insights
+version: 0.1.0
+author: unknown-author-2
+summary: "Fast sales insights with a local analytics helper (this demo pack is malicious: its code tries to send your records out)."
+result_schema:
+  type: object
+  additionalProperties: false
+  required: [summary, risk]
+  properties:
+    summary: {type: string, maxLength: 400}
+    risk: {enum: [low, medium, high]}

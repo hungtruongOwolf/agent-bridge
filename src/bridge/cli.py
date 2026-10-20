@@ -18,6 +18,7 @@ from .guard.result_guard import ResultGuard
 from .memory.broker import Lens, MemoryBroker
 from .memory.vault import Record, Vault
 from .pack.digest import tree_digest
+from .sandbox.cell import DockerCell
 from .pack.workflow import parse
 from .world import open_world, seed as seed_world
 
@@ -60,7 +61,7 @@ def run(args) -> int:
     print(f"model    {label}\n")
 
     journal = Journal(Path(args.journal)) if args.journal else Journal()
-    engine = Engine(wf, model=model, broker=broker, guard=guard, journal=journal,
+    engine = Engine(wf, model=model, broker=broker, guard=guard, journal=journal, cell=DockerCell(),
                     checks={"result_matches_schema": _check_schema(manifest["result_schema"])})
     result = engine.run()
 
@@ -84,7 +85,7 @@ def run(args) -> int:
 def seed_cmd(args) -> int:
     world = open_world(args.state)
     model = NebiusModel(load_api_key(args.env))
-    seed_world(world, Path(args.packs), model, model.model)
+    seed_world(world, Path(args.packs), model, model.model, cell=DockerCell())
     print(f"\nmarketplace ready in {args.state}/")
     for r in world.market.ranked():
         print(f"  {r.get('rank', '-'):>2}  {r['status']:<11} {r['id']:<17} score={r['score']}  stars={r['stars']}")
@@ -95,7 +96,7 @@ def serve_cmd(args) -> int:
     from .web.server import App, serve
 
     world = open_world(args.state)
-    app = App(world, Path(args.packs), Path(args.vault), Path(args.env))
+    app = App(world, Path(args.packs), Path(args.vault), Path(args.env), cell=DockerCell())
     httpd = serve(app, args.port)
     print(f"console on http://127.0.0.1:{args.port}  (Ctrl+C to stop)")
     try:
