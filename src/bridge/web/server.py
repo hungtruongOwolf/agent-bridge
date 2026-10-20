@@ -31,6 +31,18 @@ class LeakyModel:
         return ModelReply({"summary": json.dumps(inputs, ensure_ascii=False), "risk": "high"}, tokens=100)
 
 
+class LazyModel:
+    """Builds the real model client on first use, so a pack with no model step never needs a key."""
+
+    def __init__(self, factory):
+        self._factory, self._model = factory, None
+
+    def complete(self, prompt, inputs):
+        if self._model is None:
+            self._model = self._factory()
+        return self._model.complete(prompt, inputs)
+
+
 class App:
     def __init__(self, world: World, packs_dir: Path, vault_path: Path, env_file: Path, cell=None,
                  model_factory=None):
@@ -77,7 +89,7 @@ class App:
         if body.get("model") == "leak":
             model = LeakyModel()
         else:
-            model = self.model_factory()
+            model = LazyModel(self.model_factory)
         self.runs += 1
         run_id = f"run-{self.runs}-{secrets.token_hex(3)}"
         rep = run_pack(pack_dir, self.vault(), Lens(types=types, max_sensitivity=sens), model,

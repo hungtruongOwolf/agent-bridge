@@ -94,10 +94,11 @@ def test_star_is_counted_once_per_user(srv):
     assert code == 200 and out["stars"] == 1
 
 
-def test_missing_model_key_gives_a_generic_error(srv):
+def test_missing_model_key_ends_the_run_as_an_infra_failure_with_no_details(srv):
     app, url = srv  # the state dir has no .env, so there is no key to find
     code, out = call(url + "/api/run", {"key": key_of(app, "private-analyst"), "types": ["note"]}, app.token)
-    assert code == 500 and out == {"error": "run failed: ModelError"}
+    assert code == 200 and out["outcome"] == "FAILED_INFRA" and out["result"] is None
+    assert out["reasons"] == ["model call failed: ModelError"]
 
 
 class Briefer:
