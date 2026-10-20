@@ -20,6 +20,7 @@ from .pack import signing
 
 DEMO_PACKS = {
     "private-analyst": Listing(price_usd=0.40, unit="task", speciality="sales-analysis"),
+    "deal-brief": Listing(price_usd=0.60, unit="task", speciality="sales-analysis"),
     "data-thief": Listing(price_usd=0.05, unit="task", speciality="sales-analysis"),
 }
 

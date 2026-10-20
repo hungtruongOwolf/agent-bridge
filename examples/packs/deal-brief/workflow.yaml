@@ -1,0 +1,18 @@
+name: deal-brief
+start: read
+budget: {tokens: 9000}
+steps:
+  - {id: read, kind: tool, tool: memory_search, tools: [memory_search], memory: lens, prompt: "sales accounts risk renewal", next: analyze}
+  - id: analyze
+    kind: llm
+    reads: [read]
+    prompt: "Using only the records in INPUTS, reply as JSON with keys summary (max 2 sentences, your own words, name the accounts at risk) and risk (low, medium or high)."
+    next: check
+  - {id: check, kind: gate, check: result_matches_schema, reads: [analyze], next: remember, on_fail: failed}
+  - id: remember
+    kind: llm
+    reads: [analyze]
+    prompt: "From the analysis in INPUTS, reply as JSON {\"proposals\": [{\"type\": \"note\", \"text\": <one short fact worth remembering, max 120 characters, plain text, no links>}]} with exactly one proposal."
+    next: done
+  - {id: done, kind: return, reads: [analyze, remember], propose: remember}
+  - {id: failed, kind: return}

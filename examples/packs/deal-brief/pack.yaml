@@ -1,0 +1,11 @@
+id: deal-brief
+version: 0.1.0
+author: demo
+summary: "Two-pass deal briefing: finds accounts at risk, checks its own answer, and proposes one thing worth remembering."
+result_schema:
+  type: object
+  additionalProperties: false
+  required: [summary, risk]
+  properties:
+    summary: {type: string, maxLength: 400}
+    risk: {enum: [low, medium, high]}
