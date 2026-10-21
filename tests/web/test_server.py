@@ -398,3 +398,19 @@ def test_new_console_page_has_the_run_visualisation_and_no_raw_codes_in_copy(srv
         assert needle in html
     assert "autocomplete=\"off\"" in html  # the simulate switch must not be restored by the browser
     assert "http://" not in html.replace("http://www.w3.org/2000/svg", "")  # no outside requests
+
+
+def test_static_files_are_served_with_the_right_type(srv):
+    app, url = srv
+    import urllib.request
+    for path, ctype in (("/static/fonts/press-start-2p-latin-400.woff2", "font/woff2"), ("/static/fonts/license.txt", "text/plain")):
+        with urllib.request.urlopen(url + path) as r:
+            assert r.status == 200 and ctype in r.headers["Content-Type"] and len(r.read()) > 100
+
+
+@pytest.mark.parametrize("path", ["/static/../server.py", "/static/..%2fserver.py", "/static/fonts/../../server.py",
+                                  "/static/index.html", "/static/nope.js", "/static/.hidden", "/static/fonts/x.exe",
+                                  "/static/%2e%2e/server.py"])
+def test_static_route_refuses_anything_that_is_not_a_known_plain_file(srv, path):
+    app, url = srv
+    assert call(url + path)[0] == 404

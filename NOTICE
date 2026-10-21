@@ -13,3 +13,11 @@ Container image pulled at run time for the sealed Cell:
 Services called at run time (their own terms apply):
 - Nebius Token Factory, running NVIDIA Nemotron models (NVIDIA Open Model License applies to the models)
 - Tavily Search API
+
+Design reference and bundled assets in the web console (src/bridge/web/static):
+- The look of the console (cream and ink palette, hard shadows, status colours, pixel type) follows the design system of munder-difflin,
+  https://github.com/HarnessMD/munder-difflin, MIT License, Copyright (c) 2026 Chaitanya Giri. Colour values were reused from its design tokens.
+  All characters, buildings and animations in the console are drawn by this project's own code; no art from munder-difflin or LimeZu is included.
+- Fonts in static/fonts: Press Start 2P (Copyright (c) 2012 Cody "CodeMan38" Boisclair) and Inter (Copyright (c) 2016 The Inter Project Authors),
+  both under the SIL Open Font License 1.1. See static/fonts/license.txt.
+

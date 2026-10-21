@@ -23,4 +23,4 @@ where = ["src"]
 testpaths = ["tests"]
 
 [tool.setuptools.package-data]
-"bridge.web" = ["static/*"]
+"bridge.web" = ["static/*", "static/fonts/*"]

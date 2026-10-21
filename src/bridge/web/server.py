@@ -7,6 +7,7 @@ model key (CSRF) or reach the API through DNS rebinding.
 from __future__ import annotations
 
 import json
+import re
 import secrets
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -25,6 +26,9 @@ from ..runner import run_pack
 from ..world import World
 
 STATIC = Path(__file__).parent / "static"
+STATIC_TYPES = {".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".woff2": "font/woff2",
+                ".txt": "text/plain; charset=utf-8", ".svg": "image/svg+xml", ".png": "image/png"}
+STATIC_PATH = re.compile(r"^/static/((?:fonts/)?[a-z0-9][a-z0-9_.-]*)$")
 LOCAL_HOSTS = {"127.0.0.1", "localhost", "[::1]"}
 
 
@@ -265,6 +269,12 @@ def make_handler(app: App):
         def do_GET(self):
             if not self._host_ok():
                 return self._json(403, {"error": "bad host"})
+            m = STATIC_PATH.match(self.path.split("?")[0])
+            if m:  # only plain file names inside static/ (and static/fonts/) with a known type, never a path that climbs out
+                f = STATIC / m.group(1)
+                if f.suffix in STATIC_TYPES and f.is_file() and f.resolve().is_relative_to(STATIC.resolve()):
+                    return self._send(200, f.read_bytes(), STATIC_TYPES[f.suffix])
+                return self._json(404, {"error": "not found"})
             if self.path in ("/", "/index.html"):
                 html = (STATIC / "index.html").read_text(encoding="utf-8").replace("__TOKEN__", app.token)
                 return self._send(200, html.encode(), "text/html; charset=utf-8")
