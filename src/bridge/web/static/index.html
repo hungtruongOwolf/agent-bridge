@@ -148,27 +148,32 @@
     <div id="suggest"></div>
     <p class="small warnline" id="memnote" role="status"></p>
   </div></div>
+  <div class="memtop">
   <div class="panel mapwrap"><div class="title">Map of my memory</div><div class="body">
     <div class="maptools">
-      <span class="small muted">Click a shelf to open it and see its files.</span>
+      <span class="small muted">Click a shelf to see its files. Scroll to zoom, drag the background to move.</span>
       <span class="gspace"></span>
-      <button class="btn" id="mapexpand" type="button">Open all shelves</button>
+      <button class="btn" id="mapzoomout" type="button" aria-label="Zoom out" title="Zoom out">−</button>
+      <button class="btn" id="mapzoomin" type="button" aria-label="Zoom in" title="Zoom in">+</button>
+      <button class="btn" id="mapfit" type="button" title="Fit everything on screen">Fit</button>
+      <button class="btn" id="mapexpand" type="button">Open all</button>
       <button class="btn" id="mapfold" type="button">Fold all</button>
     </div>
-    <div class="graphwrap"><svg id="memmap" role="img" aria-label="A map of your memory: shelves inside shelves, with the chats that may look at each one"></svg></div>
+    <div class="graphwrap mapview"><svg id="memmap" role="img" aria-label="A map of your memory: shelves inside shelves, with the chats that may look at each one"></svg></div>
     <div class="legend2 small muted">
       <span><i class="sw" style="background:#5CA97A"></i>Everyday files</span>
       <span><i class="sw" style="background:#D96A62"></i>Secret files, never shared</span>
       <span><i class="sw" style="background:#CFE5E9"></i>A chat that may look here</span>
     </div>
   </div></div>
-  <div class="memgrid">
-    <div class="panel"><div class="title" id="shelftitle">Files</div><div class="body">
+    <div class="panel inspector"><div class="title" id="shelftitle">Files</div><div class="body">
       <div class="memsearch"><input id="memq" type="search" placeholder="Search your memory" aria-label="Search your memory"></div>
       <div id="shelfactions" class="acts"></div>
       <div id="memlist"></div>
       <button class="btn" id="memmore" type="button" hidden>Show more</button>
     </div></div>
+  </div>
+  <div class="memgrid">
     <div class="panel"><div class="title">Add to memory</div><div class="body">
       <form id="memform" class="memform" autocomplete="off">
         <textarea id="memtext" rows="3" maxlength="2000" placeholder="For example: Maria prefers email over calls." aria-label="What to remember"></textarea>

@@ -44,73 +44,115 @@
     for (let p = s.parent; p; p = p.includes("/") ? p.slice(0, p.lastIndexOf("/")) : "") if (!expanded.has(p)) return false;
     return true;
   }
-  /* ---------- the map: shelves inside shelves, and which chats may look at each ---------- */
+  /* ---------- the map: shelves inside shelves, files on the open shelf, and the chats that may look at each ---------- */
   const NS = "http://www.w3.org/2000/svg", NW = 200, NH = 46, GX = 44, GY = 12;
   const sv = (tag, attrs, text) => { const e = document.createElementNS(NS, tag); for (const k in attrs || {}) e.setAttribute(k, attrs[k]); if (text !== undefined) e.textContent = text; return e; };
   const CHAT_COLORS = ["#CFE5E9", "#F3DACA", "#E0DAF2", "#F3E4BC", "#D2E7DA", "#F3D3CD"];
-  let stalls = [];
+  const MAX_LEAVES = 14;
+  let stalls = [], leaf = [], selFile = null, view = { k: 1, x: 10, y: 10 }, fitNext = true, size = { w: 0, h: 0 }, visiblePaths = new Set(), panning = false;
+  const snip = (t, n) => (t.length > n ? t.slice(0, n - 1) + "…" : t);
 
   function nearestVisible(path) {  // a chat that opened a folded shelf points at the closest shelf you can see
-    const vis = new Set(rows.map((r) => r.path));
-    for (let p = path; p; p = p.includes("/") ? p.slice(0, p.lastIndexOf("/")) : "") if (vis.has(p)) return p;
+    for (let p = path; p; p = p.includes("/") ? p.slice(0, p.lastIndexOf("/")) : "") if (visiblePaths.has(p)) return p;
     return "";
   }
-  let rows = [];
+  function applyView() { const vp = $("vp"); if (vp) vp.setAttribute("transform", "translate(" + view.x + " " + view.y + ") scale(" + view.k + ")"); }
+  function fit() {
+    const r = $("memmap").getBoundingClientRect(); if (!r.width || !size.w) return;
+    const k = Math.min((r.width - 20) / size.w, (r.height - 20) / size.h, 1.2);
+    view = { k, x: Math.max(10, (r.width - size.w * k) / 2), y: 10 }; applyView();
+  }
+  function zoomAt(f, px, py) {
+    const k2 = Math.min(2.5, Math.max(0.25, view.k * f)), s = k2 / view.k;
+    view = { k: k2, x: px - (px - view.x) * s, y: py - (py - view.y) * s }; applyView();
+  }
+  function setupView() {
+    const svg = $("memmap");
+    svg.addEventListener("wheel", (e) => { e.preventDefault(); const r = svg.getBoundingClientRect(); zoomAt(e.deltaY < 0 ? 1.15 : 1 / 1.15, e.clientX - r.left, e.clientY - r.top); }, { passive: false });
+    svg.addEventListener("pointerdown", (e) => {
+      if (e.target.closest && e.target.closest(".mnode,.mchat,.mfile")) return;
+      panning = true; const sx = e.clientX, sy = e.clientY, ox = view.x, oy = view.y; svg.style.cursor = "grabbing";
+      const move = (ev) => { view.x = ox + ev.clientX - sx; view.y = oy + ev.clientY - sy; applyView(); };
+      const up = () => { panning = false; svg.style.cursor = ""; window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); };
+      window.addEventListener("pointermove", move); window.addEventListener("pointerup", up);
+    });
+    const mid = () => { const r = svg.getBoundingClientRect(); return [r.width / 2, r.height / 2]; };
+    $("mapzoomin").onclick = () => zoomAt(1.25, ...mid()); $("mapzoomout").onclick = () => zoomAt(1 / 1.25, ...mid()); $("mapfit").onclick = fit;
+    window.addEventListener("resize", () => { if (!$("view-memory").hidden) fit(); });
+  }
+
   function drawTree() {
     const svg = $("memmap"); svg.replaceChildren();
     const m = B.state().memory;
-    if (!m.total) { svg.setAttribute("viewBox", "0 0 400 80"); svg.style.height = "80px"; svg.append(sv("text", { x: 16, y: 44, "font-size": 14, fill: "#6B5878" }, "Your memory is empty. Add something below, or say yes to a helper's suggestion.")); return; }
-    rows = shelves().filter(visible);
-    const row = {}; rows.forEach((s, i) => { row[s.path] = i; });
-    const maxDepth = Math.max(0, ...rows.map((s) => s.depth)), chatX = 48 + (maxDepth + 1) * (NW + GX) + 20, H = Math.max(rows.length * (NH + GY) + 70, 200);
-    const W = chatX + 200;
-    svg.setAttribute("viewBox", "0 0 " + W + " " + H); svg.style.minWidth = W + "px"; svg.style.height = H + "px";
-    const edges = sv("g"), nodes = sv("g"); svg.append(edges, nodes);
-    const y = (p) => 56 + row[p] * (NH + GY);
-    const xOf = (d) => 48 + d * (NW + GX);
-    // the root: everything
+    if (!m.total) { svg.append(sv("text", { x: 16, y: 44, "font-size": 14, fill: "#6B5878" }, "Your memory is empty. Add something below, or say yes to a helper's suggestion.")); return; }
+    const vp = sv("g", { id: "vp" }); svg.append(vp);
+    const list = [];
+    shelves().filter(visible).forEach((s) => {
+      list.push({ t: "shelf", s, depth: s.depth, key: s.path });
+      if (s.path === sel) {
+        leaf.slice(0, MAX_LEAVES).forEach((f) => list.push({ t: "file", f, depth: s.depth + 1, parent: s.path, key: "f:" + f.id }));
+        if (leaf.length > MAX_LEAVES) list.push({ t: "more", n: leaf.length - MAX_LEAVES, depth: s.depth + 1, parent: s.path, key: "more" });
+      }
+    });
+    const row = {}; list.forEach((it, i) => { row[it.key] = i; });
+    visiblePaths = new Set(list.filter((it) => it.t === "shelf").map((it) => it.s.path));
+    const maxDepth = Math.max(0, ...list.map((it) => it.depth)), chatX = 48 + (maxDepth + 1) * (NW + GX) + 20;
+    size = { w: chatX + 190, h: Math.max(list.length * (NH + GY) + 70, stalls.length * 58 + 80, 200) };
+    const edges = sv("g"), nodes = sv("g"); vp.append(edges, nodes);
+    const y = (key) => 56 + row[key] * (NH + GY), xOf = (d) => 48 + d * (NW + GX);
     const root = sv("g", { class: "mnode" + (sel === "" ? " sel" : ""), tabindex: 0, role: "button", "aria-label": "Everything, " + m.total + " files" });
     root.append(sv("rect", { x: 20, y: 6, width: NW, height: 36, rx: 8, fill: "#FFF8E7", stroke: "#1A1320", "stroke-width": sel === "" ? 4 : 2 }), sv("text", { x: 32, y: 29, "font-size": 14, "font-weight": 700 }, "All my memory · " + m.total));
     root.onclick = () => select(""); root.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); select(""); } };
     nodes.append(root);
     const conn = (x1, y1, x2, y2, col, w, dash) => edges.append(sv("path", { d: "M" + x1 + "," + y1 + " C" + (x1 + 30) + "," + y1 + " " + (x2 - 30) + "," + y2 + " " + x2 + "," + y2, fill: "none", stroke: col, "stroke-width": w, "stroke-dasharray": dash || "" }));
-    rows.forEach((s) => {
-      const x = xOf(s.depth), yy = y(s.path), isSel = sel === s.path;
-      const spine = s.depth === 0 ? 34 : xOf(s.depth - 1) + 14, top = s.depth === 0 ? 42 : (row[s.parent] !== undefined ? y(s.parent) + NH : 42);  // an elbow from the shelf above, like a folder tree
-      edges.append(sv("path", { d: "M" + spine + "," + top + " V" + (yy + NH / 2) + " H" + x, fill: "none", stroke: "#A899B5", "stroke-width": 2 }));
+    list.forEach((it) => {
+      const x = xOf(it.depth), yy = y(it.key);
+      const spine = it.depth === 0 ? 34 : xOf(it.depth - 1) + 14, top = it.depth === 0 ? 42 : (row[it.parent] !== undefined ? y(it.parent) + NH : 42);  // an elbow from the shelf above, like a folder tree
+      edges.append(sv("path", { d: "M" + spine + "," + top + " V" + (yy + NH / 2) + " H" + x, fill: "none", stroke: it.t === "shelf" ? "#A899B5" : "#5CA97A", "stroke-width": 2 }));
+      if (it.t === "more") { nodes.append(sv("text", { x: x + 8, y: yy + NH / 2 + 4, "font-size": 12, fill: "#6B5878" }, "…and " + it.n + " more in the list on the right")); return; }
+      if (it.t === "file") {
+        const f = it.f, on = selFile === f.id, g = sv("g", { class: "mfile", tabindex: 0, role: "button", "aria-label": "File: " + snip(f.text, 60) });
+        g.append(sv("title", {}, f.text));
+        g.append(sv("rect", { x, y: yy + 4, width: NW, height: NH - 8, rx: 14, fill: f.sensitivity === "low" ? "#D2E7DA" : "#F3D3CD", stroke: "#1A1320", "stroke-width": on ? 4 : 2 }));
+        g.append(sv("text", { x: x + 12, y: yy + 28, "font-size": 11 }, (f.sensitivity === "low" ? "" : "🔒 ") + snip(f.text, f.sensitivity === "low" ? 28 : 25)));
+        g.onclick = () => { selFile = f.id; drawTree(); drawFiles(true); }; g.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); g.onclick(); } };
+        nodes.append(g); return;
+      }
+      const s = it.s, isSel = sel === s.path;
       const g = sv("g", { class: "mnode" + (isSel ? " sel" : ""), tabindex: 0, role: "button", "aria-label": s.name + ", " + s.count + " files" + (s.secret ? ", " + s.secret + " secret" : "") });
       g.append(sv("title", {}, s.label || s.name));
       g.append(sv("rect", { x, y: yy, width: NW, height: NH, rx: 8, fill: "#FFFDF5", stroke: "#1A1320", "stroke-width": isSel ? 4 : 2 }));
-      g.append(sv("text", { x: x + 12, y: yy + 19, "font-size": 13, "font-weight": 700 }, s.name.length > 18 ? s.name.slice(0, 17) + "…" : s.name));
+      g.append(sv("text", { x: x + 12, y: yy + 19, "font-size": 13, "font-weight": 700 }, snip(s.name, 18)));
       g.append(sv("text", { x: x + NW - 12, y: yy + 19, "font-size": 12, "text-anchor": "end", fill: "#3D2E4A" }, s.count + (s.has_children ? (expanded.has(s.path) ? "  ▾" : "  ▸") : "")));
-      const bw = NW - 24, total = Math.max(m.total, 1), full = Math.max(8, Math.round(bw * Math.min(1, s.count / total * 3)));  // bar length: how big this shelf is
-      const sec = Math.round(full * (s.secret / Math.max(s.count, 1)));
+      const bw = NW - 24, total = Math.max(m.total, 1), full = Math.max(8, Math.round(bw * Math.min(1, s.count / total * 3))), sec = Math.round(full * (s.secret / Math.max(s.count, 1)));
       g.append(sv("rect", { x: x + 12, y: yy + 28, width: full - sec, height: 8, fill: "#5CA97A", stroke: "#1A1320", "stroke-width": 1 }));
       if (sec) g.append(sv("rect", { x: x + 12 + full - sec, y: yy + 28, width: sec, height: 8, fill: "#D96A62", stroke: "#1A1320", "stroke-width": 1 }));
-      if (s.label) g.append(sv("text", { x: x + 24 + full, y: yy + 36, "font-size": 10, fill: "#6B5878" }, s.label.length > 16 ? s.label.slice(0, 15) + "…" : s.label));
+      if (s.label) g.append(sv("text", { x: x + 24 + full, y: yy + 36, "font-size": 10, fill: "#6B5878" }, snip(s.label, 16)));
       g.onclick = () => { if (s.has_children) { expanded.has(s.path) ? (isSel ? expanded.delete(s.path) : 0) : expanded.add(s.path); } select(s.path); };
       g.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); g.onclick(); } };
       nodes.append(g);
     });
-    // chats on the right, joined to the shelves they may look at
     stalls.forEach((c, i) => {
       const cy = 56 + i * 58, col = CHAT_COLORS[i % CHAT_COLORS.length];
       const g = sv("g", { class: "mchat", tabindex: 0, role: "button", "aria-label": "Chat: " + c.title });
       g.append(sv("rect", { x: chatX, y: cy, width: 170, height: 44, rx: 22, fill: col, stroke: "#1A1320", "stroke-width": 2 }));
-      g.append(sv("text", { x: chatX + 85, y: cy + 19, "text-anchor": "middle", "font-size": 12, "font-weight": 700 }, c.title.length > 20 ? c.title.slice(0, 19) + "…" : c.title));
+      g.append(sv("text", { x: chatX + 85, y: cy + 19, "text-anchor": "middle", "font-size": 12, "font-weight": 700 }, snip(c.title, 20)));
       g.append(sv("text", { x: chatX + 85, y: cy + 34, "text-anchor": "middle", "font-size": 10, fill: "#3D2E4A" }, c.agent.name));
       g.onclick = () => window.ChatUI.open(c.id); g.onkeydown = (e) => { if (e.key === "Enter") window.ChatUI.open(c.id); };
       nodes.append(g);
-      (c.paths || []).forEach((p) => { const v = nearestVisible(p); if (v !== "" && row[v] !== undefined) conn(xOf(rows[row[v]].depth) + NW, y(v) + NH / 2, chatX, cy + 22, "#4F9FAF", 3, "7 4"); });
+      (c.paths || []).forEach((p) => { const v = nearestVisible(p); if (v !== "" && row[v] !== undefined) conn(xOf(list[row[v]].depth) + NW, y(v) + NH / 2, chatX, cy + 22, "#4F9FAF", 3, "7 4"); });
     });
     if (stalls.length) nodes.append(sv("text", { x: chatX, y: 34, "font-size": 12, fill: "#6B5878" }, "Chats that may look"));
     const dl = $("shelfnames"); dl.replaceChildren();
     shelves().forEach((s) => { const o = document.createElement("option"); o.value = s.path; dl.append(o); });
+    if (fitNext) { fitNext = false; fit(); } else applyView();
   }
   async function loadChats() { try { stalls = (await B.api("/api/office")).stalls; } catch (e) { stalls = []; } drawTree(); }
 
   async function select(path) {
-    sel = path; offset = 0; if (path) for (let p = path; p.includes("/"); ) { p = p.slice(0, p.lastIndexOf("/")); expanded.add(p); }
+    sel = path; selFile = null; offset = 0; leaf = [];
+    if (path) for (let p = path; p.includes("/"); ) { p = p.slice(0, p.lastIndexOf("/")); expanded.add(p); }
+    if (path) { try { leaf = (await B.api("/api/memory?shelf=" + encodeURIComponent(path) + "&limit=100")).items.filter((f) => f.shelf === path); } catch (e) { leaf = []; } }
     drawTree(); drawShelfActions(); await drawFiles(true);
   }
 
@@ -141,11 +183,14 @@
   async function drawFiles(reset) {
     const box = $("memlist"), more = $("memmore");
     if (reset) { box.replaceChildren(); offset = 0; }
+    if (reset && selFile) {  // a file picked on the map is shown in full at the top
+      try { const one = (await B.api("/api/memory?ids=" + encodeURIComponent(selFile))).items[0]; if (one) { const c = card(one); c.classList.add("picked"); box.append(c); } } catch (e) { /* the list below still works */ }
+    }
     let items;
     try { items = (await B.api("/api/memory?shelf=" + encodeURIComponent(sel) + "&q=" + encodeURIComponent(query) + "&offset=" + offset + "&limit=" + PAGE)).items; }
     catch (e) { note(e.message); return; }
     if (reset && !items.length) box.append(el("p", "empty", query ? "Nothing matches that search." : "Nothing on this shelf yet."));
-    items.forEach((r) => box.append(card(r)));
+    items.filter((r) => r.id !== selFile).forEach((r) => box.append(card(r)));
     offset += items.length; more.hidden = items.length < PAGE;
   }
 
@@ -234,11 +279,12 @@
     if (!$("view-memory").hidden) drawFiles(true);
     const np = $("notespanel"); if (np) { const n = proposals($("notes")); np.hidden = !n; }
   }
-  function show() { redraw(); }
+  function show() { fitNext = true; redraw(); }
   function mount(bridge) {
     B = bridge; setupForm(); setupImport(); redraw();
-    $("mapexpand").onclick = () => { shelves().forEach((s) => { if (s.has_children) expanded.add(s.path); }); drawTree(); };
-    $("mapfold").onclick = () => { expanded.clear(); drawTree(); };
+    setupView();
+    $("mapexpand").onclick = () => { shelves().forEach((s) => { if (s.has_children) expanded.add(s.path); }); fitNext = true; drawTree(); };
+    $("mapfold").onclick = () => { expanded.clear(); fitNext = true; drawTree(); };
   }
   window.MemoryUI = { mount, redraw, show, proposals, pretty };
 })();
