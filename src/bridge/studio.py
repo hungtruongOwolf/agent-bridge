@@ -236,7 +236,7 @@ class Studio:
             att = self.w.market._atts.get(r.digest)
             rows = [x for x in self.app.ledger.rows.values() if x.pack_key == r.key]
             job = self.jobs.get(r.key, {})
-            out.append({"key": r.key, "version": r.version, "status": "retired" if r.revoked else self.w.market.status(r),
+            out.append({"key": r.key, "version": r.version, "status": ("suspended" if r.revoked.startswith("suspended") else "retired") if r.revoked else self.w.market.status(r),
                         "score": round(att.score * 100) if att and att.security == "clean" else None,
                         "passes": att.passes if att else None, "total": att.total if att else None,
                         "violations": att.violations if att and att.security != "clean" else [],

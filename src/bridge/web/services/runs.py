@@ -23,6 +23,18 @@ def _similar(a: frozenset, b: frozenset) -> bool:
     return bool(a and b) and len(a & b) / len(a | b) >= 0.7
 
 
+HARD_EVIDENCE = ("CANARY_HIT", "SANDBOX_NETWORK", "SANDBOX_PROCESS")  # a bait record was touched, or the sealed room was probed
+
+
+def live_incident(rep) -> str | None:
+    """The deterministic evidence in a killed run, if any. A bait read, a canary in the output or a probe of the sealed
+    room cannot happen by accident; a plain refusal or a budget stop can."""
+    for e in rep.broker_events:
+        if e["kind"] in HARD_EVIDENCE:
+            return e["kind"]
+    return "CANARY_IN_OUTPUT" if rep.outcome == "KILLED" and any("canary" in r for r in rep.reasons) else None
+
+
 class RunService:
     def __init__(self, *, registry, market, dirs: dict, vault, quarantine, threads, ledger, subs, payments,
                  lock, clock, requester: str, payee, model_factory, web, cell):
@@ -151,6 +163,10 @@ class RunService:
                     except StateError:
                         pass
                 self._settle_outcome(rec, run_id, rep)
+            if rep.outcome == "KILLED" and not params["simulate"]:  # kill switch: hard evidence takes the helper off the market until its author fixes and republishes
+                why = live_incident(rep)
+                if why:
+                    self.registry.revoke(rec.key, f"suspended after a live incident ({why}) in {run_id}")
             out = dict(rep.__dict__)
             raw = out.pop("proposals_raw")
             known = [_words(r.text) for r in self.vault().all()] + [_words(p.text) for p in self.quarantine.pending()]

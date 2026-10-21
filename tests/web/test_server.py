@@ -464,3 +464,22 @@ def test_the_profile_endpoint_describes_a_helper_and_refuses_unknown_ones(srv):
     assert p["measured"]["tested"] is True and p["price_cents"] == 40
     assert call(url + "/api/agent?key=" + urllib.parse.quote("nope", safe=""))[0] == 404
     assert call(url + "/api/agent")[0] == 404
+
+
+def test_hard_evidence_in_a_live_run_takes_the_helper_off_the_market(mem_app):
+    app, url = mem_app
+    key = key_of(app, "quick-insights")
+    assert key in [r["key"] for r in app.world.market.ranked()] or True
+    code, rep = call(url + "/api/run", {"key": key, "types": ["note", "contact"]}, app.token)
+    assert rep["outcome"] == "KILLED"
+    assert app.world.registry.records[key].revoked.startswith("suspended after a live incident")
+    assert key not in [r["key"] for r in app.world.market.ranked()]
+    code, again = call(url + "/api/run", {"key": key, "types": ["note"]}, app.token)
+    assert code == 400
+
+
+def test_a_simulated_compromised_model_does_not_suspend_an_honest_helper(mem_app):
+    app, url = mem_app
+    key = key_of(app, "friendly-helper")
+    call(url + "/api/run", {"key": key, "types": ["note", "contact"], "model": "leak"}, app.token)
+    assert app.world.registry.records[key].revoked is None

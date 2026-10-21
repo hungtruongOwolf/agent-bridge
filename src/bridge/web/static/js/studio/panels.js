@@ -163,7 +163,7 @@ export function tryPanel(box, S, ops) {
 
 /* ---------- publish and manage ---------- */
 function chipFor(v) {
-  if (v.revoked) return ["Retired", "wait"];
+  if (v.revoked) return v.status === "suspended" ? ["Taken off the market after a safety incident", "bad"] : ["Retired", "wait"];
   if (v.testing) return ["Being tested…", "wait"];
   if (v.status === "flagged") return ["Caught cheating while tested", "bad"];
   if (v.status === "certified") return [`Trust ${v.score} of 100 (${v.passes} of ${v.total} tests)`, "good"];
