@@ -214,3 +214,4 @@ dialog.profile h2{font:14px/22px var(--display);margin-bottom:8px}
 .rec .who .name{font-weight:600;display:block}
 .rec .who .blurb{display:block;font-size:13px;color:var(--ink-700)}
 @media (max-width:720px){.rec{grid-template-columns:1fr}}
+@media (max-width:720px){.assistant{flex-basis:100%;flex-wrap:wrap}.assistant input{flex-basis:100%}.coins{width:100%}}
