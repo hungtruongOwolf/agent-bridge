@@ -78,7 +78,7 @@ def test_confirm_returns_the_real_authorization_id():
 
 def test_confirm_before_approval_is_a_refusal_not_a_crash():
     c, _ = client((422, {"details": [{"issue": "ORDER_NOT_APPROVED"}]}))
-    with pytest.raises(ProviderError, match="ORDER_NOT_APPROVED") as e:
+    with pytest.raises(ProviderError, match="not approved") as e:
         c.confirm("ORD9", "x")
     assert not e.value.retryable
 

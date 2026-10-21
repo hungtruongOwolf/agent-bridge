@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import base64
 import json
+import re
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -25,6 +26,7 @@ from typing import Callable
 from .provider import Auth, Capture, ProviderError
 
 SANDBOX_BASE = "https://api-m.sandbox.paypal.com"
+LOCAL_MOCK = re.compile(r"^http://(127\.0\.0\.1|localhost):[0-9]{2,5}$")  # the practice server on this computer (see paypal_mock.py)
 CURRENCY = "USD"
 
 
@@ -66,8 +68,8 @@ class PayPalSandbox:
                  http: Callable[..., tuple[int, dict]] = _http,
                  return_url: str = "http://127.0.0.1:8787/paypal/return",
                  cancel_url: str = "http://127.0.0.1:8787/paypal/cancel"):
-        if base_url.rstrip("/") != SANDBOX_BASE:
-            raise ValueError("this client only talks to the PayPal sandbox")
+        if base_url.rstrip("/") != SANDBOX_BASE and not LOCAL_MOCK.match(base_url.rstrip("/")):
+            raise ValueError("this client only talks to the PayPal sandbox (or the practice server on this computer)")
         self._id, self._secret, self._base, self._http = client_id, secret, base_url.rstrip("/"), http
         self._return, self._cancel = return_url, cancel_url
         self._token: str | None = None
@@ -118,7 +120,12 @@ class PayPalSandbox:
         return Auth(out["id"], amount, link)
 
     def confirm(self, auth_id: str, request_id: str) -> Auth:
-        out = self._call("POST", f"/v2/checkout/orders/{auth_id}/authorize", {}, request_id)
+        try:
+            out = self._call("POST", f"/v2/checkout/orders/{auth_id}/authorize", {}, request_id)
+        except ProviderError as e:
+            if "ORDER_NOT_APPROVED" in str(e):
+                raise ProviderError("the buyer has not approved the hold yet") from e
+            raise
         try:
             a = out["purchase_units"][0]["payments"]["authorizations"][0]
             return Auth(a["id"], round(float(a["amount"]["value"]) * 100))
