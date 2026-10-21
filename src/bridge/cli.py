@@ -103,7 +103,18 @@ def serve_cmd(args) -> int:
     from .web.server import App, serve
 
     world = open_world(args.state)
-    app = App(world, Path(args.packs), Path(args.vault), Path(args.env), cell=DockerCell())
+    ledger, author_email, mode = None, "", "test"
+    if args.payments == "paypal":
+        from .payments.ledger import Ledger
+        cid, secret = load_paypal_credentials(args.env)
+        base = f"http://127.0.0.1:{args.port}"
+        ledger = Ledger(PayPalSandbox(cid, secret, return_url=base + "/paypal/return", cancel_url=base + "/paypal/cancel"),
+                        path=Path(args.state) / "ledger-paypal.json")
+        author_email = next((l.split("=", 1)[1].strip() for l in Path(args.env).read_text(encoding="utf-8").splitlines()
+                             if l.startswith("PAYPAL_AUTHOR_EMAIL=")), "")
+        mode = "paypal-sandbox"
+    app = App(world, Path(args.packs), Path(args.vault), Path(args.env), cell=DockerCell(), ledger=ledger,
+              demo_author_email=author_email, payments_mode=mode)
     httpd = serve(app, args.port)
     print(f"console on http://127.0.0.1:{args.port}  (Ctrl+C to stop)")
     try:
@@ -215,6 +226,8 @@ def main(argv: list[str] | None = None) -> int:
     sv.add_argument("--state", default=".bridge")
     sv.add_argument("--env", default=".env")
     sv.add_argument("--port", type=int, default=8787)
+    sv.add_argument("--payments", choices=["test", "paypal"], default="test",
+                    help="test = in-memory fake money; paypal = PayPal sandbox (needs credentials in .env)")
     sv.set_defaults(fn=serve_cmd)
     args = ap.parse_args(argv)
     return args.fn(args)

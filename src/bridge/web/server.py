@@ -61,7 +61,8 @@ class LazySearch:
 
 class App:
     def __init__(self, world: World, packs_dir: Path, vault_path: Path, env_file: Path, cell=None,
-                 model_factory=None, web=None, ledger=None, clock=None, demo_author_email: str = ""):
+                 model_factory=None, web=None, ledger=None, clock=None, demo_author_email: str = "",
+                 payments_mode: str = "test"):
         self.world, self.vault_path, self.env_file, self.cell = world, Path(vault_path), Path(env_file), cell
         self.web = web or LazySearch(lambda: TavilySearch(load_tavily_key(self.env_file)))
         self.model_factory = model_factory or (lambda: NebiusModel(load_api_key(self.env_file)))
@@ -77,6 +78,7 @@ class App:
         self.clock = clock or time.time
         self.requester = "you"
         self.demo_author_email = demo_author_email
+        self.payments_mode = payments_mode
         self.pending: dict[str, dict] = {}  # runs waiting for the buyer to approve the hold
         # money is TEST money: a fake provider now, the PayPal sandbox client when credentials exist
         self.ledger = ledger or Ledger(FakeProvider(path=self.world.state / "provider.json"),
@@ -194,7 +196,7 @@ class App:
     def _payments_summary(self) -> dict:
         self.ledger.tick(self.clock())
         self.ledger.release_payouts(self.clock())
-        return {**self.ledger.summary(), "test_money": True, "holdback": "demo holdback 0 s; production would hold for days"}
+        return {**self.ledger.summary(), "test_money": True, "provider": self.payments_mode, "holdback": "demo holdback 0 s; production would hold for days"}
 
     def settle(self, body: dict) -> dict:
         run_id, action, now = str(body.get("run_id", "")), body.get("action"), self.clock()

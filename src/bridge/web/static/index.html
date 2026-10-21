@@ -187,7 +187,7 @@ function drawReview(){
     a.append(ok,no); c.append(a); box.append(c);
   });
 }
-function drawWallet(){ const w = S.payments; if (!w) return; $("wallet").textContent = "captured " + fmt(w.captured) + " · paid to authors " + fmt(w.paid_out) + " · held " + fmt(w.held); }
+function drawWallet(){ const w = S.payments; if (!w) return; document.querySelector(".badge-test").textContent = w.provider === "paypal-sandbox" ? "PAYPAL SANDBOX · TEST MONEY" : "TEST MONEY"; $("wallet").textContent = "captured " + fmt(w.captured) + " · paid to authors " + fmt(w.paid_out) + " · held " + fmt(w.held); }
 async function refresh(){ S = await api("/api/state"); drawWallet(); drawTypes(true); drawVault(); drawReview(); drawMarket(); drawHistory(); }
 
 function drawTypes(keep){
@@ -281,12 +281,35 @@ async function play(rep, animate){
   }
 }
 
+function waitForApproval(pending){
+  return new Promise((resolve) => {
+    const out = $("out"); out.replaceChildren();
+    const box = el("div","pay");
+    box.append(el("div","ptitle","Approve the hold · test money"));
+    box.append(el("div",null,"Nothing is held or charged until you approve " + fmt(pending.price) + " on the payment page. The agent does not start before that."));
+    const acts = el("div","acts");
+    if (/^https:\/\//.test(pending.approve_url)) {
+      const a = document.createElement("a"); a.href = pending.approve_url; a.target = "_blank"; a.rel = "noopener noreferrer";
+      a.className = "btn pri"; a.textContent = "Open the approval page"; a.style.textDecoration = "none"; acts.append(a);
+    }
+    const go = el("button","btn","I approved, continue");
+    const msg = el("div","meta");
+    go.onclick = async () => {
+      go.disabled = true; msg.textContent = "Checking…";
+      try { resolve(await api("/api/run/continue",{run_id:pending.run_id})); }
+      catch(e) { msg.textContent = String(e.message); go.disabled = false; }
+    };
+    acts.append(go); box.append(acts, msg); out.append(box);
+  });
+}
+
 async function run(){
   if (running || !selected) return; running = true; $("go").disabled = true; $("go").textContent = "Running…";
   $("tl").replaceChildren(); $("out").replaceChildren();
   try {
-    const rep = await api("/api/run",{key:selected, types:lensTypes(), max_sensitivity:$("sens").value, model:$("sim").checked ? "leak" : "nebius"});
-    await play(rep, true);
+    let rep = await api("/api/run",{key:selected, types:lensTypes(), max_sensitivity:$("sens").value, model:$("sim").checked ? "leak" : "nebius"});
+    if (rep.needs_approval) rep = await waitForApproval(rep);
+    if (rep) await play(rep, true);
   } catch(e) {
     const b = el("div","banner kill"); b.append(el("h3",null,"Could not run"), el("p",null,String(e.message))); $("out").append(b);
   }

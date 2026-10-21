@@ -377,3 +377,15 @@ def test_the_author_is_paid_at_their_listing_email_or_the_demo_email(approval_ap
     app, url, provider = approval_app
     out = call(url + "/api/run", {"key": key_of(app, "deal-brief"), "types": ["note"]}, app.token)[1]
     assert app.ledger.rows[out["run_id"]].author == "author@example.com"
+
+
+def test_page_handles_the_approval_step_and_only_opens_https_links(srv):
+    app, url = srv
+    html = call(url + "/")[1].decode()
+    assert "I approved, continue" in html and "/api/run/continue" in html
+    assert "^https:" in html  # the approval link is opened only when it is https
+
+
+def test_state_reports_which_payment_provider_is_in_use(srv):
+    app, url = srv
+    assert call(url + "/api/state")[1]["payments"]["provider"] == "test"
