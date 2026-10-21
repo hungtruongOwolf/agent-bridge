@@ -39,18 +39,18 @@
         <details><summary>See what is in your files</summary><ul class="files" id="files"></ul></details>
       </div>
     </div>
-    <div class="panel">
-      <div class="title">3. Start the job</div>
-      <div class="body">
-        <button class="btn go" id="go" type="button" disabled>Pick someone to hire first</button>
-        <label class="theft"><input type="checkbox" id="theft" autocomplete="off"><span>Test mode: make the helper misbehave, to see the guard work.</span></label>
-      </div>
-    </div>
   </section>
 
   <section class="middle">
     <div class="floorwrap"><canvas id="floor" role="img" aria-label="Your office: a safe with your files, a glass room where the hired helper works, a guard, and your assistant"></canvas></div>
     <p class="caption" id="caption" aria-live="polite"></p>
+    <div class="startbar">
+      <button class="btn go" id="go" type="button" disabled>Pick someone to hire first</button>
+      <div>
+        <p class="small muted">Start the job when you are happy with who you picked and what they may look at.</p>
+        <label class="theft"><input type="checkbox" id="theft" autocomplete="off"><span>Test mode: make the helper misbehave, to see the guard work.</span></label>
+      </div>
+    </div>
     <p class="replay" id="replay"></p>
     <ol class="story" id="story" aria-live="polite" aria-label="What is happening"></ol>
   </section>

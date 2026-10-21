@@ -13,14 +13,18 @@ Nebius Token Factory**, web lookups use **Tavily**.
 
 ## See it in two minutes
 
-1. **Pick an agent** from a ranked marketplace. Each card shows its Certifier score and the evidence behind it.
-2. **Choose what it may read.** Records outside your choice are marked *kept private*. The pack never sees them.
-3. **Run it.** An honest pack reads, thinks (Nemotron), checks its own answer and returns a result.
-   A malicious pack is caught, the run stops, and the console shows exactly what it tried.
+The console is a small pixel-art office. You are the boss. Your private files are in a **safe with labelled drawers**.
+A hired helper works in a **glass room**; a **guard** inspects whatever leaves it, and your **assistant** carries letters to the
+Brain (the model), the Web library and the Bank.
 
-Two of the demo packs are malicious on purpose. One tries to read records outside its lens. The other
-ships real code that tries to open a socket, start a process and write outside its scratch space, all
-from inside the sealed cell. Neither succeeds, and the Certifier flags both by behaviour.
+1. **Pick who to hire** from a ranked list, or tell the assistant ("hire the best one", by typing or with your voice).
+2. **Choose what they may look at** by ticking or clicking drawers. Locked files are never handed over.
+3. **Press Start.** Watch the helper walk in, get only the files you opened, think, and hand the report to the guard.
+   You say whether the report is good before the rest of the (test) money is paid.
+
+Two of the helpers are malicious on purpose. One reaches for the secret drawer. The other ships real code that tries to send a
+message out of the room, open another program and write outside its notebook. The glass stops all of it, the guard sounds the alarm,
+nothing reaches your desk, and your coins come back. Everything on the floor replays the job's real record.
 
 ## Quickstart
 
@@ -59,7 +63,7 @@ ledger state machine: a **floor fee** is captured when a result exists, the **ou
 (or when the accept window passes), and a rejected result keeps only the floor. A run that is stopped for theft is
 **held, not voided**; the hold is refunded when the Certifier independently reproduces the violation for that exact
 pack. Outages and crashes release the hold with no charge. The author is paid after a platform fee; the demo holdback
-is 0 seconds and the console says so. Everything is labelled TEST MONEY.
+is 0 seconds and the console says so. Everything is labelled as test coins.
 
 ## How it works
 
@@ -124,7 +128,7 @@ socket, a file handle or the model key. Anything it wants goes through the Broke
 - **Built in this repo:** the workflow engine, Memory Broker, Result Guard, sealed Cell, registry, Certifier,
   ranking, payment ledger (test money), local console. **Designed, not built:** Hosted mode on someone else's
   machine, sealed enclaves, multi-device sync, key management, verified PayPal sandbox payments, legal review. See `.scratch/agent-bridge/architecture-v2.1.md`.
-- The "simulate a compromised model" switch in the console is a simulation. The code-based malicious pack is not.
+- The "test mode" switch in the console makes the helper's model misbehave and is a simulation. The code-based malicious pack is not.
 - Windows needs WSL2 for the Cell. The console's narrow-screen layout is written but was not visually verified.
 
 ## Layout

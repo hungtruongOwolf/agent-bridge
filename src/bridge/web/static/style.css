@@ -97,7 +97,9 @@ details>summary{cursor:pointer;color:var(--ink-500);font-size:13px;margin-top:8p
 
 /* floor */
 .floorwrap{background:var(--cream-100);border:2px solid var(--ink-900);box-shadow:var(--shadow);padding:8px}
-canvas#floor{display:block;image-rendering:pixelated;max-width:100%}
+canvas#floor{display:block;image-rendering:pixelated;max-width:100%;margin:0 auto}
+.startbar{display:flex;gap:16px;align-items:center;margin-top:10px;flex-wrap:wrap}
+.startbar .btn.go{width:auto;min-width:300px;flex:none}
 .caption{margin-top:8px;min-height:44px;background:var(--cream-50);border:2px solid var(--ink-900);padding:8px 12px;font-size:15px;line-height:1.4}
 .story{list-style:none;margin:10px 0 0;padding:0;font-size:14px;max-height:190px;overflow:auto}
 .story li{padding:3px 0 3px 18px;position:relative;border-top:1px dashed var(--ink-100)}

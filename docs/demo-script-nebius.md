@@ -20,7 +20,7 @@ agent-bridge lets you run a stranger's agent on your own machine, and it cannot 
 
 **0:15 to 0:40, the marketplace**
 Show the ranked list. Point at one certified card and its evidence line, then at the two flagged cards.
-"Packs are signed, and a Certifier scores them on a hidden suite. Stars cannot buy rank. Two packs here are flagged:
+"Helpers are signed, and inspectors score them on hidden tests. Fans cannot buy rank. Two packs here are flagged:
 they failed a security trap."
 
 **0:40 to 1:10, honest run, real Nemotron**
@@ -35,7 +35,7 @@ All blocked, the run is stopped, nothing was delivered, and my records were neve
 not by name."
 
 **1:55 to 2:20, memory that stays yours**
-Select `deal-brief`, run. A suggestion appears under *Waiting for your decision*. Click *Remember*.
+Select `deal-brief`, run. A sticky note appears under *Remember this?*. Click *Remember it*.
 "A pack can only suggest. Nothing is saved unless I accept. The saved record carries its origin, and I can undo the whole run."
 Click undo to show it goes away.
 

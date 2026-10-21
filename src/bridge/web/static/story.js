@@ -186,7 +186,5 @@
 
   O.prototype.showIdle = function (agentInfo) {
     this.token++; this.fast = false; this.reset(); this.setAgent(agentInfo);
-    const sy = agentInfo ? "I am ready when you are." : null;
-    if (sy) this.say("agent", sy, 2500);
   };
 })(window);
