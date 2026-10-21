@@ -406,7 +406,7 @@ def static_text(url, name):
 def test_the_page_loads_the_stylesheet_and_every_script_and_all_of_them_are_served(srv):
     app, url = srv
     html = call(url + "/")[1].decode()
-    for name in ("style.css", "intent.js", "office.js", "story.js", "app.js"):
+    for name in ("style.css", "chat.js", "office.js", "story.js", "app.js"):
         assert "/static/" + name in html
         assert len(static_text(url, name)) > 200
     assert 'id="floor"' in html and 'data-token="' + app.token in html

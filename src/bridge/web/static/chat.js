@@ -378,5 +378,5 @@
     showView(v); drawConversation();
     if (!B.state().threads.length) $("picker").hidden = false;
   }
-  window.ChatUI = { mount, profile, redraw: () => { drawThreads(); if (!$("view-memory").hidden) drawMemory(); } };
+  window.ChatUI = { mount, profile, startWith, redraw: () => { drawThreads(); if (!$("view-memory").hidden) drawMemory(); } };
 })();

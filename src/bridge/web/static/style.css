@@ -205,3 +205,12 @@ dialog.profile h2{font:14px/22px var(--display);margin-bottom:8px}
 .msg .text,.memtext{white-space:pre-wrap}
 .tabs{flex-wrap:wrap}
 @media (max-width:480px){.startbar .btn.go{min-width:0;width:100%}.tabs button{padding:8px 12px}}
+
+.recs{max-width:1100px;margin:0 auto;padding:0 16px}
+.recs:not(:empty){margin-top:10px;background:var(--cream-100);border:2px solid var(--ink-900);box-shadow:var(--shadow);padding:10px 14px}
+.recshead{font-weight:600;margin-bottom:6px}
+.rec{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding:8px 0;border-top:2px dashed var(--ink-100)}
+.rec .acts{display:none}
+.rec .who .name{font-weight:600;display:block}
+.rec .who .blurb{display:block;font-size:13px;color:var(--ink-700)}
+@media (max-width:720px){.rec{grid-template-columns:1fr}}

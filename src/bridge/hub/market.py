@@ -65,6 +65,18 @@ class Marketplace:
         return build(rec, attestation=self.attestation(rec), status=self.status(rec), versions=versions,
                      price_cents=max(1, round(rec.listing.price_usd * 100)), unit=rec.listing.unit, stars=rec.stars)
 
+    def match(self, question: str, limit: int = 3) -> list[dict]:
+        """Which helpers fit this question? Helpers caught cheating are never suggested."""
+        from .match import rank
+        cands = []
+        for rec in self.registry.installable():
+            st = self.status(rec)
+            if st == "flagged":
+                continue
+            att = self._atts.get(rec.digest)
+            cands.append((rec, att.score if st == "certified" else None))
+        return rank(question, cands, limit)
+
     def status(self, rec: PackRecord) -> str:
         att = self._atts.get(rec.digest)
         if att is None:

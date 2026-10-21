@@ -410,6 +410,8 @@ def make_handler(app: App):
                     return self._json(200, app.chat.view(q.get("id", "")))
                 if route == "/api/thread/context":
                     return self._json(200, app.chat.context(q.get("id", ""), q.get("draft", "")[:1000]))
+                if route == "/api/match":
+                    return self._json(200, {"matches": app.world.market.match(q.get("q", "")[:300])})
                 if route == "/api/memory":
                     return self._json(200, {"items": app.memory.list()})
             except (ThreadError, ValueError) as e:

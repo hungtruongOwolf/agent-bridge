@@ -78,6 +78,9 @@ def _tokens(s: str) -> set[str]:
     return {_stem(w) for w in re.findall(r"[a-z0-9]+", s.lower()) if w not in STOPWORDS}
 
 
+tokens = _tokens  # public name: other parts of the app compare words the same way
+
+
 class MemoryBroker:
     def __init__(self, vault: Vault, lens: Lens, *, run_seed: str):
         self._lens = lens

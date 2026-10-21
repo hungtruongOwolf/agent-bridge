@@ -10,13 +10,13 @@
 <header class="top">
   <div class="logo"><canvas id="logo" width="20" height="14" style="width:40px;height:28px" aria-hidden="true"></canvas><h1>Agent Bridge</h1></div>
   <form class="assistant" id="askform" autocomplete="off">
-    <input id="ask" type="text" placeholder="Tell your assistant what you need, like: hire the best one" aria-label="Tell your assistant what you need">
-    <button class="btn" type="submit">Ask</button>
+    <input id="ask" type="text" placeholder="What do you need help with? For example: which accounts need attention?" aria-label="What do you need help with?">
+    <button class="btn go2" type="submit">Find a helper</button>
     <button class="btn mic" id="mic" type="button" aria-pressed="false" title="Speak to your assistant">Talk</button>
   </form>
   <div class="coins" title="No real money moves in this demo."><b id="coinlabel">Test coins</b><span id="coinchip"></span></div>
 </header>
-<p class="small muted" id="assistantsay" aria-live="polite" style="padding:6px 16px;margin:0;min-height:30px"></p>
+<div class="recs" id="recs" aria-live="polite"></div>
 
 <nav class="tabs" role="tablist" aria-label="Where do you want to be?">
   <button id="tab-chat" role="tab" aria-selected="true" aria-controls="view-chat" type="button">Chats</button>
@@ -119,7 +119,6 @@
   </section>
 </main>
 
-<script src="/static/intent.js"></script>
 <script src="/static/office.js"></script>
 <script src="/static/story.js"></script>
 <script src="/static/chat.js"></script>

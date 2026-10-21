@@ -7,17 +7,13 @@
   const LEVEL = { low: 0, medium: 1, high: 2 };
   const LEVEL_NAME = { low: "everyday", medium: "personal", high: "secret" };
   const TYPE_LABEL = { note: "Notes", contact: "Contacts", finance: "Money" };
-  const BAD = {
-    OFF_LENS_QUERY: "asked for private files", UNKNOWN_ID: "tried to open files it was not given", CANARY_HIT: "grabbed a decoy file",
-    READ_BUDGET: "asked for too many files", SANDBOX_NETWORK: "tried to send messages out of the glass room",
-    SANDBOX_PROCESS: "tried to start other programs", SANDBOX_WRITE: "tried to write outside its notebook",
-    WEB_QUERY_LEAK: "tried to put your files into a web search"
-  };
+  const BAD = new Proxy({}, { get: (_, k) => (S && S.blocked_phrases && S.blocked_phrases[k]) || undefined });  // one wording, kept on the server
   const NOTE = { run_started: "Job started", step_started: "Started a step", step_committed: "Finished a step", model_call: "Asked the Brain",
     cell_run: "Ran the helper's program", incident: "Alarm raised", web_search: "Looked something up on the web", model_error: "The Brain was busy",
     run_finished: "Job ended" };
   let S = null, selected = null, running = false, office = null, lastRep = null, voiceOn = false, recognition = null;
 
+  window.niceName = (id) => String(id || "").split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
   const typeLabel = (t) => TYPE_LABEL[t] || (t.charAt(0).toUpperCase() + t.slice(1) + "s");
   const cents = (c) => c + "¢";
   const priceOf = (m) => Math.round(m.price_usd * 100);
@@ -276,13 +272,34 @@
     $("assistantsay").textContent = text; office.say("clerk", text, 7000);
     if (speak && "speechSynthesis" in window) { try { speechSynthesis.cancel(); speechSynthesis.speak(new SpeechSynthesisUtterance(text)); } catch (e) { /* speaking is optional */ } }
   }
-  function ask(text, spoken) {
-    if (!text.trim()) return;
-    const w = S.payments || {}, sees = $("count").textContent;
-    const r = window.parseIntent(text, S.market, { selected, wallet: { captured: w.captured || 0, paid_out: w.paid_out || 0, held: w.held || 0 }, sees });
-    if (r.action === "select") choose(r.agentKey);
-    if (r.action === "confirm" && selected) $("go").focus();
-    assistantSay(r.say, spoken || voiceOn);
+  /* The front door: say what you need, and the helpers whose own skills fit are suggested. Nothing starts or spends
+     by itself: the suggestion only opens a chat with your question typed in, and you press Send yourself. */
+  async function ask(text, spoken) {
+    text = text.trim(); if (!text) return;
+    const box = $("recs"); box.replaceChildren(el("p", "small muted", "Looking for the right helper…"));
+    let found;
+    try { found = (await api("/api/match?q=" + encodeURIComponent(text.slice(0, 300)))).matches; } catch (e) { box.replaceChildren(el("p", "small", e.message)); return; }
+    box.replaceChildren();
+    if (!found.length) { box.append(el("p", "small", "Nobody is for hire yet.")); return; }
+    const head = found[0].matched ? "These helpers fit what you asked:" : "Nobody says they are made for that. The best tested helpers are:";
+    box.append(el("p", "recshead", head));
+    found.forEach((m) => {
+      const row = el("div", "rec"), who = el("div", "who");
+      who.append(el("span", "name", window.niceName(m.id)), el("span", "blurb", m.reason + (m.trust != null ? " Trust " + m.trust + " out of 100." : " Not tested yet.")));
+      const go = el("button", "btn go2", "Chat about this, " + cents(m.price_cents) + " an answer"); go.type = "button";
+      go.onclick = async () => { box.replaceChildren(); $("ask").value = ""; await window.ChatUI.startWith(m.key, text); };
+      const meet = el("button", "btn", "Meet"); meet.type = "button"; meet.onclick = () => window.ChatUI.profile(m.key);
+      row.append(who, el("div", "acts", ""), go, meet); box.append(row);
+    });
+    const dismiss = el("button", "linkbtn", "Close"); dismiss.type = "button"; dismiss.onclick = () => box.replaceChildren(); box.append(dismiss);
+    const first = found[0];
+    const line = (first.matched ? "I would try " : "The best tested helper is ") + window.niceName(first.id) + ". " + first.reason + " Nothing starts until you press Send.";
+    if (office) office.say("clerk", line, 7000);
+    if (spoken && "speechSynthesis" in window) { try { speechSynthesis.cancel(); speechSynthesis.speak(new SpeechSynthesisUtterance(line)); } catch (e) { /* speaking is optional */ } }
+  }
+  function assistantSay(text, speak) {
+    $("recs").replaceChildren(el("p", "small", text));
+    if (speak && "speechSynthesis" in window) { try { speechSynthesis.cancel(); speechSynthesis.speak(new SpeechSynthesisUtterance(text)); } catch (e) { /* speaking is optional */ } }
   }
   function setupVoice() {
     const Rec = window.SpeechRecognition || window.webkitSpeechRecognition, mic = $("mic");

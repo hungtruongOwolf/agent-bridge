@@ -295,3 +295,11 @@ def test_a_suggestion_that_repeats_existing_memory_is_left_out(srv):
     _, out = send(app, url, t["id"], "briefing please")
     texts = [p["text"] for p in out["report"]["proposals"]]
     assert texts == ["A brand new fact"] and any("already in your memory" in x for x in out["report"]["proposal_problems"])
+
+
+def test_the_front_door_suggests_helpers_by_their_skills(srv):
+    app, url, _ = srv
+    code, out = call(url + "/api/match?q=Which+accounts+need+attention+first%3F")
+    assert code == 200 and out["matches"] and out["matches"][0]["matched"]
+    assert all(m["id"] not in ("friendly-helper", "quick-insights") for m in out["matches"])
+    assert call(url + "/api/match")[1]["matches"]  # an empty question still gets the best tested helpers
