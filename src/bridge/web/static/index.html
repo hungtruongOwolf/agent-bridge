@@ -27,7 +27,7 @@
 </nav>
 
 <!-- The market floor: one stall for every chat you have open, all in one picture. -->
-<section id="view-office" class="floorview">
+<section id="view-office" class="view">
   <div class="panel welcome" id="welcome" hidden>
     <div class="title">Welcome</div>
     <div class="body">
@@ -40,7 +40,7 @@
       <div class="acts"><button class="linkbtn" id="welcomehide" type="button">Hide this</button></div>
     </div>
   </div>
-  <div class="floorgrid">
+  <div class="cols floorgrid">
     <div class="market panel">
       <div class="title">Your market floor</div>
       <div class="body"><div class="stalls" id="stalls" aria-label="Your chats, one stall each"></div></div>
@@ -58,8 +58,8 @@
 </section>
 
 <!-- One chat = one small office. -->
-<section id="view-chat" class="chatview" hidden>
-  <aside class="chatleft">
+<section id="view-chat" class="view cols chatview" hidden>
+  <aside class="stack chatleft">
     <a class="btn" href="/" data-link>← All my chats</a>
     <div class="panel minioffice">
       <div class="title" id="officetitle">This chat's office</div>
@@ -89,26 +89,27 @@
 </section>
 
 <!-- Build, test, publish and manage your own helpers. -->
-<section id="view-studio" class="studioview" hidden>
-  <aside class="studioleft">
-    <div class="panel"><div class="title">Helpers I built</div><div class="body">
-      <div class="threads" id="helperlist"></div>
-      <form id="newform" class="memform" autocomplete="off">
-        <h3 class="sub">Build a new helper</h3>
+<section id="view-studio" class="view studioview" hidden>
+  <div class="panel studiobar"><div class="title">Helpers I built</div><div class="body">
+    <div class="chips" id="helperlist"></div>
+    <details class="more" id="newbox">
+      <summary>+ Build a new helper</summary>
+      <form id="newform" class="newform" autocomplete="off">
         <label class="fld"><span class="small">Name (letters and dashes)</span><input id="newname" type="text" maxlength="41" placeholder="my-first-helper" required></label>
         <label class="fld"><span class="small">Start with</span><select id="newtemplate"></select></label>
         <button class="btn go2" type="submit">Create it</button>
       </form>
-      <p class="small warnline" id="studionote" role="status"></p>
-    </div></div>
-  </aside>
-  <div class="studiomid">
+    </details>
+    <p class="small warnline" id="studionote" role="status"></p>
+  </div></div>
+  <div class="cols studiocols">
+  <div class="stack studiomid">
     <div class="panel" id="studioempty" hidden><div class="title">Your own helpers</div><div class="body">
       <p class="big">Build your own helper and offer it to others.</p>
       <ol class="steps3"><li><b>1</b><span>Name it</span></li><li><b>2</b><span>Practise on your notes</span></li><li><b>3</b><span>Publish it</span></li></ol>
-      <p class="small muted">Start on the left: give your helper a name and press Create.</p>
+      <p class="small muted">Start above: give your helper a name and press Create.</p>
     </div></div>
-    <div id="studiomain" hidden>
+    <div id="studiomain" class="stack" hidden>
       <div class="panel"><div class="title" id="helpertitle">Helper</div><div class="body">
         <div id="problems" aria-live="polite"></div>
         <div class="gtools">
@@ -123,9 +124,9 @@
           <button class="btn" id="gzoomout" type="button" aria-label="Zoom out" title="Zoom out">−</button>
           <button class="btn" id="gzoomin" type="button" aria-label="Zoom in" title="Zoom in">+</button>
           <button class="btn" id="gfit" type="button" title="Fit everything on screen">Fit</button>
-          <label class="small"><input type="checkbox" id="showdata" checked> Show what each step reads</label>
           <button class="btn" id="tidy" type="button">Tidy up</button>
         </div>
+        <label class="small"><input type="checkbox" id="showdata" checked> Show what each step reads</label>
         <div class="graphwrap"><svg id="graph" role="img" aria-label="The steps this helper runs, as a picture. Use the panel on the right to change them without dragging."></svg></div>
         <details class="more"><summary>How to read this picture</summary><p class="small">Scroll to zoom, drag the background to move. Green dot: drag it onto the next step. Red dot: where to go if the check fails. Grey lines show what each step reads. 🔒 marks steps that hold your private notes.</p></details>
       </div></div>
@@ -143,16 +144,17 @@
       <div id="panelbody"></div>
     </div></div>
   </aside>
+  </div>
 </section>
 
-<section id="view-memory" class="memview" hidden>
+<section id="view-memory" class="view memview" hidden>
   <div class="panel memintro"><div class="title">My memory</div><div class="body">
     <p>Your notes, kept on shelves. Helpers only see the shelves you tick. <b>Secret</b> files are never shared.</p>
     <details class="more"><summary>More about memory</summary><p class="small">Nothing is saved behind your back. Memory changes only when you write something here or say yes to a helper's suggestion.</p></details>
     <div id="suggest"></div>
     <p class="small warnline" id="memnote" role="status"></p>
   </div></div>
-  <div class="memtop">
+  <div class="cols memtop">
   <div class="panel mapwrap"><div class="title">Map of my memory</div><div class="body">
     <div class="maptools">
       <span class="small muted" id="memstats"></span>
@@ -179,7 +181,7 @@
       <button class="btn" id="memmore" type="button" hidden>Show more</button>
     </div></div>
   </div>
-  <div class="memgrid">
+  <div class="cols memgrid">
     <div class="panel"><div class="title">Add to memory</div><div class="body">
       <form id="memform" class="memform" autocomplete="off">
         <textarea id="memtext" rows="5" maxlength="80000" placeholder="Write or paste anything: a short fact, or a whole page of notes. Long notes are kept whole." aria-label="What to remember"></textarea>
@@ -193,8 +195,10 @@
           <button class="btn go2" type="submit">Save to memory</button>
         </div>
       </form>
+    </div></div>
+    <div class="panel"><div class="title">Backup and import</div><div class="body">
       <div class="memform">
-        <h3 class="sub">Backup</h3>
+        <h3 class="sub" style="margin-top:0">Backup</h3>
         <p class="small muted">Everything in memory, secret notes included, as one file only you keep.</p>
         <div class="acts"><button class="btn" id="memexport" type="button">Download a backup</button></div>
         <label class="small fieldrow">Put one back <input id="memrestore" type="file" accept=".json,application/json" aria-label="Choose a backup file"></label>

@@ -11,7 +11,7 @@ export class StepGraph {
   constructor(svg, on) {
     this.svg = svg;
     this.on = on;
-    this.pz = new PanZoom(svg, { skip: ".node,.pill", min: 0.3, maxFit: 1.1 });
+    this.pz = new PanZoom(svg, { skip: ".node,.pill", min: 0.3, maxFit: 1.4 });
     this.state = { wf: null, layout: {}, sel: null, problems: [], pulse: [], showData: true };
     this.fitNext = true;
   }

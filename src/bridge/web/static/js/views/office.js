@@ -37,7 +37,7 @@ function drawSquare(d) {
   const sq = $("square"), pay = getState().payments || { captured: 0, on_hold: 0 }, n = d.stalls.length;
   const panel = el("div", "panel"), body = el("div", "body sqbody");
   panel.append(el("div", "title", "The market square"), body);
-  body.append(link(hire ? paths.office() : paths.hire(), hire ? "Hide the list of helpers" : "+ Open a new stall", "btn go2 sqwide"));
+  if (hire) body.append(link(paths.office(), "Hide the list of helpers", "btn sqwide"));  // opening a stall is the dashed stall on the floor
   body.append(squareCard({ shirt: "#3D2E4A", hat: "guard", skin: "#E0AC82", hair: "#1A1320" }, "Guard post",
     [d.guard.stopped ? "Stopped " + plural(d.guard.stopped, "sneaky attempt") + "." : "Nothing suspicious so far.", "Checks every answer before it reaches you."]));
   body.append(squareCard({ shirt: "#DCAB3C", hat: "visor", skin: "#C68642", hair: "#3B2A20" }, "Bank",

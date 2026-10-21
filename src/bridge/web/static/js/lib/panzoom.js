@@ -6,7 +6,7 @@ export class PanZoom {
    * svg: the <svg>; skip: CSS selector of things that handle their own pointer (nodes, ports);
    * min/max/maxFit: zoom limits. The drawing code calls setViewport(g, {w, h}) after each draw.
    */
-  constructor(svg, { skip = "", min = 0.25, max = 2.5, maxFit = 1.2 } = {}) {
+  constructor(svg, { skip = "", min = 0.25, max = 2.5, maxFit = 1.5 } = {}) {
     this.svg = svg;
     this.skip = skip;
     this.min = min;
@@ -38,7 +38,7 @@ export class PanZoom {
     const r = this.svg.getBoundingClientRect();
     if (!r.width || !this.size.w) return;
     const k = Math.min((r.width - 20) / this.size.w, (r.height - 20) / this.size.h, this.maxFit);
-    this.view = { k, x: Math.max(10, (r.width - this.size.w * k) / 2), y: 10 };
+    this.view = { k, x: Math.max(10, (r.width - this.size.w * k) / 2), y: Math.max(10, (r.height - this.size.h * k) / 2) };  // centred both ways
     this.apply();
   }
 

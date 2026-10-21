@@ -33,6 +33,7 @@ function drawList() {
     box.append(a);
   });
   if (!S.list.helpers.length) box.append(el("p", "empty", "You have not built a helper yet."));
+  $("newbox").open = !S.list.helpers.length;  // with no helper yet the form is the first thing to see
   $("newtemplate").replaceChildren(...S.list.templates.map((x) => { const o = document.createElement("option"); o.value = x.id; o.textContent = x.title; return o; }));
 }
 
@@ -146,6 +147,7 @@ function watchTests() {
 }
 
 function showHelper() {
+  $("studiopanel").hidden = false;
   $("studiomain").hidden = false;
   $("studioempty").hidden = true;
   drawList(); drawTitle(); drawProblems(); redrawGraph(); drawPanel();
@@ -179,6 +181,7 @@ export const studioView = {
       const first = S.list.helpers[0];
       if (first) { navigate(paths.studio(first.id), { replace: true }); return; }
       S.H = null; drawList();
+      $("studiopanel").hidden = true;
       $("studiomain").hidden = true;
       $("studioempty").hidden = false;
       return;
