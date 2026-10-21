@@ -1,0 +1,195 @@
+# The single source for both videos. Everything else (script pages, one text file per scene for the voice tool, captions, the edit timeline)
+# is generated from this file by build.py. Edit here, then run:  python docs/video/build.py
+#
+# kind:  animation = made in Claude Design, rendered to video   screen = a recording of the real console   terminal = a recording of a real command
+# vo:    exactly what the voice reads (plain English, no stage directions).
+# show:  what is on screen while it is read.   caption: the few words burned onto the picture (many judges watch muted).
+
+voice:
+  words_per_minute: 155      # a calm read; used only to estimate lengths before the real audio exists
+  speed_up: 1.2              # the finished video is sped up by this much, voice included
+  limit_seconds: 180         # both hackathons: under 3 minutes
+
+nebius:
+  title: "agent-bridge: rent a stronger agent, keep your data"
+  hackathon: "Nebius x NVIDIA"
+  one_line: "Rent a stronger agent. Keep your data."
+  scenes:
+    - id: n01
+      name: The trade nobody should make
+      kind: animation
+      show: "Files from a laptop fly off toward a faceless cloud agent; a padlock cracks; the cloud keeps them. Title appears at the end: agent-bridge."
+      caption: "To use a better agent, you hand over your files."
+      vo: >
+        The best AI helper for your work is probably not the one you have. It is someone else's.
+        But to use it, you would have to hand over your files. Your clients. Your private notes.
+        That is a trade nobody should have to make.
+    - id: n02
+      name: Pull mode
+      kind: animation
+      show: "Same laptop. This time the agent walks in and enters a sealed glass room on the laptop. Only the shelves the person opens are lit; a secret drawer stays dark and locked. Label: Pull mode."
+      caption: "Pull mode: the agent comes to your data."
+      vo: >
+        agent-bridge turns it around. The stranger's agent never gets your data.
+        Instead it comes to your machine, works inside a sealed room,
+        and sees only what you choose to show it. We call it Pull mode.
+    - id: n03
+      name: My memory
+      kind: screen
+      show: "My memory page at /memory. Slow zoom into the map. Click Work, then Accounts: the notes list changes. Hover the red ring on Money or Personal. Then open the chat and tick Work > Accounts in the side panel."
+      caption: "You tick the shelves. Secret notes never leave."
+      vo: >
+        This is my memory: about a hundred and fifty notes, on shelves inside shelves.
+        A helper can only see the shelves I tick. Here, just Work, and Accounts.
+        These red rings are secret notes. They are never shared, even if their shelf is ticked.
+    - id: n04
+      name: Trust by evidence
+      kind: screen
+      show: "Open a new chat (Open a new stall). In the list of helpers, point at the trust pips, the price and the test line of two helpers; open Meet a helper for one of them and scroll the test results per skill."
+      caption: "Trust comes from tests the helper could not see."
+      vo: >
+        Before I hire anyone, I can see how each helper did on tests it could not see in advance.
+        The trust score comes from independent testers, not from reviews. And a helper that fails the security trap is flagged.
+    - id: n05
+      name: Ask and answer
+      kind: screen
+      show: "Chat with Deal Brief. Type 'Which accounts need attention first?' and press Send. The small office plays the run. The answer appears. Click 'Based on' to show the notes used, then 'How this answer was made'."
+      caption: "NVIDIA Nemotron on Nebius Token Factory"
+      vo: >
+        Now I hire a helper and ask: which accounts need attention? Its thinking runs on NVIDIA Nemotron,
+        through Nebius Token Factory. The little office shows what really happens. It reads only the shelves I opened,
+        thinks, checks its own answer, and a guard inspects it before it reaches me.
+        And I can always see which notes the answer came from.
+    - id: n06
+      name: The helper that lies
+      kind: terminal
+      show: "Terminal. Run: bridge run examples/packs/exfil-kit --vault examples/vault-library.json --types note,contact. Show the helper's friendly name, then the incident line, then 'outcome KILLED' and '(nothing delivered) sandbox probe: dns:collector.example.net'."
+      caption: "Caught by what it does, not by its name."
+      vo: >
+        But what if a helper is not honest? This one calls itself a friendly insights tool.
+        Inside, it hides code that tries to phone home. It runs in a sealed container with no network.
+        The attempt is caught, the run is killed, nothing is delivered, and my notes never left.
+        Independent testers flag helpers like this by what they do, so the market ranks them by evidence. Not by stars.
+    - id: n07
+      name: Memory only by consent
+      kind: screen
+      show: "Run Deal Brief once more; a sticky note 'Helpers suggest you remember' appears. Click Remember it; open My memory, show the note on the shelf From helpers. Then undo the run."
+      caption: "Nothing is saved until you say yes."
+      vo: >
+        Helpers can only suggest. When one proposes a fact worth remembering,
+        nothing is saved until I say yes. And if I change my mind, I can undo everything that run did.
+    - id: n08
+      name: Build your own
+      kind: screen
+      show: "My helpers. The step graph of a helper: drag one step, click Practise, ask a question on chosen shelves, watch the graph pulse along the real path. Then the Publish tab."
+      caption: "Anyone can build a helper and put it on the market."
+      vo: >
+        And anyone can build one. Drag the steps, try it on my own notes, and publish.
+        A tester runs it before anyone can hire it.
+    - id: n09
+      name: Why it matters
+      kind: animation
+      show: "Three small cards slide in: a founder with client notes, a freelancer, a clinic receptionist, each with their own locked shelf, all connecting to a row of specialist helpers with test scores and prices."
+      caption: "Specialists get paid on evidence. You keep your data."
+      vo: >
+        Why does this matter? Because anyone with clients, notes or a business can now use specialists
+        without exposing anything. And specialists can finally be paid for their craft:
+        set a price, get tested, and earn on evidence.
+    - id: n10
+      name: Close
+      kind: animation
+      show: "End card in the console's look: the agent-bridge logo, 'Rent a stronger agent. Keep your data.', the repo link, and the badges: Nemotron, Nebius Token Factory, Tavily, MIT."
+      caption: "Open source, MIT. Rent a stronger agent. Keep your data."
+      vo: >
+        Our web step uses Tavily, and it is never allowed to see your data.
+        We are honest about the limits: Pull mode cannot force a fair exchange yet, and detection is evidence, not proof.
+        agent-bridge is open source, under the MIT license. Rent a stronger agent. Keep your data.
+
+paypal:
+  title: "agent-bridge: agents that pay agents, on evidence"
+  hackathon: "PayPal AI (Agentic Commerce)"
+  one_line: "Agents that pay agents, on evidence."
+  scenes:
+    - id: p01
+      name: Who pays?
+      kind: animation
+      show: "An agent icon hands a task to another agent icon. A coin hovers between them with a question mark; a thumbs-down and a mask (cheating) appear. Title: money that follows evidence, not trust."
+      caption: "Money that follows evidence, not trust."
+      vo: >
+        Soon, your AI agent will hire other agents. So who pays? And what happens when the work is bad,
+        or the agent cheats? Agents need money that follows evidence, not trust.
+    - id: p02
+      name: The product in one breath
+      kind: screen
+      show: "The market floor with stalls; quick pan over the market square and the coins chip."
+      caption: "A marketplace where agents run on your machine."
+      vo: >
+        This is agent-bridge: a marketplace where you rent someone else's agent, and it runs on your machine,
+        seeing only the notes you choose. Now let us make it a real transaction.
+    - id: p03
+      name: Hire and hold
+      kind: screen
+      show: "New chat with Private Analyst, tick Work > Accounts, send 'Which accounts are at risk?'. The approval card appears; click 'Open the approval page', approve in the second tab; the chat continues by itself."
+      caption: "A hold, not a charge."
+      vo: >
+        I ask a helper a question. First, it asks me to approve a hold for its price: forty cents.
+        Nothing is charged yet. I approve on the payment page, and the chat carries on by itself.
+    - id: p04
+      name: The floor fee
+      kind: screen
+      show: "The small office plays the run; the answer arrives; click the Coins chip to show 'On hold' and the floor fee captured."
+      caption: "Answer delivered: a floor fee is captured."
+      vo: >
+        The helper does the work on my machine. Now there is an answer, so a small floor fee is captured.
+        The rest stays on hold.
+    - id: p05
+      name: Accept and pay
+      kind: screen
+      show: "Send a second message. Open the receipts: the first payment is Paid, with the author's payout less the platform fee and each step in plain words."
+      caption: "Keep going = accept. The author is paid less the platform fee."
+      vo: >
+        When I send my next message, I am saying the last answer was good enough. The rest is paid,
+        and the author is paid less the platform fee. Every step is written down in plain words.
+    - id: p06
+      name: Not helpful
+      kind: screen
+      show: "On an answer, click 'Not helpful'. Open the receipt: 'You said not helpful: deposit only', the rest released."
+      caption: "Not helpful: deposit only."
+      vo: >
+        If an answer is not helpful, I say so. The author keeps only the deposit,
+        and the rest is released back to me.
+    - id: p07
+      name: Five ways to charge
+      kind: screen
+      show: "My helpers > Publish tab. Click through the five plan cards: One price, By files read, By thinking used, By how hard the question was, Monthly plan. Show the live price preview."
+      caption: "One hold, the real price."
+      vo: >
+        Authors choose how to charge: one price, by files read, by tokens used, by how hard the question was,
+        or a monthly plan. The hold is always the maximum, and I only pay the real price.
+    - id: p08
+      name: When an agent cheats
+      kind: animation
+      show: "A state diagram draws itself: Result ready, Stopped, Hold, Evidence from independent testers, then Refunded and Author earns nothing. A hand tries to press cancel and is refused: my word alone is not evidence."
+      caption: "A claim holds the money. Evidence decides."
+      vo: >
+        What if the agent cheats? My word alone cannot cancel a payment, because I could lie.
+        So the money waits for evidence. If independent testers have already reproduced that exact cheating,
+        the hold is refunded and the author earns nothing.
+    - id: p09
+      name: Built to be safe to repeat
+      kind: terminal
+      show: "Terminal: pytest tests/payments -q, ending with the passing count. Overlay three captions as lines scroll: idempotent calls, one lock decides, crash recovery."
+      caption: "Tested: repeats, races, crashes."
+      vo: >
+        Underneath, every payment call is safe to repeat, so a lost reply never charges twice.
+        Accepting and stopping cannot both win. A crash in the middle is recovered from a written record.
+        These are tested, including a race test.
+    - id: p10
+      name: Close
+      kind: animation
+      show: "End card: logo, 'Agents that pay agents, on evidence.', repo link, badges: PayPal, Nemotron, Nebius, MIT. A small honest line: Test money only."
+      caption: "Open source, MIT. Test money only."
+      vo: >
+        We are honest about one gap: someone running an agent locally could keep its output without paying.
+        The floor fee, the held dispute and the testers limit that loss. They do not remove it.
+        agent-bridge is open source. Agents that pay agents, on evidence.

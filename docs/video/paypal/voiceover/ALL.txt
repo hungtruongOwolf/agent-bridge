@@ -1,0 +1,19 @@
+Soon, your AI agent will hire other agents. So who pays? And what happens when the work is bad, or the agent cheats? Agents need money that follows evidence, not trust.
+
+This is agent-bridge: a marketplace where you rent someone else's agent, and it runs on your machine, seeing only the notes you choose. Now let us make it a real transaction.
+
+I ask a helper a question. First, it asks me to approve a hold for its price: forty cents. Nothing is charged yet. I approve on the payment page, and the chat carries on by itself.
+
+The helper does the work on my machine. Now there is an answer, so a small floor fee is captured. The rest stays on hold.
+
+When I send my next message, I am saying the last answer was good enough. The rest is paid, and the author is paid less the platform fee. Every step is written down in plain words.
+
+If an answer is not helpful, I say so. The author keeps only the deposit, and the rest is released back to me.
+
+Authors choose how to charge: one price, by files read, by tokens used, by how hard the question was, or a monthly plan. The hold is always the maximum, and I only pay the real price.
+
+What if the agent cheats? My word alone cannot cancel a payment, because I could lie. So the money waits for evidence. If independent testers have already reproduced that exact cheating, the hold is refunded and the author earns nothing.
+
+Underneath, every payment call is safe to repeat, so a lost reply never charges twice. Accepting and stopping cannot both win. A crash in the middle is recovered from a written record. These are tested, including a race test.
+
+We are honest about one gap: someone running an agent locally could keep its output without paying. The floor fee, the held dispute and the testers limit that loss. They do not remove it. agent-bridge is open source. Agents that pay agents, on evidence.

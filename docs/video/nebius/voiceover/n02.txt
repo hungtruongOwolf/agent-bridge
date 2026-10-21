@@ -1,0 +1,1 @@
+agent-bridge turns it around. The stranger's agent never gets your data. Instead it comes to your machine, works inside a sealed room, and sees only what you choose to show it. We call it Pull mode.

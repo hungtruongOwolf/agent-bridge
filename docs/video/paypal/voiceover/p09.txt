@@ -1,0 +1,1 @@
+Underneath, every payment call is safe to repeat, so a lost reply never charges twice. Accepting and stopping cannot both win. A crash in the middle is recovered from a written record. These are tested, including a race test.

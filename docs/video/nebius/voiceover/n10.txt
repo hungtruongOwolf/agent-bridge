@@ -1,0 +1,1 @@
+Our web step uses Tavily, and it is never allowed to see your data. We are honest about the limits: Pull mode cannot force a fair exchange yet, and detection is evidence, not proof. agent-bridge is open source, under the MIT license. Rent a stronger agent. Keep your data.

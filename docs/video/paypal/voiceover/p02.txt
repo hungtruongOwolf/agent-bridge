@@ -1,0 +1,1 @@
+This is agent-bridge: a marketplace where you rent someone else's agent, and it runs on your machine, seeing only the notes you choose. Now let us make it a real transaction.

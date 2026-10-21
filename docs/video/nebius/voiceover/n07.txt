@@ -1,0 +1,1 @@
+Helpers can only suggest. When one proposes a fact worth remembering, nothing is saved until I say yes. And if I change my mind, I can undo everything that run did.
