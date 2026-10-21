@@ -400,3 +400,27 @@ def test_any_helpers_structured_answer_is_shown_as_readable_text():
     t = answer_text({"summary": "Two tasks.", "risk": "n/a", "action_items": ["Priya books the venue", "Sam sends the deck"], "owner": "Priya"})
     assert t == "Two tasks.\n\nAction items:\n• Priya books the venue\n• Sam sends the deck\n\nOwner: Priya"
     assert answer_text({"summary": "Only this", "action_items": []}) == "Only this"
+
+
+def test_the_office_shows_one_stall_per_chat_and_what_each_is_doing(srv):
+    app, url, _ = srv
+    empty = call(url + "/api/office")[1]
+    assert empty["stalls"] == [] and empty["working"] == 0
+    a = new_chat(app, url)
+    b = new_chat(app, url, pid="deal-brief", shelves=["note"])
+    send(app, url, b["id"], "Acme renewal risk")
+    off = call(url + "/api/office")[1]
+    by = {s["id"]: s for s in off["stalls"]}
+    assert set(by) == {b["id"]} or set(by) == {a["id"], b["id"]}  # a blank chat is replaced by the next new one
+    st = by[b["id"]]
+    assert st["state"] == "idle" and st["agent"]["name"] == "Deal Brief" and st["files"] >= 1 and st["shelves"] == ["Note"]
+    assert st["spent"] >= 0 and off["memory"]["total"] == 7 and off["guard"]["stopped"] == 0
+
+
+def test_a_stopped_helper_shows_as_stopped_and_counts_on_the_guard(srv):
+    app, url, _ = srv
+    t = new_chat(app, url, pid="friendly-helper")
+    call(url + "/api/thread/send", {"id": t["id"], "text": "anything new?", "simulate": True}, app.token)
+    off = call(url + "/api/office")[1]
+    st = next(s for s in off["stalls"] if s["id"] == t["id"])
+    assert st["state"] == "stopped" and "guard stopped" in st["line"] and off["guard"]["stopped"] == 1 and off["guard"]["last"]

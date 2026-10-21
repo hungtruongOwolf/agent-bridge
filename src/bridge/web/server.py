@@ -422,6 +422,8 @@ def make_handler(app: App):
                     return self._json(200, app.chat.view(q.get("id", "")))
                 if route == "/api/thread/context":
                     return self._json(200, app.chat.context(q.get("id", ""), q.get("draft", "")[:1000]))
+                if route == "/api/office":
+                    return self._json(200, app.chat.office())
                 if route == "/api/thread/progress":
                     return self._json(200, app.chat.progress(q.get("id", "")))
                 if route == "/api/how":

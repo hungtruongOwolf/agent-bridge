@@ -30,6 +30,7 @@ class MemoryService:
                  clock: Callable[[], float], lock: threading.RLock | None = None):
         self.file, self.quarantine, self.threads, self.registry, self.clock = Path(vault_file), quarantine, threads, registry, clock
         self.lock = lock or threading.RLock()
+        self._cache, self._overview = None, None
         self.labels_file = self.file.with_name("shelves.json")  # the short notes a person wrote about their shelves
 
     # -- the shelf notes -------------------------------------------------------------------------
@@ -62,9 +63,23 @@ class MemoryService:
         return {"path": path, "label": text}
 
     # -- reading ---------------------------------------------------------------------------------
+    def _stamp(self):
+        try:
+            st = self.file.stat()
+            lab = self.labels_file.stat().st_mtime_ns if self.labels_file.exists() else 0
+            return (st.st_mtime_ns, st.st_size, lab)
+        except OSError:
+            return None
+
     def vault(self) -> Vault:
+        """The vault as it is on disk now. Reading is cached until the file changes, so a big memory is parsed once, not on every screen refresh."""
         with self.lock:
-            return Vault.load(self.file)
+            stamp = self._stamp()
+            if stamp is not None and self._cache and self._cache[0] == stamp:
+                return self._cache[1]
+            v = Vault.load(self.file)
+            self._cache, self._overview = (stamp, v), None
+            return v
 
     def _helper_names(self) -> dict:
         names = {}
@@ -118,6 +133,8 @@ class MemoryService:
     def overview(self) -> dict:
         """The whole tree without any file text: what the manager and the chat panels draw."""
         vault = self.vault()
+        if self._overview is not None and self._cache and self._overview[0] == self._cache[0]:
+            return self._overview[1]
         recs = vault.all()
         tree = MemoryTree(recs, self.labels())
         secret: dict[str, int] = {}
@@ -137,7 +154,9 @@ class MemoryService:
                                 "own": len(tree.nodes[o["path"]].own)})
                 walk(o["path"], depth + 1)
         walk("", 0)
-        return {"total": len(recs), "secret": sum(1 for r in recs if r.sensitivity != "low"), "shelves": shelves}
+        out = {"total": len(recs), "secret": sum(1 for r in recs if r.sensitivity != "low"), "shelves": shelves}
+        self._overview = (self._cache[0] if self._cache else None, out)
+        return out
 
     # -- changing --------------------------------------------------------------------------------
     def _mutate(self, fn):
@@ -145,6 +164,7 @@ class MemoryService:
             v = Vault.load(self.file)
             out = fn(v)
             v.save(self.file)
+            self._cache = self._overview = None  # the next reader sees the new file, never a stale copy
             return out
 
     @staticmethod

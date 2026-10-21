@@ -16,7 +16,7 @@ from ..memory.tree import pretty
 from ..memory.vault import under
 from ..payments.ledger import TERMINAL, PendingError, StateError
 from ..payments.provider import ProviderError
-from .plain import answer_text, failure_message, how_made, stopped_message
+from .plain import answer_text, blocked_phrase, failure_message, how_made, stopped_message
 from .threads import ThreadError, clean_lens
 
 
@@ -267,6 +267,42 @@ class ChatService:
             entries = list(j.entries) if j else []
         steps = [{**e["data"], "event": e["kind"]} for e in entries if e["kind"] in ("step_started", "step_committed", "model_call", "cell_run", "web_search", "incident")]
         return {"working": run_id is not None, "steps": how_made(steps)[:-1]}
+
+    # ---- the market floor: every chat at a glance ---------------------------------------------------
+    def office(self) -> dict:
+        """One stall per chat with what is happening in it right now, plus the shared facts (guard, coins, memory)."""
+        with self.app.lock:
+            waiting = {p.get("thread_id") for p in self.app.pending.values() if p.get("thread_id")}
+        overview = self.app.memory.overview()
+        counts = {s["path"]: s["count"] for s in overview["shelves"]}
+        stalls, stopped, last_stop = [], 0, ""
+        for t in sorted(self.store.threads.values(), key=lambda x: x.updated, reverse=True):
+            agent = self._agent(t)
+            running = self.running.get(t.id)
+            msgs = [m for m in t.messages if m.role != "user"]
+            last = msgs[-1] if msgs else None
+            stopped += sum(1 for m in t.messages if m.outcome == "KILLED")
+            if last is not None and last.outcome == "KILLED":
+                last_stop = blocked_phrase(last.blocked)
+            if t.id in waiting:
+                state, line = "waiting", "Waiting for you to approve the hold on the payment page."
+            elif running or t.busy:
+                steps = self.progress(t.id)["steps"]
+                state, line = "working", (steps[-1] if steps else "Getting started…")
+            elif last is not None and last.outcome == "KILLED":
+                state, line = "stopped", stopped_message(agent["name"], last.blocked)
+            elif last is not None:
+                state, line = "idle", last.text[:140]
+            else:
+                state, line = "new", "Nothing said yet."
+            top = [p for p in t.lens.shelves if not any(under(p, o) for o in t.lens.shelves if o != p)]
+            money = self.money(t)
+            stalls.append({"id": t.id, "title": t.title, "agent": {"id": agent["id"], "name": agent["name"], "key": agent.get("key", ""), "status": agent["status"]},
+                           "state": state, "line": line, "updated": t.updated, "messages": len(t.messages),
+                           "shelves": [pretty(p) for p in top][:4], "shelf_count": len(top), "files": sum(counts.get(p, 0) for p in top),
+                           "spent": money["spent"], "held": money["held"], "limit": money["limit"]})
+        return {"stalls": stalls, "guard": {"stopped": stopped, "last": last_stop}, "memory": {"total": overview["total"], "secret": overview["secret"]},
+                "working": sum(1 for s in stalls if s["state"] == "working")}
 
     # ---- deciding on an answer --------------------------------------------------------------------
     def reject(self, body: dict) -> dict:
