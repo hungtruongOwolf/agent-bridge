@@ -123,14 +123,22 @@ def improve(pack_dir: Path, out_dir: Path, model: Model, certifier: Certifier, *
         return report
 
     failures = _failures(pack_dir, certifier.suite, model, 2)
-    meta = model.complete(
-        "You improve the instruction for ONE step of an automated workflow. Write alternative instructions "
-        "that fix the failures while keeping the same job and the same output format.",
-        {"current_instruction": old_prompt, "good_answers_do": [t.goal for t in certifier.suite.quality],
-         "failures": failures, "how_many": variants,
-         "must_keep": f"the reply format: JSON with keys {keys}",
-         "answer_format": {"variants": ["new instruction text", "..."]}})
-    cands = [v for v in (meta.content.get("variants") or []) if isinstance(v, str)][:variants]
+    ask = {"current_instruction": old_prompt, "good_answers_do": [t.goal for t in certifier.suite.quality],
+           "failures": failures, "how_many": variants,
+           "must_keep": f"the reply format: JSON with keys {keys}",
+           "answer_format": {"variants": ["new instruction text", "..."]}}
+    cands: list[str] = []
+    for _ in range(3):  # the model sometimes answers in the wrong shape; ask again, a bounded number of times
+        try:
+            meta = model.complete(
+                "You improve the instruction for ONE step of an automated workflow. Write alternative instructions "
+                "that fix the failures while keeping the same job and the same output format.", ask)
+        except Exception:
+            continue
+        raw = meta.content.get("variants") if isinstance(meta.content, dict) else None
+        cands = [v for v in (raw or []) if isinstance(v, str)][:variants] if isinstance(raw, list) else []
+        if cands:
+            break
 
     work = out_dir.parent / f".work-{manifest['id']}"
     new_version = _bump_patch(str(manifest["version"]))

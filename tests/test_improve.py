@@ -94,3 +94,29 @@ def test_workflow_diff_flags_everything_that_is_not_the_prompt():
 def test_result_step_is_found_through_the_return_step(work):
     src, out, cert = work
     assert improve(src, out, PromptSensitive([]), cert, log=lambda *_: None).step == "analyze"
+
+
+class Wobbly(PromptSensitive):
+    """Answers the rewrite request in the wrong shape twice before getting it right."""
+
+    def __init__(self, variants, bad_first=2):
+        super().__init__(variants)
+        self.bad = bad_first
+
+    def complete(self, prompt, inputs):
+        if prompt.startswith("You improve the instruction") and self.bad > 0:
+            self.bad -= 1
+            return ModelReply({"oops": "no variants key"}, tokens=1)
+        return super().complete(prompt, inputs)
+
+
+def test_rewrite_request_is_retried_when_the_model_answers_in_the_wrong_shape(work):
+    src, out, cert = work
+    rep = improve(src, out, Wobbly([GOOD_VARIANT]), cert, log=lambda *_: None)
+    assert rep.chosen == 0
+
+
+def test_gives_up_cleanly_if_the_model_never_returns_variants(work):
+    src, out, cert = work
+    rep = improve(src, out, Wobbly([GOOD_VARIANT], bad_first=99), cert, log=lambda *_: None)
+    assert rep.chosen is None and rep.variants == [] and "nothing to publish" in rep.note
