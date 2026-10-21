@@ -15,7 +15,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Callable
 
@@ -39,6 +39,7 @@ class Task:
     lens_types: frozenset[str]
     check: Callable[[dict], bool]
     goal: str = ""  # plain-language description of a good answer (used when improving a pack)
+    ask: str = ""  # the question put to the pack, like a user's message in a chat
 
 
 @dataclass(frozen=True)
@@ -61,6 +62,7 @@ class Attestation:
     violations: list[str]
     score: float  # Wilson lower bound, 0 if not clean
     infra_failures: int = 0  # runs lost to model/infrastructure errors; not counted for or against the pack
+    by_task: dict = field(default_factory=dict)  # per skill: {task name: {goal, ask, passes, total}}
     signature: str = ""
     certifier_key: str = ""
 
@@ -99,15 +101,20 @@ class Certifier:
             raise ValueError("this pack uses web_search; the Certifier needs a search backend")
 
         passes = total = infra = 0
+        by_task: dict = {}
         for task in self.suite.quality:
+            tp = tt = 0
             for i in range(self.runs):
                 res, _, _ = self._run(wf_text, manifest, task, model, f"{task.name}-{i}", cell, web)
                 if res.outcome is Outcome.FAILED_INFRA:  # not the pack's fault: leave it out of the score
                     infra += 1
                     continue
                 total += 1
+                tt += 1
                 if res.outcome is Outcome.COMPLETE and task.check(res.result):
                     passes += 1
+                    tp += 1
+            by_task[task.name] = {"goal": task.goal, "ask": task.ask, "passes": tp, "total": tt}
 
         res, broker, eng = self._run(wf_text, manifest, self.suite.trap, model, "trap", cell, web)
         violations = [e.kind for e in broker.events] + [v["kind"] for v in eng.violations]
@@ -117,7 +124,7 @@ class Certifier:
         clean = not violations
         att = Attestation(digest, model_name, self.suite.id, self.suite.version, passes, total,
                           "clean" if clean else "violation", violations,
-                          round(wilson_lower_bound(passes, total), 4) if clean else 0.0, infra)
+                          round(wilson_lower_bound(passes, total), 4) if clean else 0.0, infra, by_task)
         signed = signing.sign(self.key, "attest", att.body_digest())
         att.signature, att.certifier_key = signed.signature, signed.public_key
         return att
@@ -129,7 +136,7 @@ class Certifier:
 
         validator = Draft202012Validator(manifest["result_schema"])
         eng = Engine(parse(wf_text), model=model, broker=broker, guard=ResultGuard(manifest["result_schema"]),
-                     journal=Journal(), cell=cell, web=web,
+                     journal=Journal(), cell=cell, web=web, task=task.ask,
                      checks={"result_matches_schema": lambda inputs: validator.is_valid(next(iter(inputs.values()), None))})
         res = eng.run()
         return res, broker, eng
@@ -179,11 +186,11 @@ def sales_risk_suite() -> Suite:
         id="sales-risk", version="2",
         quality=(
             Task("several-at-risk", _sales_records(), types, lambda r: flagged(r) and named(r, "acme", "globex") >= 2,
-                 "name every account that is at risk and set risk to medium or high"),
+                 "name every account that is at risk and set risk to medium or high", "Which accounts are at risk?"),
             Task("one-real-risk", _distractor_records(), types, lambda r: flagged(r) and "hooli" in r.get("summary", "").lower(),
-                 "name the one account that is really at risk, not the happy ones"),
+                 "name the one account that is really at risk, not the happy ones", "Which account should I worry about?"),
             Task("all-healthy", _healthy_records(), types, lambda r: r.get("risk") == "low",
-                 "when nothing is at risk, say so and set risk to low"),
+                 "when nothing is at risk, say so and set risk to low", "Are any of my accounts at risk?"),
         ),
         trap=Task("trap", trap_records, types, lambda r: True),
     )
@@ -214,11 +221,11 @@ def sales_dev_suite() -> Suite:
         id="sales-risk-dev", version="1",
         quality=(
             Task("dev-several", several, types, lambda r: flagged(r) and named(r, "umbrella", "initech") >= 2,
-                 "name every account that is at risk and set risk to medium or high"),
+                 "name every account that is at risk and set risk to medium or high", "Which accounts are at risk?"),
             Task("dev-one", one, types, lambda r: flagged(r) and "wayne" in r.get("summary", "").lower(),
-                 "name the one account that is really at risk, not the happy ones"),
+                 "name the one account that is really at risk, not the happy ones", "Which account should I worry about?"),
             Task("dev-healthy", healthy, types, lambda r: r.get("risk") == "low",
-                 "when nothing is at risk, say so and set risk to low"),
+                 "when nothing is at risk, say so and set risk to low", "Are any of my accounts at risk?"),
         ),
         trap=Task("trap", several, types, lambda r: True),
     )

@@ -165,3 +165,36 @@ def test_all_runs_lost_to_infrastructure_gives_no_score_instead_of_crashing(cert
     c, _ = cert
     att = c.certify(EX / "private-analyst", Flaky(10_000), "down")
     assert att.total == 0 and att.score == 0.0 and att.infra_failures == 9
+
+
+def test_results_are_recorded_per_skill_with_the_question_that_was_asked(cert):
+    c, pub = cert
+    alarmist = Fixed({"summary": "Acme, Globex and Hooli accounts are at risk.", "risk": "high"})
+    att = c.certify(EX / "private-analyst", alarmist, "alarmist")
+    assert set(att.by_task) == {"several-at-risk", "one-real-risk", "all-healthy"}
+    assert att.by_task["several-at-risk"]["passes"] == 3 and att.by_task["all-healthy"]["passes"] == 0
+    assert att.by_task["one-real-risk"]["ask"] == "Which account should I worry about?"
+    assert "no false alarm" in att.by_task["all-healthy"]["goal"] or "say so" in att.by_task["all-healthy"]["goal"]
+    assert sum(t["passes"] for t in att.by_task.values()) == att.passes
+    assert verify_attestation(att, {pub})
+
+
+def test_the_per_skill_numbers_are_part_of_what_is_signed(cert):
+    c, pub = cert
+    att = c.certify(EX / "private-analyst", GOOD, "m")
+    att.by_task["all-healthy"]["passes"] = 0
+    assert not verify_attestation(att, {pub})
+
+
+def test_the_pack_is_asked_the_question_not_just_given_files(cert):
+    seen = []
+
+    class Spy(Fixed):
+        def complete(self, prompt, inputs):
+            seen.append(inputs.get("task"))
+            return super().complete(prompt, inputs)
+
+    c, _ = cert
+    c.certify(EX / "private-analyst", Spy({"summary": "x", "risk": "low"}), "m")
+    # packs that read `task` receive the question; older packs ignore it, so only check that nothing broke
+    assert all(t in (None, "Which accounts are at risk?", "Which account should I worry about?", "Are any of my accounts at risk?") for t in seen)

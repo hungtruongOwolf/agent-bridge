@@ -67,3 +67,21 @@ def test_summaries_for_each_kind_of_ending():
         def complete(self, prompt, inputs):
             raise TimeoutError("x")
     assert "not blamed" in run_pack(EX / "packs" / "private-analyst", vault(), LENS, Down(), seed="s").summary
+
+
+def test_the_question_and_earlier_turns_are_passed_through_to_the_pack(tmp_path):
+    import shutil
+    pack = tmp_path / "chatpack"
+    shutil.copytree(EX / "packs" / "private-analyst", pack)
+    wf = (pack / "workflow.yaml").read_bytes().decode().replace("reads: [read]\n    prompt: \"Using", "reads: [task, history, read]\n    prompt: \"Using")
+    (pack / "workflow.yaml").write_bytes(wf.encode())
+    seen = {}
+
+    class Spy:
+        def complete(self, prompt, inputs):
+            seen.update(inputs)
+            return ModelReply({"summary": "ok", "risk": "low"}, tokens=1)
+
+    rep = run_pack(pack, vault(), LENS, Spy(), seed="s", task="Who is at risk?",
+                   history=[{"role": "user", "text": "hello"}, {"role": "helper", "text": "hi"}])
+    assert rep.outcome == "COMPLETE" and seen["task"] == "Who is at risk?" and len(seen["history"]) == 2
