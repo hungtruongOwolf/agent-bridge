@@ -91,7 +91,11 @@ class Engine:
             step = self.wf.steps[sid]
             if self._over_budget() and step.kind in ("llm",):
                 return self._finish(Outcome.PARTIAL_BUDGET, reasons=["budget exhausted"])
-            j.append("step_started", {"step": sid, "kind": step.kind})
+            started = {"step": sid, "kind": step.kind}
+            if step.kind == "tool":
+                started["tool"] = step.tool  # which door this step uses: memory or web
+            j.append("step_started", started)
+            events_before = len(self.broker.events)
             inputs = {r: outputs[r] for r in step.reads if r in outputs}
 
             if step.kind == "return":
@@ -120,7 +124,14 @@ class Engine:
             except _StepError as e:
                 return self._finish(Outcome.FAILED_PACK, reasons=[str(e)])
             outputs[sid] = out
-            j.append("step_committed", {"step": sid})
+            commit = {"step": sid}
+            if step.kind == "tool" and isinstance(out, list):
+                # which of YOUR records this step actually received, and what the broker refused meanwhile
+                commit["records"] = [r["id"] for r in out if isinstance(r, dict) and r.get("id") in self.broker.manifest]
+                commit["blocked"] = [ev.kind for ev in self.broker.events[events_before:]]
+                if step.tool == "web_search":
+                    commit["results"] = len(out)
+            j.append("step_committed", commit)
             sid = step.next
         return self._finish(Outcome.FAILED_PACK, reasons=["workflow ended without return"])
 

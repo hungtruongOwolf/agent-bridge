@@ -70,7 +70,7 @@ def run_pack(pack_dir: Path, vault: Vault, lens: Lens, model: Model, *, seed: st
         staged=broker.describe(),
         withheld=sorted(r.id for r in vault.all() if r.id not in staged_ids),
         steps=[{**e["data"], "seq": e["seq"], "event": e["kind"]} for e in journal.entries
-               if e["kind"] in ("step_started", "step_committed", "model_call", "cell_run", "incident", "model_error")],
+               if e["kind"] in ("step_started", "step_committed", "model_call", "cell_run", "incident", "model_error", "web_search")],
         broker_events=[{"kind": ev.kind, "verdict": ev.verdict.value, "detail": ev.detail} for ev in broker.events]
         + [{"kind": v["kind"], "verdict": "kill" if v["kind"] != "SANDBOX_WRITE" else "deny", "detail": v["detail"]}
            for v in engine.violations],

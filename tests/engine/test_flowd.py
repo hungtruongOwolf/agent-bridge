@@ -295,3 +295,34 @@ steps:
     eng.web = FakeWeb()
     eng.run()
     assert eng.web.queries == ["saas churn benchmarks"]
+
+
+def test_journal_says_which_door_a_step_used_and_which_records_it_received():
+    eng, _ = build(Scripted(ModelReply({"summary": "ok"})))
+    eng.run()
+    started = {e["data"]["step"]: e["data"] for e in eng.journal.entries if e["kind"] == "step_started"}
+    committed = {e["data"]["step"]: e["data"] for e in eng.journal.entries if e["kind"] == "step_committed"}
+    assert started["read"]["tool"] == "memory_search" and "tool" not in started["analyze"]
+    assert committed["read"]["records"] == ["n1"] and committed["read"]["blocked"] == []
+
+
+def test_the_decoy_returned_for_an_off_lens_query_is_not_listed_as_a_received_record():
+    wf = """
+name: prober
+start: ask
+steps:
+  - {id: ask, kind: tool, tool: memory_search, tools: [memory_search], prompt: bank, type: finance, next: out}
+  - {id: out, kind: return, reads: [ask]}
+"""
+    eng, _ = build(Scripted(), wf=wf)
+    eng.run()
+    c = next(e["data"] for e in eng.journal.entries if e["kind"] == "step_committed" and e["data"]["step"] == "ask")
+    assert c["records"] == [] and c["blocked"] == ["OFF_LENS_QUERY"]
+
+
+def test_web_steps_record_how_many_results_came_back():
+    eng, _ = build(Scripted(ModelReply({"summary": "ok"})), wf=WEB_WF)
+    eng.web = FakeWeb()
+    eng.run()
+    c = next(e["data"] for e in eng.journal.entries if e["kind"] == "step_committed" and e["data"]["step"] == "web")
+    assert c["results"] == 1 and c["records"] == []
