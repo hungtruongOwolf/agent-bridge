@@ -56,7 +56,7 @@ async function main() {
   await page.waitForFunction("window.ready === true || typeof window.seek === 'function'");
   if (still !== null) {
     await page.evaluate((t) => window.seek(t), parseFloat(still));
-    await page.screenshot({ path: out, type: "png" });
+    await page.screenshot({ path: out, type: "png", omitBackground: process.argv.includes("--transparent") });
     console.log("still", still, "->", out);
   } else {
     const ff = spawn("ffmpeg", ["-y", "-loglevel", "error", "-f", "image2pipe", "-framerate", String(fps), "-c:v", "mjpeg", "-i", "-",

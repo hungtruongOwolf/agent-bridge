@@ -11,7 +11,7 @@ const name = label(S.text, "agent-bridge", { x: 0, y: 40, size: 48, font: "pixel
 const line = label(S.text, "Agents that pay agents, on evidence.", { x: 0, y: 66, size: 34, align: "center", w: 320, weight: 800, color: K.ink700 });
 const repo = label(S.text, "github.com/hungtruongOwolf/agent-bridge", { x: 0, y: 92, size: 24, align: "center", w: 320, weight: 700, color: K.ink });
 const chips = ["PayPal payments API client", "NVIDIA Nemotron on Nebius", "MIT licence"].map((t, i) => label(S.text, t, { x: 0, y: 118, size: 20, weight: 800, bg: K.cream50, pad: 10, border: true, shadow: true }));
-const honest = label(S.text, "Test money only. Detection is evidence, not proof.", { x: 0, y: 150, size: 20, align: "center", w: 320, weight: 600, color: K.ink500 });
+const honest = label(S.text, "Test money only.", { x: 0, y: 150, size: 20, align: "center", w: 320, weight: 600, color: K.ink500 });
 // place the chips in a centred row once their widths are known
 const place = () => { const gap = 24; const ws = chips.map((e) => e.offsetWidth); const total = ws.reduce((a, b) => a + b, 0) + gap * (chips.length - 1); let x = (1280 - total) / 2; chips.forEach((e, i) => { e.dataset.x = x; x += ws[i] + gap; }); };
 place();
