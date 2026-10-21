@@ -90,3 +90,46 @@ def test_persists_across_restarts(pack, key, tmp_path):
     rec = Registry(path).publish(pack, key, Listing(price_usd=2.0))
     reg2 = Registry(path)
     assert reg2.records[rec.key].listing.price_usd == 2.0 and reg2.verify(reg2.records[rec.key])
+
+
+def _bump(pack, version, edit=None):
+    text = (pack / "pack.yaml").read_bytes().decode().replace("version: 0.1.0", f"version: {version}")
+    (pack / "pack.yaml").write_bytes(text.encode())
+    if edit:
+        wf = (pack / "workflow.yaml").read_bytes().decode()
+        (pack / "workflow.yaml").write_bytes(edit(wf).encode())
+
+
+def test_prompt_only_update_is_accepted_as_a_minor_or_patch(pack, key):
+    reg = Registry()
+    reg.publish(pack, key)
+    _bump(pack, "0.1.1", lambda w: w.replace("Using only the records", "Using just the records"))
+    assert reg.publish(pack, key).version == "0.1.1"
+
+
+def test_widening_without_a_major_bump_is_refused(pack, key):
+    reg = Registry()
+    reg.publish(pack, key)
+    _bump(pack, "0.2.0", lambda w: w.replace("budget: {tokens: 6000}", "budget: {tokens: 60000}"))
+    with pytest.raises(RegistryError, match="major version"):
+        reg.publish(pack, key)
+
+
+def test_widening_with_a_major_bump_is_accepted(pack, key):
+    reg = Registry()
+    reg.publish(pack, key)
+    _bump(pack, "1.0.0", lambda w: w.replace("budget: {tokens: 6000}", "budget: {tokens: 60000}"))
+    assert reg.publish(pack, key).caps["budget_tokens"] == 60000
+
+
+def test_malformed_version_is_refused(pack, key):
+    _bump(pack, "banana")
+    with pytest.raises(RegistryError, match="1.2.3"):
+        Registry().publish(pack, key)
+
+
+def test_other_publishers_versions_do_not_constrain_this_one(pack, key):
+    reg = Registry()
+    reg.publish(pack, signing.generate_key())
+    _bump(pack, "0.2.0", lambda w: w.replace("budget: {tokens: 6000}", "budget: {tokens: 60000}"))
+    assert reg.publish(pack, key).version == "0.2.0"

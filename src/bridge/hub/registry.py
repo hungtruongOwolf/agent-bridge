@@ -15,6 +15,7 @@ import yaml
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 from ..pack import signing
+from ..pack.caps import Version, capabilities, widening
 from ..pack.digest import tree_digest
 from ..pack.workflow import WorkflowError, parse
 
@@ -44,6 +45,7 @@ class PackRecord:
     stars: int = 0
     starred_by: list[str] = field(default_factory=list)
     revoked: str | None = None
+    caps: dict = field(default_factory=dict)  # what the pack can do; widening needs a major version
 
     @property
     def key(self) -> str:
@@ -68,7 +70,7 @@ class Registry:
         pack_dir = Path(pack_dir)
         try:
             manifest = yaml.safe_load((pack_dir / "pack.yaml").read_text(encoding="utf-8"))
-            parse((pack_dir / "workflow.yaml").read_text(encoding="utf-8"))
+            wf = parse((pack_dir / "workflow.yaml").read_text(encoding="utf-8"))
         except (OSError, yaml.YAMLError) as e:
             raise RegistryError(f"cannot read pack: {e}") from e
         except WorkflowError as e:
@@ -80,6 +82,19 @@ class Registry:
         signed = signing.sign(key, "publish", digest)
         rec = PackRecord(manifest["id"], str(manifest["version"]), digest, signed.public_key,
                          signed.signature, manifest["summary"], listing or Listing())
+        rec.caps = capabilities(wf)
+        try:
+            new_v = Version.parse(rec.version)
+        except ValueError as e:
+            raise RegistryError(str(e)) from e
+        earlier = [r for r in self.records.values()
+                   if r.publisher_key == rec.publisher_key and r.id == rec.id and Version.parse(r.version) < new_v]
+        if earlier:
+            prev = max(earlier, key=lambda r: Version.parse(r.version))
+            reasons = widening(prev.caps, rec.caps) if prev.caps else []
+            if reasons and new_v.major <= Version.parse(prev.version).major:
+                raise RegistryError(f"{rec.version} widens what the pack can do ({'; '.join(reasons)}); "
+                                    "that needs a new major version")
         existing = self.records.get(rec.key)
         if existing and existing.digest != digest:
             raise RegistryError(f"{rec.key} is already published with different content; bump the version")
