@@ -15,7 +15,27 @@ from pathlib import Path
 
 SENSITIVITY = {"low": 0, "medium": 1, "high": 2}
 TYPE_RE = re.compile(r"^[a-z][a-z0-9-]{1,19}$")
+SEGMENT_RE = re.compile(r"^[a-z0-9][a-z0-9 _-]{0,29}$")
 MAX_TEXT = 2000
+MAX_DEPTH = 6
+
+
+def clean_path(raw: str) -> str:
+    """A shelf path such as 'work/clients': lower-case segments of letters, digits, spaces, dashes; at most 6 deep."""
+    if not isinstance(raw, str):
+        raise ValueError("a shelf name must be text")
+    parts = [re.sub(r"\s+", " ", p.strip().lower()) for p in raw.replace("\\", "/").split("/") if p.strip()]
+    if len(parts) > MAX_DEPTH:
+        raise ValueError(f"shelves can be at most {MAX_DEPTH} levels deep")
+    for p in parts:
+        if not SEGMENT_RE.match(p):
+            raise ValueError("a shelf name uses letters, digits, spaces and dashes, up to 30 characters")
+    return "/".join(parts)
+
+
+def under(path: str, shelf: str) -> bool:
+    """Is `path` the shelf itself or somewhere inside it?"""
+    return path == shelf or path.startswith(shelf + "/")
 
 
 @dataclass(frozen=True)
@@ -29,6 +49,7 @@ class Record:
     created: float = 0.0  # when the record entered the vault (epoch seconds; 0 = unknown, e.g. seed data)
     updated: float = 0.0
     edited: bool = False  # a person changed the text after it was saved
+    path: str = ""  # the shelf it sits on, like "work/clients"; empty means the shelf named after its type
 
     def __post_init__(self):
         if not TYPE_RE.match(self.type or ""):
@@ -39,10 +60,16 @@ class Record:
             raise ValueError(f"a record can hold at most {MAX_TEXT} characters")
         if self.sensitivity not in SENSITIVITY:
             raise ValueError(f"unknown sensitivity {self.sensitivity!r}")
+        if self.path != clean_path(self.path):
+            raise ValueError("the shelf path is not in its clean form")
         if self.trust_tier not in (0, 1, 2, 3):
             raise ValueError("trust_tier must be 0..3")
         if self.trust_tier < 3 and not self.origin:
             raise ValueError("a record below trust tier 3 must say where it came from")
+
+    @property
+    def shelf(self) -> str:
+        return self.path or self.type
 
     @property
     def content_hash(self) -> str:
@@ -67,12 +94,12 @@ class Vault:
         return self._records.pop(record_id, None)
 
     def update(self, record_id: str, *, now: float, text: str | None = None, sensitivity: str | None = None,
-               type: str | None = None) -> Record:
+               type: str | None = None, path: str | None = None) -> Record:
         """Change a record. A foreign record that a person edits becomes theirs (tier 3) but keeps its origin."""
         old = self._records.get(record_id)
         if old is None:
             raise KeyError(record_id)
-        changes = {k: v for k, v in (("text", text), ("sensitivity", sensitivity), ("type", type)) if v is not None}
+        changes = {k: v for k, v in (("text", text), ("sensitivity", sensitivity), ("type", type), ("path", path)) if v is not None}
         if not changes:
             return old
         new = replace(old, **changes, updated=now, edited=old.edited or "text" in changes, trust_tier=3 if "text" in changes else old.trust_tier)

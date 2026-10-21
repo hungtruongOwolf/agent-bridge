@@ -22,8 +22,8 @@ def broker(vault, **kw):
 
 def test_stages_only_what_the_lens_allows(vault):
     b = broker(vault)
-    assert set(b.manifest) == {"n1", "n2", "c1"}  # n3 too sensitive, f1 wrong type
-    assert b.describe()["by_type"] == {"note": 2, "contact": 1}
+    assert set(b.manifest) == {"n1", "c1"}  # n2, n3 and f1 are secret or in a closed drawer
+    assert b.describe()["by_type"] == {"note": 1, "contact": 1}
 
 
 def test_search_returns_only_in_lens_records(vault):
@@ -140,11 +140,19 @@ def test_fallback_still_counts_against_the_read_budget(vault):
     assert b.search("again nothing", fallback=True).verdict is Verdict.DENY
 
 
-def test_a_single_file_can_be_shared_even_though_its_type_would_not_be(vault):
-    lens = Lens(types=frozenset({"note"}), include=frozenset({"f1"}))  # the user opened just the money file
-    b = MemoryBroker(vault, lens, run_seed="s")
-    assert set(b.manifest) == {"n1", "n2", "f1"}
+def test_a_single_file_can_be_shared_even_though_its_type_would_not_be():
+    v = Vault([Record("n1", "note", "low", "a note"), Record("f1", "finance", "low", "Coffee budget is 40 a month")])
+    lens = Lens(types=frozenset({"note"}), include=frozenset({"f1"}))  # the user opened just the one file
+    b = MemoryBroker(v, lens, run_seed="s")
+    assert set(b.manifest) == {"n1", "f1"}
     assert b.read("f1").verdict is Verdict.ALLOW
+
+
+def test_a_secret_file_stays_home_even_if_someone_ticks_it(vault):
+    lens = Lens(types=frozenset({"note"}), include=frozenset({"f1", "n3"}))
+    b = MemoryBroker(vault, lens, run_seed="s")
+    assert "f1" not in b.manifest and "n3" not in b.manifest
+    assert b.read("f1").verdict is Verdict.DENY
 
 
 def test_a_single_file_can_be_held_back_whatever_else_says_yes(vault):

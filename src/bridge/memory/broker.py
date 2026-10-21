@@ -17,7 +17,9 @@ import re
 from dataclasses import dataclass, field
 from enum import Enum
 
-from .vault import SENSITIVITY, Record, Vault
+from .tree import MemoryTree
+from .vault import SENSITIVITY, Record, Vault, under
+from .words import tokens
 
 
 class Verdict(str, Enum):
@@ -28,24 +30,25 @@ class Verdict(str, Enum):
 
 @dataclass(frozen=True)
 class Lens:
-    types: frozenset[str]
-    max_sensitivity: str = "medium"
+    types: frozenset[str]  # whole drawers by kind of file (used by the command line and the tests)
+    max_sensitivity: str = "low"  # only everyday files are ever shareable; there is no dial to raise it
     max_records: int = 50
     max_reads: int = 30  # total records returned over the whole run
     max_results_per_query: int = 5
-    include: frozenset[str] = frozenset()  # record ids shared even though their type or level would not allow it
+    include: frozenset[str] = frozenset()  # record ids shared even though their shelf or type would not allow it (never a secret one)
     exclude: frozenset[str] = frozenset()  # record ids never shared, whatever else says yes
+    shelves: frozenset[str] = frozenset()  # whole shelves of the memory tree that are opened, with everything below them
 
     def __post_init__(self):
         if self.max_sensitivity not in SENSITIVITY:
             raise ValueError(f"unknown sensitivity {self.max_sensitivity!r}")
 
     def allows(self, r: Record) -> bool:
-        if r.id in self.exclude:
-            return False
+        if r.id in self.exclude or SENSITIVITY[r.sensitivity] > SENSITIVITY[self.max_sensitivity]:
+            return False  # a secret file stays home even if someone ticked it
         if r.id in self.include:
             return True
-        return r.type in self.types and SENSITIVITY[r.sensitivity] <= SENSITIVITY[self.max_sensitivity]
+        return r.type in self.types or any(under(r.shelf, s) for s in self.shelves)
 
 
 @dataclass(frozen=True)
@@ -61,24 +64,7 @@ class Result:
     records: list[dict] = field(default_factory=list)
 
 
-STOPWORDS = frozenset("""a an and are as at be been but by can could did do does for from had has have how i if in into is it its
-me my of on or our please should so tell that the their them then there these they this to up us was we were what when where which who
-whom why will with would you your about any anything give show""".split())
-
-
-def _stem(w: str) -> str:
-    for suffix in ("ing", "ed", "es", "s"):
-        if len(w) > len(suffix) + 2 and w.endswith(suffix):
-            return w[: -len(suffix)]
-    return w
-
-
-def _tokens(s: str) -> set[str]:
-    """Lower-case words, without filler words, reduced to a rough stem so 'prefer' finds 'prefers'."""
-    return {_stem(w) for w in re.findall(r"[a-z0-9]+", s.lower()) if w not in STOPWORDS}
-
-
-tokens = _tokens  # public name: other parts of the app compare words the same way
+_tokens = tokens  # kept for older callers; the shared version lives in words.py
 
 
 class MemoryBroker:
@@ -88,6 +74,7 @@ class MemoryBroker:
         for r in vault.all():
             if lens.allows(r) and len(self._staged) < lens.max_records:
                 self._staged[r.id] = r
+        self._tree = MemoryTree(self._staged.values())  # the helper's tree holds only what it may see
         self.manifest = {rid: r.content_hash for rid, r in sorted(self._staged.items())}
         self._seed = run_seed
         self._decoys: dict[str, Record] = {}
@@ -95,13 +82,21 @@ class MemoryBroker:
         self._killed = False
         self.events: list[Event] = []
         self.reads: list[str] = []  # accounting: every record id handed to the pack
+        self.walks: list[dict] = []  # every search: the shelves opened on the way down and the files it ended on
 
     # -- what the user sees on the approval card -------------------------------------------
     def describe(self) -> dict:
         by_type: dict[str, int] = {}
         for r in self._staged.values():
             by_type[r.type] = by_type.get(r.type, 0) + 1
-        return {"count": len(self._staged), "by_type": by_type, "reads_left": self._lens.max_reads - self._served}
+        by_shelf: dict[str, int] = {}
+        for r in self._staged.values():
+            by_shelf[r.shelf] = by_shelf.get(r.shelf, 0) + 1
+        return {"count": len(self._staged), "by_type": by_type, "by_shelf": by_shelf, "reads_left": self._lens.max_reads - self._served}
+
+    def shelf_of(self, record_id: str) -> str | None:
+        r = self._staged.get(record_id)
+        return r.shelf if r else None
 
     # -- what the pack can call ------------------------------------------------------------
     def search(self, query: str, *, type: str | None = None, fallback: bool = False) -> Result:
@@ -111,15 +106,15 @@ class MemoryBroker:
         themselves, still capped per query and still only what the lens allows."""
         if self._killed:
             return Result(Verdict.KILL)
-        if type is not None and type not in self._lens.types:
+        if type is not None and type not in self._lens.types and not any(r.type == type for r in self._staged.values()):
             return self._bait(type)
-        q = _tokens(query)
-        pool = [r for r in self._staged.values() if type is None or r.type == type]
-        scored = sorted(((len(q & _tokens(r.text + " " + r.type)), r.id, r) for r in pool), key=lambda t: (-t[0], t[1]))
-        hits = [r for score, _, r in scored if score > 0]
+        pool = self._tree if type is None else MemoryTree(r for r in self._staged.values() if r.type == type)
+        hits, opened = pool.route(query, self._lens.max_results_per_query)
         if not hits and fallback:
-            hits = [r for _, _, r in scored]
-        return self._serve(hits[: self._lens.max_results_per_query])
+            hits = pool.newest(self._lens.max_results_per_query)
+        res = self._serve(hits)
+        self.walks.append({"opened": opened, "files": [x["id"] for x in res.records]})
+        return res
 
     def read(self, record_id: str) -> Result:
         if self._killed:
