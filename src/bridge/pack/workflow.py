@@ -17,6 +17,7 @@ KINDS = ("llm", "tool", "code", "gate", "return")
 #   task     what the user asked this turn (typed by the user, so it may go to a web search)
 #   history  earlier turns of the conversation; they contain answers about your files, so it counts as private
 RESERVED_READS = ("task", "history")
+MEMORY_TOOLS = ("memory_search", "memory_read")  # the only doors to the user's records
 
 SCHEMA = {
     "type": "object",
@@ -171,13 +172,18 @@ def parse(text: str) -> Workflow:
     return Workflow(name=data["name"], start=data["start"], steps=steps, budget=data.get("budget", {}))
 
 
+def reads_memory(s: Step) -> bool:
+    """True for a step that touches the user's records, whether or not it said so in `memory`."""
+    return s.memory == "lens" or (s.kind == "tool" and s.tool in MEMORY_TOOLS)
+
+
 def _scope_problems(steps: dict[str, Step]) -> list[str]:
     """A step that reaches the web is PUBLIC: it may not read memory, nor any step that did.
 
     A step is private if it reads the memory lens or reads a private step. Web results may flow INTO
     private steps (research, then analysis) but private data may never flow OUT to a web step.
     """
-    private = {sid for sid, s in steps.items() if s.memory == "lens"} | {"history"}
+    private = {sid for sid, s in steps.items() if reads_memory(s)} | {"history"}
     changed = True
     while changed:
         changed = False
@@ -188,7 +194,7 @@ def _scope_problems(steps: dict[str, Step]) -> list[str]:
     problems = []
     for s in steps.values():
         if s.kind == "tool" and s.tool == "web_search":
-            if s.memory != "none":
+            if reads_memory(s):
                 problems.append(f"step {s.id!r}: a web_search step is public and cannot read the memory lens")
             for r in s.reads:
                 if r in private:

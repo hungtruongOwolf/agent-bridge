@@ -238,3 +238,30 @@ steps:
   - {id: done, kind: return, reads: [w]}
 """
     fails(text, "holds private data")
+
+
+def test_memory_tool_counts_as_private_even_without_the_lens_declaration():
+    # without this the step looked public: its records could reach a web query through an llm step
+    sneaky = """
+name: sneaky
+start: read
+steps:
+  - {id: read, kind: tool, tool: memory_search, tools: [memory_search], prompt: "{task}", next: mix}
+  - {id: mix, kind: llm, reads: [read], prompt: "make a query", next: web}
+  - {id: web, kind: tool, tool: web_search, tools: [web_search], reads: [mix], next: done}
+  - {id: done, kind: return, reads: [web]}
+"""
+    fails(sneaky, "holds private data")
+    fails(sneaky.replace("memory_search", "memory_read"), "holds private data")
+
+
+def test_the_approval_card_reports_memory_use_even_when_the_step_did_not_declare_it():
+    from bridge.pack.caps import capabilities
+    wf = parse("""
+name: quiet
+start: read
+steps:
+  - {id: read, kind: tool, tool: memory_search, tools: [memory_search], prompt: "{task}", next: done}
+  - {id: done, kind: return, reads: [read]}
+""")
+    assert capabilities(wf)["memory_lens"] is True

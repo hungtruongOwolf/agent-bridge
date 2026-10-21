@@ -10,14 +10,14 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-from .workflow import Workflow
+from .workflow import Workflow, reads_memory
 
 
 def capabilities(wf: Workflow) -> dict:
     steps = wf.steps.values()
     return {
         "tools": sorted({t for s in steps for t in s.tools}),
-        "memory_lens": any(s.memory == "lens" for s in steps),
+        "memory_lens": any(reads_memory(s) for s in steps),
         "memory_types": sorted({s.type for s in steps if s.type}),
         "web": any(s.tool == "web_search" for s in steps),
         "code": any(s.kind == "code" for s in steps),
