@@ -134,7 +134,7 @@
     }
     if (m.payment) {
       const p = m.payment;
-      meta.append(p.state === "SETTLED" ? "Paid " + B.cents(p.captured) : p.state === "SETTLED_REJECTED" ? "Marked not helpful, paid " + B.cents(p.captured) : p.state === "RESULT_READY" ? "Counts as good when you send your next message" : p.captured ? "Paid " + B.cents(p.captured) : "Not charged");
+      meta.append(p.state === "SETTLED" ? "Paid " + B.cents(p.captured) : p.state === "SETTLED_REJECTED" ? "Marked not helpful, paid " + B.cents(p.captured) : p.state === "RESULT_READY" ? "Unless you press “Not helpful”, you pay the rest when you send your next message" : p.captured ? "Paid " + B.cents(p.captured) : "Not charged");
       if (p.can_reject) meta.append(" ", btn("Not helpful", "linkbtn", () => act("/api/thread/reject", { id: cur.id, message_id: m.id })));
     }
     if (m.role !== "system" || !m.run_id) meta.append(" ", btn("Forget this message", "linkbtn", () => act("/api/thread/forget", { id: cur.id, message_id: m.id })));

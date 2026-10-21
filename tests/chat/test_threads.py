@@ -131,3 +131,10 @@ def test_starting_a_new_chat_removes_blank_ones_but_keeps_chats_with_messages(tm
     store.add(used.id, "user", "hello")
     fresh = store.create("k2")
     assert blank.id not in store.threads and used.id in store.threads and fresh.id in store.threads
+
+
+def test_a_chat_title_is_cut_at_a_word():
+    from bridge.chat.service import short_title
+    assert short_title("what are the action items from my meetings") == "what are the action items from my…"
+    assert short_title("Which accounts?") == "Which accounts?"
+    assert short_title("x" * 80) == "x" * 40 + "…"

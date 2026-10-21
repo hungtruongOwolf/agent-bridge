@@ -20,6 +20,15 @@ from .plain import answer_text, blocked_phrase, failure_message, how_made, stopp
 from .threads import ThreadError, clean_lens
 
 
+def short_title(text: str, limit: int = 40) -> str:
+    """A chat is named after its first question, cut at a word so it never ends mid-word."""
+    text = " ".join(text.split())
+    if len(text) <= limit:
+        return text
+    cut = text[:limit].rsplit(" ", 1)[0] or text[:limit]
+    return cut.rstrip(",.;:") + "…"
+
+
 class ChatBusy(ThreadError):
     """A message is already being answered in this chat."""
 
@@ -242,7 +251,7 @@ class ChatService:
             params = dict(params, lens=self.run_lens(t), history=clean_history(self.history(t)))  # settings changed while waiting count
             self._accept_previous(t, run_id)
             if t.title == "New chat" and not t.messages:  # name a fresh chat after its first question
-                self.store.settings(tid, title=params["task"][:40])
+                self.store.settings(tid, title=short_title(params["task"]))
             self.store.add(tid, "user", params["task"])
             started = True
             self.running[tid] = run_id

@@ -203,7 +203,7 @@
     size = { w: maxX - minX + 40, h: Math.max(maxY - minY, stalls.length * 76 + 80) + 40 };
     if (fitNext) { fitNext = false; fit(); } else applyView();
   }
-  async function loadChats() { try { stalls = (await B.api("/api/office")).stalls; } catch (e) { stalls = []; } drawTree(); }
+  async function loadChats() { const had = stalls.length; try { stalls = (await B.api("/api/office")).stalls; } catch (e) { stalls = []; } if (stalls.length !== had) fitNext = true; drawTree(); }
 
   async function select(path) {
     sel = path; selFile = null; offset = 0; leaf = [];

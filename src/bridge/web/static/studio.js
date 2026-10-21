@@ -75,7 +75,7 @@
   function say(p) {  // the checker's words, in plain language, and which step they are about
     let m;
     if ((m = /step '([a-z0-9_]+)' is unreachable from start/.exec(p))) return [m[1], "“" + nameOf(m[1]) + "” is not connected: nothing leads to it. Drag the green dot of an earlier step onto it, or remove it."];
-    if ((m = /step '([a-z0-9_]+)': (.*)/.exec(p))) return [m[1], "“" + nameOf(m[1]) + "”: " + m[2].replace(/`/g, "")];
+    if ((m = /step '([a-z0-9_]+)': (.*)/.exec(p))) return [m[1], "“" + nameOf(m[1]) + "”: " + m[2].replace(/`/g, "").replace(/'([a-z0-9_]+)'/g, (x, id) => (byId(id) ? "“" + nameOf(id) + "”" : x)).replace("which never runs before it", "which only runs later. Move it after that step, or untick it below.")];
     if ((m = /cycle through step '([a-z0-9_]+)'/.exec(p))) return [m[1], "The steps go round in a circle at “" + nameOf(m[1]) + "”. Loops are not available yet."];
     return [null, p.replace(/^The steps: /, "")];
   }
@@ -244,10 +244,9 @@
 
   /* ---------- adding and removing steps ---------- */
   function newId(base) { let i = 1; while (byId(base + (i > 1 ? i : ""))) i++; return base + (i > 1 ? i : ""); }
+  function mainPath() { const seen = new Set(), order = []; let cur = wf && wf.start; while (cur && byId(cur) && !seen.has(cur)) { seen.add(cur); order.push(byId(cur)); cur = byId(cur).next; } return order; }
   function lastOnMainPath() {  // the last working step before the check or the hand-over: new steps go after it
-    const seen = new Set(), order = []; let cur = wf && wf.start;
-    while (cur && byId(cur) && !seen.has(cur)) { seen.add(cur); order.push(byId(cur)); cur = byId(cur).next; }
-    return order.filter((x) => x.kind !== "return" && x.kind !== "gate").pop() || null;
+    return mainPath().filter((x) => x.kind !== "return" && x.kind !== "gate").pop() || null;
   }
   function addStep(kind) {
     if (!wf) return;
@@ -260,18 +259,32 @@
       deliver: (id) => ({ id, kind: "return", reads: [(steps().filter((s) => s.kind === "llm").pop() || {}).id].filter(Boolean) })
     }[kind];
     const base = { files: "read", web: "web", think: "think", check: "check", program: "program", deliver: "done" }[kind];
-    const s = tmpl(newId(base)), after = (sel && byId(sel)) || lastOnMainPath();
-    if (after && after.kind !== "return" && s.kind !== "return") { s.next = after.next; if (s.kind === "gate") s.on_fail = after.on_fail || undefined; after.next = s.id; }
+    const s = tmpl(newId(base));
+    if (kind === "files" || kind === "web") {  // something to read or look up goes before the step that thinks, and that step reads it
+      const order = mainPath(), at = order.findIndex((x) => x.kind === "llm");
+      if (at >= 0) {
+        const target = order[at], prev = order[at - 1];
+        if (prev) prev.next = s.id; else wf.start = s.id;
+        s.next = target.id; target.reads = [...new Set([...(target.reads || []), s.id])];
+        wf.steps.push(s); sel = s.id; fitNext = true; changed(["steps"]); drawGraph(); drawPanel(); return;
+      }
+    }
+    const lastThink = mainPath().filter((x) => x.kind === "llm").pop();
+    const after = kind === "check" ? (lastThink || (sel && byId(sel)) || lastOnMainPath()) : (sel && byId(sel)) || lastOnMainPath();
+    if (after && after.kind !== "return" && s.kind !== "return") { s.next = after.next; if (s.kind === "gate") { const bad = steps().find((x) => x.kind === "return" && !(x.reads || []).length); s.on_fail = after.on_fail || (bad && bad.id) || undefined; } after.next = s.id; }
+    if (kind === "deliver") {  // a new hand-over step is joined to the first check that has nowhere to go on failure
+      const gate = steps().find((x) => x.kind === "gate" && !x.on_fail); if (gate) gate.on_fail = s.id;
+    }
     else if (s.kind !== "return") { const last = steps().find((x) => x.kind === "return"); if (last) s.next = last.id; }
     wf.steps.push(s); if (!wf.start) wf.start = s.id;
-    sel = s.id; changed(["steps"]); drawGraph(); drawPanel();
+    sel = s.id; fitNext = true; changed(["steps"]); drawGraph(); drawPanel();
   }
   function removeStep(id) {
     const s = byId(id); if (!s) return;
     wf.steps = wf.steps.filter((x) => x.id !== id);
     wf.steps.forEach((x) => { if (x.next === id) { if (s.next && s.next !== x.id) x.next = s.next; else delete x.next; } if (x.on_fail === id) delete x.on_fail; x.reads = (x.reads || []).filter((r) => r !== id); if (x.propose === id) delete x.propose; });
     if (wf.start === id) wf.start = s.next || (wf.steps[0] && wf.steps[0].id);
-    delete layout[id]; sel = null; changed(["steps"]); drawGraph(); drawPanel();
+    delete layout[id]; sel = null; fitNext = true; changed(["steps"]); drawGraph(); drawPanel();
   }
 
   /* ---------- the right-hand panel ---------- */
