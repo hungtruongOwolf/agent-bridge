@@ -74,8 +74,8 @@ function drawLogo() {
   const c = $("logo").getContext("2d");
   c.imageSmoothingEnabled = false;
   c.fillStyle = "#FFF8E7";
-  c.fillRect(0, 0, 20, 14);
-  person(c, 10, 14, { pose: "idle", facing: "f", shirt: "#5CA97A", hat: "cap", skin: "#E0AC82", hair: "#1A1320" }, 0);
+  c.fillRect(0, 0, 22, 26);
+  person(c, 11, 25, { pose: "idle", facing: "f", shirt: "#5CA97A", hat: "cap", skin: "#E0AC82", hair: "#1A1320" }, 0);
 }
 
 async function start() {

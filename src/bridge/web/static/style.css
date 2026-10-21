@@ -47,10 +47,11 @@ a{color:inherit}
 .mic.on{background:var(--coral);animation:blink 1s steps(2) infinite}
 
 .tabs,.view{width:100%;max-width:var(--page);margin:0 auto}
-.tabs{display:flex;flex-wrap:wrap;gap:6px;padding:12px var(--gap) 0}
-.tabs a{background:var(--cream-200);border:2px solid var(--ink-900);border-bottom:0;padding:8px 18px;font-weight:600;color:var(--ink-900);text-decoration:none}
+.tabs{position:relative;display:flex;flex-wrap:wrap;gap:6px;padding:12px var(--gap) 0}
+.tabs::after{content:"";position:absolute;left:var(--gap);right:var(--gap);bottom:0;height:2px;background:var(--ink-900)}  /* the line the tabs stand on */
+.tabs a{position:relative;z-index:1;background:var(--cream-200);border:2px solid var(--ink-900);padding:8px 18px;font-weight:600;color:var(--ink-900);text-decoration:none}
 .tabs a:hover{background:var(--cream-50)}
-.tabs a[aria-current="page"]{background:var(--cream-100);box-shadow:0 2px 0 var(--cream-100)}
+.tabs a[aria-current="page"]{z-index:2;background:var(--cream-100);border-bottom-color:var(--cream-100)}
 .view{padding:var(--gap)}
 .view>*+*{margin-top:var(--gap)}
 .view.cols>*+*{margin-top:0}
