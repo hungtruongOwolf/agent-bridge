@@ -355,3 +355,64 @@ def test_a_refused_payout_stays_owed_and_is_retried_later():
     p.refuse = False
     pay["status"] = "pending"  # an operator re-queues it after fixing the destination
     assert l.release_payouts(5) == 1 and p.paid_total() == 90
+
+
+# ---- metered helpers: the hold is the most it can cost, the price is what was read ---------------------------
+
+def test_a_run_can_be_priced_below_the_hold_and_the_rest_goes_back():
+    l, p = ledger()
+    hire(l)
+    l.start("run-1", 1)
+    row = l.reprice("run-1", 40, 1.5)
+    assert row.price == 40 and row.floor == 10 and row.hold == PRICE
+    l.result_ready("run-1", 2)
+    assert p.captured_total() == 10
+    l.accept("run-1", 3)
+    assert p.captured_total() == 40 and l.rows["run-1"].state == "SETTLED"
+    assert any(op == "void" for op, _ in p.calls)  # the unused part of the hold was released
+    l.release_payouts(4)
+    assert p.paid_total() == 36  # 40 less the 10% platform fee
+    assert "40¢ of the 100¢ hold" in l.rows["run-1"].events[-3]["why"] or any("40¢ of the 100¢ hold" in e["why"] for e in l.rows["run-1"].events)
+
+
+def test_a_rejected_metered_run_still_releases_the_whole_unused_hold():
+    l, p = ledger()
+    hire(l)
+    l.start("run-1", 1)
+    l.reprice("run-1", 40, 1.5)
+    l.result_ready("run-1", 2)
+    l.reject("run-1", 3)
+    assert p.captured_total() == 10 and any(op == "void" for op, _ in p.calls)
+
+
+@pytest.mark.parametrize("amount", [0, -5, 101, 1.5, True, "40"])
+def test_a_run_cannot_be_priced_above_its_hold_or_nonsensically(amount):
+    l, _ = ledger()
+    hire(l)
+    l.start("run-1", 1)
+    with pytest.raises(StateError):
+        l.reprice("run-1", amount, 2)
+
+
+def test_only_a_run_that_is_under_way_can_be_repriced():
+    l, _ = ledger()
+    hire(l)
+    with pytest.raises(StateError, match="AUTHORIZED"):
+        l.reprice("run-1", 40, 1)
+    l.start("run-1", 1)
+    l.result_ready("run-1", 2)
+    with pytest.raises(StateError, match="RESULT_READY"):
+        l.reprice("run-1", 40, 3)
+
+
+def test_old_ledger_rows_without_a_hold_still_settle(tmp_path):
+    l, p = ledger(path=tmp_path / "l.json")
+    ready(l)
+    import json
+    raw = json.loads((tmp_path / "l.json").read_text())
+    for r in raw:
+        r.pop("hold")
+    (tmp_path / "l.json").write_text(json.dumps(raw))
+    l2 = Ledger(p, path=tmp_path / "l.json")
+    l2.accept("run-1", 3)
+    assert p.captured_total() == PRICE

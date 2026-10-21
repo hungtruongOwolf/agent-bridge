@@ -142,9 +142,9 @@
       who.append(nm, el("span", "blurb", m.summary));
       const tr = el("div", "trust"); tr.append(pips(m), el("span", null, trustText(m)));
       if (m.status === "certified") tr.append(el("span", "tag good", "#" + m.rank));
-      who.append(tr);
+      who.append(tr, el("span", "blurb", "Price: " + m.price_text));
       const acts = el("div", "acts");
-      acts.append(btn("Meet", "btn", () => window.ChatUI.profile(m.key)), btn("Chat · " + B.cents(Math.round(m.price_usd * 100)) + " each", "btn go2", () => window.ChatUI.startNew(m.key)));
+      acts.append(btn("Meet", "btn", () => window.ChatUI.profile(m.key)), btn("Chat", "btn go2", () => window.ChatUI.startNew(m.key)));
       const fan = btn("♥ " + m.stars + " fans", "fan", async () => { try { const r = await B.api("/api/star", { key: m.key, user: "you" }); m.stars = r.stars; drawPicker(); } catch (e) { /* optional */ } });
       acts.append(fan);
       row.append(cv, who, acts); box.append(row);

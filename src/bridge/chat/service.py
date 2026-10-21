@@ -51,7 +51,7 @@ class ChatService:
             return {"id": "gone", "name": "This helper", "version": "", "status": "gone", "price_cents": 0, "available": False}
         return {"id": rec.id, "name": rec.id.replace("-", " ").title(), "version": rec.version,
                 "status": self.app.world.market.status(rec), "price_cents": max(1, round(rec.listing.price_usd * 100)),
-                "available": True, "key": rec.key}
+                "price_text": rec.listing.text(), "metered": rec.listing.metered, "available": True, "key": rec.key}
 
     def money(self, t) -> dict:
         """What this chat has cost, and what is still undecided, in cents."""

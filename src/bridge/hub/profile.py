@@ -59,10 +59,10 @@ def _measured(att: Attestation | None, status: str, violations: list[str]) -> di
 
 
 def build(rec: PackRecord, *, attestation: Attestation | None, status: str, versions: list[dict], price_cents: int,
-          unit: str, stars: int) -> dict:
+          unit: str, stars: int, price_text: str = "", metered: bool = False) -> dict:
     return {
         "key": rec.key, "id": rec.id, "version": rec.version, "summary": rec.summary, "speciality": rec.speciality,
-        "price_cents": price_cents, "unit": unit, "stars": stars,
+        "price_cents": price_cents, "price_text": price_text or f"{price_cents}¢ each", "metered": metered, "unit": unit, "stars": stars,
         "author_says": {"skills": rec.skills, "good_to_know": rec.limits},
         "works_with": _works_with(rec), "cannot": _cannot(rec),
         "measured": _measured(attestation, status, list(attestation.violations) if attestation else []),

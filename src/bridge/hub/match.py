@@ -53,7 +53,7 @@ def rank(question: str, candidates: list[tuple], limit: int = 3) -> list[dict]:
             reason = "Its description fits what you asked."
         else:
             reason = "Nothing it says matches closely, but it is well tested."
-        out.append({"key": rec.key, "id": rec.id, "price_cents": max(1, round(rec.listing.price_usd * 100)),
+        out.append({"key": rec.key, "id": rec.id, "price_cents": max(1, round(rec.listing.price_usd * 100)), "price_text": rec.listing.text(),
                     "fit": round(r["fit"], 2), "matched": r["fit"] > 0, "reason": reason,
                     "example": best["example"] if r["fit"] > 0 else None,
                     "trust": round(r["trust"] * 100) if r["trust"] else None})

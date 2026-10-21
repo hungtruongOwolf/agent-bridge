@@ -92,8 +92,8 @@
     box.append(el("p", "recshead", found[0].matched ? "These helpers fit what you asked:" : "Nobody says they are made for that. The best tested helpers are:"));
     found.forEach((m) => {
       const row = el("div", "rec"), who = el("div", "who");
-      who.append(el("span", "name", window.niceName(m.id)), el("span", "blurb", m.reason + (m.trust != null ? " Trust " + m.trust + " out of 100." : " Not tested yet.")));
-      const go = el("button", "btn go2", "Chat about this, " + cents(m.price_cents) + " an answer"); go.type = "button";
+      who.append(el("span", "name", window.niceName(m.id)), el("span", "blurb", m.reason + (m.trust != null ? " Trust " + m.trust + " out of 100." : " Not tested yet.")), el("span", "blurb", "Price: " + m.price_text + "."));
+      const go = el("button", "btn go2", "Chat about this"); go.type = "button";
       go.onclick = async () => { box.replaceChildren(); $("ask").value = ""; await window.ChatUI.startWith(m.key, text); };
       const meet = el("button", "btn", "Meet"); meet.type = "button"; meet.onclick = () => window.ChatUI.profile(m.key);
       row.append(who, go, meet); box.append(row);

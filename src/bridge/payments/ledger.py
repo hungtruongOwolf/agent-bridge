@@ -48,6 +48,7 @@ class Row:
     requester: str
     price: int
     floor: int
+    hold: int = 0  # what was put on hold at hire; the final price may turn out lower (metered helpers)
     state: str = "AUTHORIZED"
     rev: int = 0
     auth_id: str | None = None
@@ -144,7 +145,7 @@ class Ledger:
             if author == requester:
                 raise StateError("an author cannot hire their own pack")
             row = Row(run_id, pack_key, author, requester, price, price * self.floor_pct // 100,
-                      accept_window_s=accept_window_s)
+                      hold=price, accept_window_s=accept_window_s)
             self.rows[run_id] = row
             try:
                 auth = self._do(row, "authorize", lambda: self.provider.authorize(price, f"{run_id}:authorize", run_id))
@@ -181,6 +182,21 @@ class Ledger:
             self._move(row, {"AUTHORIZED"}, "RUNNING", now, "run started")
             row.run_deadline = now + run_deadline_s
             self._save()
+            return row
+
+    def reprice(self, run_id: str, amount: int, now: float, reason: str = "priced by what the helper read") -> Row:
+        """Lower the price of a run that is under way, once its real cost is known. It can never go above what was held."""
+        with self._lock:
+            row = self._row(run_id)
+            if row.state != "RUNNING":
+                raise StateError(f"cannot change the price: the run is {row.state}")
+            hold = row.hold or row.price
+            if not isinstance(amount, int) or isinstance(amount, bool) or not 1 <= amount <= hold:
+                raise StateError("the price must be between 1 cent and what was held")
+            if amount != row.price:
+                row.events.append({"t": now, "from": row.state, "to": row.state, "why": f"{reason}: {amount}¢ of the {hold}¢ hold"})
+                row.price, row.floor = amount, amount * self.floor_pct // 100
+                self._save()
             return row
 
     def result_ready(self, run_id: str, now: float, reason: str = "result ready") -> Row:
@@ -234,7 +250,7 @@ class Ledger:
             return row
 
     def _void_remainder(self, row: Row) -> None:
-        if row.captured() < row.price:
+        if row.captured() < (row.hold or row.price):  # whatever of the hold was not used goes back to the buyer
             self._void(row)
 
     def kill(self, run_id: str, now: float, evidence: str, dispute_window_s: float = 72 * 3600) -> Row:

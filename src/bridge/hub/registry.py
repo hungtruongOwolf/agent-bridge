@@ -32,6 +32,27 @@ class Listing:
     unit: str = "task"  # "task" | "hour"
     speciality: str = "general"
     payout_email: str = ""  # where the author is paid (a PayPal email for real payouts)
+    per_file_cents: int = 0  # metered pricing: extra cents for every file the helper reads (0 = one flat price)
+    base_usd: float = 0.0  # metered pricing: the part every answer costs; price_usd is then the most one answer can cost
+
+    @property
+    def metered(self) -> bool:
+        return self.per_file_cents > 0
+
+    @property
+    def max_cents(self) -> int:
+        return max(1, round(self.price_usd * 100))
+
+    def cents_for(self, files_read: int) -> int:
+        """What one answer costs: the flat price, or base plus a bit per file read, never more than the stated maximum."""
+        if not self.metered:
+            return self.max_cents
+        return max(1, min(self.max_cents, round(self.base_usd * 100) + self.per_file_cents * max(0, files_read)))
+
+    def text(self) -> str:
+        if not self.metered:
+            return f"{self.max_cents}¢ each"
+        return f"{max(1, round(self.base_usd * 100))}¢ + {self.per_file_cents}¢ per file it reads, at most {self.max_cents}¢"
 
 
 @dataclass

@@ -238,6 +238,11 @@ class App:
                     pass
             raise
         with self.lock:
+            if rep.outcome == "COMPLETE" and rec.listing.metered:  # the buyer pays for what the helper actually read, up to the held maximum
+                try:
+                    self.ledger.reprice(run_id, rec.listing.cents_for(len(rep.records_handed)), self.clock())
+                except StateError:
+                    pass
             self._settle_outcome(rec, run_id, rep)
             out = dict(rep.__dict__)
             raw = out.pop("proposals_raw")
@@ -395,10 +400,10 @@ POST_ROUTES = {
     "/api/studio/save": lambda a, b: a.studio.save(b.get("id"), b),
     "/api/studio/delete": lambda a, b: a.studio.delete(b.get("id")),
     "/api/studio/try": lambda a, b: a.studio.try_it(b.get("id"), b.get("task"), b.get("shelves")),
-    "/api/studio/publish": lambda a, b: a.studio.publish(b.get("id"), b.get("price_usd"), b.get("payout_email", "")),
+    "/api/studio/publish": lambda a, b: a.studio.publish(b.get("id"), b.get("price_usd"), b.get("payout_email", ""), b.get("per_file_cents", 0), b.get("base_usd", 0)),
     "/api/studio/retest": lambda a, b: a.studio.retest(b.get("key")),
     "/api/studio/retire": lambda a, b: a.studio.retire(b.get("key")),
-    "/api/studio/price": lambda a, b: a.studio.set_price(b.get("key"), b.get("price_usd"), b.get("payout_email", "")),
+    "/api/studio/price": lambda a, b: a.studio.set_price(b.get("key"), b.get("price_usd"), b.get("payout_email", ""), b.get("per_file_cents", 0), b.get("base_usd", 0)),
 }
 
 

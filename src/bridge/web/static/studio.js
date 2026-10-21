@@ -425,12 +425,35 @@
     const m = H.manifest;
     box.append(el("p", "small", "Publishing puts version " + m.version + " on the market with your signature. A tester then runs it on a fixed set of questions and tries to catch it cheating. Its trust score comes from that, not from you."));
     if (problems.length) box.append(el("p", "small warnline", "Fix the " + window.plural(problems.length, "thing") + " listed at the top first."));
-    const price = document.createElement("input"); price.type = "number"; price.min = 0.01; price.max = 5; price.step = 0.05; price.value = ((H.versions[0] && H.versions[0].price_usd) || 0.2); price.setAttribute("aria-label", "Price per answer in dollars");
-    const mail = input(H.versions[0] ? H.versions[0].payout_email : "", () => {}, 120); mail.placeholder = "you@example.com (optional)";
-    box.append(field("Price per answer (US dollars)", price, "Demo money only: nothing real moves in this demo."), field("Where you would be paid", mail));
+    const last = H.versions[0] || {}, metered0 = !!last.per_file_cents;
+    const mode = { v: metered0 ? "metered" : "flat" };
+    const price = document.createElement("input"); price.type = "number"; price.min = 0.01; price.max = 5; price.step = 0.05; price.value = last.price_usd || 0.2; price.setAttribute("aria-label", "Price in dollars");
+    const base = document.createElement("input"); base.type = "number"; base.min = 0; base.max = 5; base.step = 0.01; base.value = metered0 ? last.base_usd : 0.05; base.setAttribute("aria-label", "Starting price in dollars");
+    const per = document.createElement("input"); per.type = "number"; per.min = 1; per.max = 500; per.step = 1; per.value = last.per_file_cents || 3; per.setAttribute("aria-label", "Cents for every file it reads");
+    const mail = input(last.payout_email || "", () => {}, 120); mail.placeholder = "you@example.com (optional)";
+    const pick = el("div", "modepick");
+    [["flat", "One price for every answer"], ["metered", "Charge for what it reads: a small starting price plus a little for every file"]].forEach(([v, t]) => {
+      const l = el("label", "small"), r = document.createElement("input"); r.type = "radio"; r.name = "pricemode"; r.value = v; r.checked = mode.v === v;
+      r.onchange = () => { mode.v = v; drawFields(); }; l.append(r, " " + t); pick.append(l);
+    });
+    const fields = el("div"), preview = el("p", "small muted");
+    const drawPreview = () => {
+      const cap = Math.round(parseFloat(price.value) * 100) || 0;
+      preview.textContent = mode.v === "flat" ? "Every answer costs " + cap + "¢." : "An answer that reads 4 files would cost " + Math.min(cap, Math.round(parseFloat(base.value) * 100 || 0) + 4 * (parseInt(per.value, 10) || 0)) + "¢. The person sees the maximum (" + cap + "¢) before they start and pays only for what was read.";
+    };
+    const drawFields = () => {
+      fields.replaceChildren();
+      if (mode.v === "flat") fields.append(field("Price per answer (US dollars)", price));
+      else fields.append(field("Starting price (US dollars)", base), field("Cents for every file it reads", per), field("Most one answer can cost (US dollars)", price));
+      fields.append(preview); drawPreview();
+      [price, base, per].forEach((x) => { x.oninput = drawPreview; });
+    };
+    drawFields();
+    box.append(pick, fields, el("p", "small muted", "Demo money only: nothing real moves in this demo."), field("Where you would be paid", mail));
+    const pricing = () => (mode.v === "flat" ? { price_usd: parseFloat(price.value) } : { price_usd: parseFloat(price.value), base_usd: parseFloat(base.value) || 0, per_file_cents: parseInt(per.value, 10) || 0 });
     const go = btn("Publish version " + m.version, "btn go2", async () => {
       go.disabled = true;
-      try { await B.api("/api/studio/publish", { id: H.id, price_usd: parseFloat(price.value), payout_email: mail.value }); note("Published. The tester is checking it now; this can take a few minutes."); await B.refresh(); await openHelper(H.id); tab = "publish"; drawPanel(); }
+      try { await B.api("/api/studio/publish", Object.assign({ id: H.id, payout_email: mail.value }, pricing())); note("Published. The tester is checking it now; this can take a few minutes."); await B.refresh(); await openHelper(H.id); tab = "publish"; drawPanel(); }
       catch (e) { note(e.message); go.disabled = false; }
     }); go.disabled = problems.length > 0; box.append(go);
     box.append(el("h3", "sub", "Your versions"));
@@ -438,12 +461,12 @@
     H.versions.forEach((v) => {
       const c = el("div", "mem"), [t, cls] = chipFor(v);
       c.append(el("div", null, "Version " + v.version), el("span", "tag " + cls, t));
-      c.append(el("div", "small muted", v.answers + " answer" + (v.answers === 1 ? "" : "s") + " given · earned " + B.cents(v.earned_cents) + " · " + v.stars + " fan" + (v.stars === 1 ? "" : "s") + " · $" + v.price_usd.toFixed(2) + " each"));
+      c.append(el("div", "small muted", v.answers + " answer" + (v.answers === 1 ? "" : "s") + " given · earned " + B.cents(v.earned_cents) + " · " + v.stars + " fan" + (v.stars === 1 ? "" : "s") + " · " + v.price_text));
       if (v.test_error) c.append(el("div", "small warnline", v.test_error));
       const a = el("div", "acts");
       if (!v.revoked) {
         a.append(btn("Test it again", "btn", async () => { try { await B.api("/api/studio/retest", { key: v.key }); await openHelper(H.id); tab = "publish"; drawPanel(); } catch (e) { note(e.message); } }));
-        a.append(btn("Change price", "btn", async () => { const p = parseFloat(price.value); try { await B.api("/api/studio/price", { key: v.key, price_usd: p, payout_email: mail.value }); await B.refresh(); await openHelper(H.id); tab = "publish"; drawPanel(); } catch (e) { note(e.message); } }));
+        a.append(btn("Change price", "btn", async () => { try { await B.api("/api/studio/price", Object.assign({ key: v.key, payout_email: mail.value }, pricing())); await B.refresh(); await openHelper(H.id); tab = "publish"; drawPanel(); } catch (e) { note(e.message); } }));
         a.append(btn("Take it off the market", "btn warn", (e) => { if (e.target.dataset.armed) retire(v.key); else { e.target.dataset.armed = "1"; e.target.textContent = "Really?"; setTimeout(() => { delete e.target.dataset.armed; e.target.textContent = "Take it off the market"; }, 3500); } }));
       }
       c.append(a); box.append(c);

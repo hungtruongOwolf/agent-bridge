@@ -85,7 +85,7 @@
     if (!cur) { $("budgetline").textContent = ""; say(""); $("convohead").replaceChildren(); return; }
     const head = $("convohead"); head.replaceChildren();
     const a = cur.agent;
-    const title = el("div"); title.append(el("div", "h", cur.title), el("div", "muted small", a.available ? "with " + a.name + " · " + B.cents(a.price_cents) + " per answer" : "This helper is no longer available."));
+    const title = el("div"); title.append(el("div", "h", cur.title), el("div", "muted small", a.available ? "with " + a.name + " · " + a.price_text : "This helper is no longer available."));
     const acts = el("div", "acts");
     if (a.available) acts.append(btn("Meet " + a.name, "btn", () => profile(a.key)));
     head.append(title, acts);
@@ -349,7 +349,7 @@
     const name = B.niceName(p.id);
     body.append(el("h2", null, "Meet " + name), el("p", null, p.summary));
     if (p.speciality) body.append(el("p", "muted", "Best at: " + p.speciality));
-    body.append(el("p", "small", B.cents(p.price_cents) + " per answer · " + p.stars + " fans · version " + p.version));
+    body.append(el("p", "small", p.price_text + " · " + p.stars + " fans · version " + p.version));
 
     body.append(el("h3", "sub", "What it can do"));
     p.author_says.skills.forEach((s) => {

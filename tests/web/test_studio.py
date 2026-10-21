@@ -202,3 +202,26 @@ def test_the_layout_of_the_graph_is_remembered(srv):
     pos = {"read": {"x": 10, "y": 20}, "bad": {"x": "no", "y": 1}}
     out = post(app, url, "/api/studio/save", {"id": "my-helper", "layout": pos})[1]
     assert out["layout"] == {"read": {"x": 10, "y": 20}}
+
+
+def test_a_helper_can_charge_for_what_it_reads_up_to_a_stated_maximum(srv):
+    from test_chat_api import new_chat, send
+    app, url = srv
+    make(app, url)
+    assert post(app, url, "/api/studio/publish", {"id": "my-helper", "price_usd": 0.5, "per_file_cents": 5, "base_usd": 0.9})[0] == 400  # base above the maximum
+    assert post(app, url, "/api/studio/publish", {"id": "my-helper", "price_usd": 0.5, "per_file_cents": 900})[0] == 400
+    assert post(app, url, "/api/studio/publish", {"id": "my-helper", "price_usd": 0.5, "per_file_cents": 5, "base_usd": 0.05})[0] == 200
+    v = wait_tested(app, url, "my-helper")
+    assert v["per_file_cents"] == 5 and "5¢ + 5¢ per file it reads, at most 50¢" == v["price_text"]
+    market = next(m for m in call(url + "/api/state")[1]["market"] if m["id"] == "my-helper")
+    assert market["metered"] and market["price_text"] == v["price_text"]
+    t = new_chat(app, url, pid="my-helper", shelves=["note"])
+    out = send(app, url, t["id"], "Which accounts are at risk?")[1]
+    files = len(out["thread"]["messages"][-1]["files"])
+    rid = out["thread"]["messages"][-1]["run_id"]
+    row = app.ledger.rows[rid]
+    assert files >= 1 and row.hold == 50 and row.price == min(50, 5 + 5 * files)
+    r = next(x for x in call(url + "/api/payments")[1]["items"] if x["run_id"] == rid)
+    assert r["price"] == row.price and any("of the 50¢ hold" in e["why"] for e in r["events"])
+    assert post(app, url, "/api/studio/price", {"key": v["key"], "price_usd": 0.3})[0] == 200  # back to one flat price
+    assert next(x for x in call(url + "/api/studio/helper?id=my-helper")[1]["versions"])["price_text"] == "30¢ each"
