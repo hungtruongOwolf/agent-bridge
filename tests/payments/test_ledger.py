@@ -278,3 +278,80 @@ def test_money_conservation_across_many_outcomes():
     assert s["captured"] == p.captured_total() == 100 + 25 + 25  # accept + reject + kill-rej floors
     assert p.paid_total() == 90 + 23 + 23 and s["paid_out"] == p.paid_total()
     assert p.paid_total() <= s["captured"]
+
+
+# ---- buyer approval (PayPal-style: no hold exists until the buyer approves on the provider's page) ----
+
+def approving_ledger(**kw):
+    p = FakeProvider(require_approval=True)
+    return Ledger(p, **kw), p
+
+
+def test_hire_waits_for_the_buyer_and_starts_nothing_until_approved():
+    l, p = approving_ledger()
+    row = hire(l)
+    assert row.state == "AWAITING_APPROVAL" and row.approve_url.startswith("https://sandbox.fake/approve/")
+    with pytest.raises(StateError):
+        l.start("run-1", 1)
+    assert p.captured_total() == 0
+
+
+def test_confirming_before_the_buyer_approves_is_refused_and_leaves_the_state_alone():
+    l, p = approving_ledger()
+    hire(l)
+    with pytest.raises(ProviderError, match="not approved"):
+        l.confirm_approval("run-1", 1)
+    assert l.rows["run-1"].state == "AWAITING_APPROVAL"
+
+
+def test_after_approval_the_normal_flow_runs():
+    l, p = approving_ledger()
+    row = hire(l)
+    p.buyer_approves(row.auth_id)
+    assert l.confirm_approval("run-1", 1).state == "AUTHORIZED"
+    l.start("run-1", 2)
+    l.result_ready("run-1", 3)
+    l.accept("run-1", 4)
+    assert p.captured_total() == PRICE
+
+
+def test_an_unapproved_hold_can_never_be_captured():
+    l, p = approving_ledger()
+    row = hire(l)
+    with pytest.raises(ProviderError, match="never approved"):
+        p.capture(row.auth_id, 10, "c")
+
+
+def test_approval_expires_and_nothing_is_charged_or_voided():
+    l, p = approving_ledger()
+    hire(l, now=0)
+    assert l.tick(899) == [] and l.tick(900) == [("run-1", "approval expired")]
+    assert l.rows["run-1"].state == "VOIDED" and p.captured_total() == 0 and not l.rows["run-1"].voided
+
+
+def test_giving_up_before_approving_is_free():
+    l, p = approving_ledger()
+    hire(l)
+    l.fail_infra("run-1", 1, "buyer closed the page")
+    assert l.rows["run-1"].state == "VOIDED" and ("void", "run-1:void") not in p.calls
+
+
+def test_a_refused_payout_stays_owed_and_is_retried_later():
+    class Refusing(FakeProvider):
+        refuse = True
+
+        def payout(self, to, amount, request_id):
+            if self.refuse:
+                raise ProviderError("receiver cannot be paid")
+            return super().payout(to, amount, request_id)
+
+    p = Refusing()
+    l = Ledger(p)
+    ready(l)
+    l.accept("run-1", 3)
+    assert l.release_payouts(4) == 0
+    pay = l.rows["run-1"].payout
+    assert pay["status"] == "failed" and "cannot be paid" in pay["error"]
+    p.refuse = False
+    pay["status"] = "pending"  # an operator re-queues it after fixing the destination
+    assert l.release_payouts(5) == 1 and p.paid_total() == 90

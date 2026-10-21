@@ -1,6 +1,7 @@
 """Hub ledger: one row per hire, one state machine, money moves only through idempotent provider calls.
 
 States
+  AWAITING_APPROVAL  the buyer has not yet approved the hold on the provider's page; nothing is held
   AUTHORIZED         the requester's cap is held; nothing is charged
   RUNNING            the run started
   RESULT_READY       floor fee captured; waiting for accept / reject (or auto-accept at the deadline)
@@ -28,6 +29,7 @@ from pathlib import Path
 from .provider import PaymentProvider, ProviderError
 
 TERMINAL = {"SETTLED", "SETTLED_REJECTED", "DISPUTE_UPHELD", "VOIDED"}
+APPROVAL_WINDOW_S = 15 * 60
 
 
 class StateError(Exception):
@@ -57,6 +59,8 @@ class Row:
     dispute_by: float | None = None
     accept_window_s: float = 48 * 3600
     voided: bool = False
+    approve_url: str | None = None
+    approval_by: float | None = None
     intent: dict | None = None
     events: list = field(default_factory=list)
 
@@ -141,13 +145,32 @@ class Ledger:
                 raise StateError("an author cannot hire their own pack")
             row = Row(run_id, pack_key, author, requester, price, price * self.floor_pct // 100,
                       accept_window_s=accept_window_s)
-            row.events.append({"t": now, "from": None, "to": "AUTHORIZED", "why": "hire"})
             self.rows[run_id] = row
             try:
-                row.auth_id = self._do(row, "authorize", lambda: self.provider.authorize(price, f"{run_id}:authorize", run_id)).auth_id
+                auth = self._do(row, "authorize", lambda: self.provider.authorize(price, f"{run_id}:authorize", run_id))
             except ProviderError:
                 del self.rows[run_id]
                 raise
+            row.auth_id = auth.auth_id
+            if auth.approve_url:  # the buyer must approve on the provider's page before any hold exists
+                row.state, row.approve_url, row.approval_by = "AWAITING_APPROVAL", auth.approve_url, now + APPROVAL_WINDOW_S
+            row.events.append({"t": now, "from": None, "to": row.state, "why": "hire"})
+            self._save()
+            return row
+
+    def confirm_approval(self, run_id: str, now: float) -> Row:
+        with self._lock:
+            row = self._row(run_id)
+            self._move(row, {"AWAITING_APPROVAL"}, "AUTHORIZED", now, "buyer approved the hold")
+            try:
+                self._do(row, "confirm", lambda: self.provider.confirm(row.auth_id, f"{run_id}:confirm"))
+            except PendingError:
+                self._save()
+                raise
+            except ProviderError:
+                self._rollback(row, "AWAITING_APPROVAL", now, "the provider says the hold is not approved yet")
+                raise
+            row.approve_url = None
             self._save()
             return row
 
@@ -241,8 +264,9 @@ class Ledger:
     def fail_infra(self, run_id: str, now: float, reason: str = "infrastructure failure") -> Row:
         with self._lock:
             row = self._row(run_id)
-            self._move(row, {"AUTHORIZED", "RUNNING"}, "VOIDED", now, reason)
-            self._void(row)
+            self._move(row, {"AWAITING_APPROVAL", "AUTHORIZED", "RUNNING"}, "VOIDED", now, reason)
+            if row.approve_url is None:  # an unapproved order holds nothing, so there is nothing to void
+                self._void(row)
             self._save()
             return row
 
@@ -252,7 +276,10 @@ class Ledger:
         done = []
         with self._lock:
             for row in list(self.rows.values()):
-                if row.state == "RESULT_READY" and row.accept_by is not None and now >= row.accept_by:
+                if row.state == "AWAITING_APPROVAL" and row.approval_by is not None and now >= row.approval_by:
+                    self._move(row, {"AWAITING_APPROVAL"}, "VOIDED", now, "the buyer did not approve in time")
+                    done.append((row.run_id, "approval expired"))
+                elif row.state == "RESULT_READY" and row.accept_by is not None and now >= row.accept_by:
                     self.accept(row.run_id, now, "auto-accept: no decision before the deadline")
                     done.append((row.run_id, "auto-accepted"))
                 elif row.state == "RUNNING" and row.run_deadline is not None and now >= row.run_deadline:
@@ -272,8 +299,12 @@ class Ledger:
             for row in self.rows.values():
                 p = row.payout
                 if p["status"] == "pending" and now >= p["ready_at"]:
-                    p["payout_id"] = self._do(row, "payout", lambda r=row: self.provider.payout(
-                        r.author, r.payout["amount"], f"{r.run_id}:payout"))
+                    try:
+                        p["payout_id"] = self._do(row, "payout", lambda r=row: self.provider.payout(
+                            r.author, r.payout["amount"], f"{r.run_id}:payout"))
+                    except ProviderError as e:  # refused (not just slow): keep the money owed, say why, try again later
+                        p["status"], p["error"] = "failed", str(e)[:120]
+                        continue
                     p["status"] = "paid"
                     paid += 1
             self._save()

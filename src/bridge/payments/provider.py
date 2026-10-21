@@ -23,6 +23,7 @@ class ProviderError(Exception):
 class Auth:
     auth_id: str
     amount: int
+    approve_url: str | None = None  # set when the buyer must approve the hold first (PayPal orders)
 
 
 @dataclass(frozen=True)
@@ -33,6 +34,7 @@ class Capture:
 
 class PaymentProvider(Protocol):
     def authorize(self, amount: int, request_id: str, reference: str) -> Auth: ...
+    def confirm(self, auth_id: str, request_id: str) -> Auth: ...
     def capture(self, auth_id: str, amount: int, request_id: str) -> Capture: ...
     def void(self, auth_id: str, request_id: str) -> None: ...
     def refund(self, capture_id: str, request_id: str) -> None: ...
@@ -50,6 +52,7 @@ class FakeProvider:
     calls: list[tuple[str, str]] = field(default_factory=list)
     lose_response_once: set[str] = field(default_factory=set)  # ops whose reply is lost after the effect happens
     decline_capture: bool = False
+    require_approval: bool = False  # behave like PayPal: the buyer must approve before the hold exists
     path: Path | None = None  # when set, state is saved after every call and reloaded on start
     _n: int = 0
 
@@ -60,7 +63,7 @@ class FakeProvider:
             self._n = raw["n"]
             from_json = raw["seen"]
             for k, v in from_json.items():  # results are stored as plain dicts; rebuild the typed values
-                self.seen[k] = Auth(**v) if k.startswith("authorize:") else Capture(**v) if k.startswith("capture:") else v
+                self.seen[k] = Auth(**v) if k.startswith(("authorize:", "confirm:")) else Capture(**v) if k.startswith("capture:") else v
 
     def _persist(self):
         if not self.path:
@@ -92,10 +95,28 @@ class FakeProvider:
 
     def authorize(self, amount, request_id, reference):
         def make():
-            a = Auth(self._id("AUTH"), amount)
-            self.auths[a.auth_id] = {"amount": amount, "captured": 0, "voided": False, "reference": reference}
+            aid = self._id("AUTH")
+            url = f"https://sandbox.fake/approve/{aid}" if self.require_approval else None
+            a = Auth(aid, amount, url)
+            self.auths[aid] = {"amount": amount, "captured": 0, "voided": False, "reference": reference,
+                               "approved": not self.require_approval}
             return a
         return self._idem("authorize", request_id, make)
+
+    def buyer_approves(self, auth_id: str) -> None:
+        """Test helper: what the buyer does on the provider's own page."""
+        self.auths[auth_id]["approved"] = True
+        self._persist()
+
+    def confirm(self, auth_id, request_id):
+        def make():
+            a = self.auths.get(auth_id)
+            if a is None:
+                raise ProviderError("unknown authorization")
+            if not a["approved"]:
+                raise ProviderError("the buyer has not approved the hold yet")
+            return Auth(auth_id, a["amount"])
+        return self._idem("confirm", request_id, make)
 
     def capture(self, auth_id, amount, request_id):
         def make():
@@ -104,6 +125,8 @@ class FakeProvider:
                 raise ProviderError("unknown authorization")
             if self.decline_capture:
                 raise ProviderError("capture declined")
+            if not a.get("approved", True):
+                raise ProviderError("the hold was never approved")
             if a["voided"]:
                 raise ProviderError("authorization was voided")
             if a["captured"] + amount > a["amount"]:
