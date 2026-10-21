@@ -8,7 +8,7 @@ from bridge.memory.tree import MemoryTree
 from bridge.memory.vault import Vault
 
 PATH = Path(__file__).resolve().parent.parent.parent / "examples" / "vault-library.json"
-ALL = frozenset({"work", "people", "personal", "gia đình", "projects", "money", "reading", "recipes", "ideas"})
+ALL = frozenset({"work", "people", "personal", "family", "projects", "money", "reading", "recipes", "ideas"})
 
 
 @pytest.fixture(scope="module")
@@ -41,9 +41,9 @@ def test_the_library_has_the_shape_of_a_real_memory(vault):
     ("what is Maria's email preference", {"c1"}),
     ("hackathon deadline", {"m183", "m184"}),
     ("when is mum's birthday", {"c115", "m148"}),
-    ("bà ngoại ở đâu", {"m157"}),
-    ("ba ngoai o dau", {"m157"}),
-    ("how do I make bún chả", {"m190", "m158"}),
+    ("where does grandma live", {"m157", "c117"}),
+    ("how do I make bun cha", {"m190"}),
+    ("tomas lisbon hiking", {"c112"}),
     ("Globex renewal", {"m110", "m108", "doc2.1"}),
 ])
 def test_everyday_questions_find_the_right_notes(vault, question, expect):

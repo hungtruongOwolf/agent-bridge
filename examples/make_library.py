@@ -5,7 +5,7 @@
 
 The person is invented: Linh Tran, who runs Lumen Analytics, a six-person B2B software company in Austin. The library has
 about 170 notes on 40-odd shelves, so it exercises:
-  - shelves inside shelves, several levels deep, and shelves named in Vietnamese (accents are folded when searching);
+  - shelves inside shelves, several levels deep, and names with accents (Tomás) that are found without typing the accent;
   - short facts, contacts, meeting logs, and long notes (1.5k to 6k characters) that are stored as passages;
   - secret notes (money, HR, documents, journal) that must never be shared, next to everyday notes on the same topic;
   - two people with the same first name, an old fact and the newer fact that replaced it, near-duplicate notes;
@@ -219,26 +219,26 @@ add("people/friends", "Hana, runs a ceramics studio in East Austin; wants help w
 add("people/friends", "Marcus from the running club. Training for the Austin half marathon in February.", days=45, kind="contact")
 add("people/family", "Mum's birthday is on March 3rd; she likes tulips and anything from the bakery on Elm Street.", days=200, kind="contact")
 add("people/family", "My brother Khoa lives in San Jose. His daughter is called Mai and she starts school next year.", days=180, kind="contact")
-add("people/family", "Bà ngoại (grandma) lives in Đà Nẵng; call on Sunday mornings, it is evening there.", days=90, kind="contact")
+add("people/family", "Grandma lives in Da Nang; call on Sunday mornings, it is evening there.", days=90, kind="contact")
 
-# ================================================================== gia đình (Vietnamese shelf and Vietnamese notes)
-add("gia đình/mẹ", "Mẹ thích hoa tulip và bánh ở tiệm trên đường Elm. Sinh nhật mẹ là ngày 3 tháng 3.", days=190)
-add("gia đình/mẹ", "Mẹ bị đau đầu gối khi đi bộ xa; đừng rủ mẹ đi dạo quá một giờ.", days=75)
-add("gia đình/mẹ", "Mẹ muốn học cách dùng video call để nói chuyện với bà ngoại mỗi tuần.", days=40)
-add("gia đình/bà ngoại", "Bà ngoại ở Đà Nẵng, gọi vào sáng chủ nhật vì bên đó là buổi tối. Bà thích nghe chuyện về công việc của con.", days=88)
-add("gia đình/bà ngoại", "Món bà nấu ngon nhất: bún chả cá. Công thức cần ghi lại trước khi bà quên.", days=250)
-add("gia đình/chuyến về nước", "Dự định về Việt Nam tháng 2: vé khứ hồi khoảng 1.450 đô, ở lại hai tuần. Cần làm hộ chiếu mới trước tháng 12.", days=16)
-long("gia đình/chuyến về nước", """# Kế hoạch về Việt Nam tháng 2
+# ================================================================== family (shelves inside shelves, and a long note)
+add("family/mum", "Mum likes tulips and anything from the bakery on Elm Street. Her birthday is on March 3rd.", days=190)
+add("family/mum", "Mum's knees hurt on long walks; do not suggest anything over an hour on foot.", days=75)
+add("family/mum", "Mum wants to learn video calls so she can talk to Grandma every week.", days=40)
+add("family/grandma", "Grandma lives in Da Nang. Call on Sunday mornings, because it is evening there. She likes hearing about work.", days=88)
+add("family/grandma", "Her best dish is fish noodle soup. Write the recipe down before she forgets it.", days=250)
+add("family/trip home", "Planning to fly home in February: round trip is about 1,450 dollars, two weeks. Renew the passport before December.", days=16)
+long("family/trip home", """# Plan for the February trip home
 
-## Ngày đi và về
-Bay từ Austin sang Seoul rồi vào Đà Nẵng, khởi hành ngày 8 tháng 2 và về ngày 22 tháng 2. Hai tuần đủ để thăm bà ngoại, đi Hội An một ngày và gặp bạn cũ ở Sài Gòn.
+## Dates
+Fly from Austin through Seoul to Da Nang on February 8 and come back on February 22. Two weeks is enough to see Grandma, spend a day in Hoi An and meet old friends in Saigon.
 
-## Việc cần làm trước chuyến đi
-Làm hộ chiếu mới trước tháng 12 vì hộ chiếu cũ sắp hết hạn. Đổi một ít tiền mặt. Mua quà cho bà ngoại: thuốc bổ khớp và một cái áo ấm. Báo trước cho khách hàng rằng tuần cuối của chuyến đi sẽ làm việc từ xa.
+## Before leaving
+Renew the passport before December because the current one expires soon. Change some cash. Buy gifts for Grandma: joint supplements and a warm cardigan. Tell customers that the last week of the trip is remote work.
 
-## Công việc trong lúc đi
-Sam và Lee giữ hàng đợi hỗ trợ. Priya lo các cuộc gọi khách hàng. Mình chỉ nhận email vào buổi sáng giờ Việt Nam. Bất cứ sự cố lớn nào gọi số điện thoại Việt Nam.""", days=14)
-add("gia đình/học tiếng", "Từ mới tuần này: 'gia hạn' (to renew), 'ngân sách' (budget), 'khách hàng' (customer). Dùng trong cuộc họp với Priya cho vui.", days=6)
+## Work while away
+Sam and Lee keep the support queue. Priya takes the customer calls. Check email only in the morning local time. For any major incident, call the local number.""", days=14)
+add("family/learning", "New words this week: renew, budget, customer. Practise them in the meeting with Priya for fun.", days=6)
 
 # ================================================================== personal
 add("personal/health", "Dentist appointment on Tuesday at 9:30. Bring the insurance card.", days=5)
@@ -317,10 +317,10 @@ First, offer three plans, not one, and make the middle one the obvious choice. S
 The book assumes customers compare prices. Ours compare us with doing it in a spreadsheet, and the spreadsheet is free. The right comparison is the cost of a missed churn warning, not the price of other tools.""", days=50)
 add("reading/articles", "Article: why customer success should own renewals, not sales. Key line: the person who answers the support tickets knows who is unhappy first.", days=35)
 add("reading/articles", "Article about monthly churn benchmarks for B2B software: under 1 percent is excellent, 2 percent is common, above 3 percent is a warning.", days=28)
-add("recipes", "Bún chả: grill pork patties and belly with fish sauce, sugar, garlic, shallots; serve with rice noodles, herbs, and a dipping sauce of fish sauce, lime, sugar, chili.", days=140)
-add("recipes", "Phở bò broth: char onion and ginger, simmer beef bones for six hours with star anise, cinnamon, cloves, coriander seed. Skim often.", days=160)
+add("recipes", "Grilled pork with noodles (bun cha): grill pork patties and belly with fish sauce, sugar, garlic, shallots; serve with rice noodles, herbs, and a dipping sauce of fish sauce, lime, sugar, chili.", days=140)
+add("recipes", "Beef noodle soup (pho) broth: char onion and ginger, simmer beef bones for six hours with star anise, cinnamon, cloves, coriander seed. Skim often.", days=160)
 add("recipes", "Weeknight dinner: lemongrass chicken, rice, a bag of salad. Twenty minutes, one pan.", days=21)
-add("recipes", "Cách làm nước chấm: 3 muỗng nước mắm, 2 muỗng đường, 1 muỗng chanh, tỏi ớt băm, nửa chén nước ấm.", days=100)
+add("recipes", "Dipping sauce: 3 spoons fish sauce, 2 spoons sugar, 1 spoon lime juice, minced garlic and chili, half a cup of warm water.", days=100)
 add("ideas/product", "Idea: let customers see a one-page health score for their own account.", days=40)
 add("ideas/product", "Idea: a weekly digest that lists accounts whose usage dropped more than twenty percent.", days=26)
 add("ideas/product", "Idea: show a renewal countdown on every account page, with the three open risks next to it.", days=9)

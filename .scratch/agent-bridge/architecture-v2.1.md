@@ -8,11 +8,11 @@ Date: 2026-10-07. This file does not replace `architecture-v2.md`; it is the **d
 - `audit/01..11` (the 132 audit findings; ids written `PL-F2` = pack lifecycle finding 2; prefixes PL, PR, PAY, HO, MEM, DEF, HUM, CERT, ID, TASK, CON as in SM s0)
 - `../decisions.md`
 
-Absolute paths: `E:/Project cá nhân/Hackathon_new_from031026/agent-bridge/.scratch/agent-bridge/{architecture-v2.md, design-harness-workflow.md, design-state-machines.md, audit/}`.
+Paths: `.scratch/agent-bridge/{architecture-v2.md, design-harness-workflow.md, design-state-machines.md, audit/}`.
 
 Conventions. No new external research was done for this file. External facts are only those already cited in the two design files or in `research*/`; anything not confirmed from a primary source is marked UNVERIFIED. Every threshold, fee, TTL, percentage, field name and default is our own untuned PROPOSAL unless a source is cited. The one PayPal fact set that SM says it verified (29-day hold, 3-day honor period, capture "subject to risk and money availability", reauthorization gives a new id, void exists) comes from https://developer.paypal.com/docs/checkout/standard/customize/authorization/ ; I did not re-fetch it for this file.
 
-TL;DR (tiếng Việt). Hành vi (behavioral flow) của v2 **chưa ổn** để đem đi build: 132 vấn đề được audit, 25 mức cao, 105 mức trung bình, 2 mức thấp, không vấn đề nào bị bác bỏ. Hai thiết kế mới (workflow engine `flowd` + bộ state machine) xử lý được hầu hết, nhưng khi ghép hai tài liệu lại tôi tìm thêm 11 chỗ mâu thuẫn giữa chúng và 6 lỗ hổng mới (nghiêm trọng nhất: requester chạy xong rồi im lặng thì hold bị void, author mất trắng). Harness giờ là một chương trình workflow ký số, chạy bởi engine tin cậy có journal/checkpoint/resume/budget/gate, không còn là "thư mục prompt + tool" và không còn 3 pha cố định. Phần 7 là danh sách quyết định còn lại cho chủ dự án.
+TL;DR. The behavioural flow of v2 was **not ready** to build: the audit found 132 problems (25 high, 105 medium, 2 low, none refuted). The two new designs (the `flowd` workflow engine and the state machines) handle most of them, but combining the two documents showed 11 contradictions between them and 6 new gaps (the worst: if the requester finishes a run and then goes silent, the hold is voided and the author gets nothing). The harness is now a signed workflow program run by a trusted engine with a journal, checkpoints, resume, a budget and gates; it is no longer a folder of prompts and tools, and no longer three fixed phases. Section 7 lists the decisions still open for the project owner.
 
 ---
 
