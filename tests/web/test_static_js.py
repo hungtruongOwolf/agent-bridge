@@ -60,3 +60,18 @@ import { addStep, removeStep, steps } from "./studio/workflow-model.js";
 console.log(typeof addStep, typeof removeStep, typeof steps);
 """)
     assert out == "function function function"
+
+
+def test_pasted_notes_are_cut_by_blank_lines_or_one_per_line():
+    nl = chr(92) + "n"  # a backslash and an n: the JavaScript escape for a new line
+    out = run("""
+import { pastedNotes, splitNotes } from "./lib/notes.js";
+const a = pastedNotes("- Acme likes email@@- Hooli renews in March@@3. Globex is quiet");
+const b = pastedNotes("First note@@still the first@@@@Second note");
+const c = splitNotes("x".repeat(1700));
+console.log(JSON.stringify([a, b, c.length, pastedNotes("   ")]));
+""".replace("@@", nl))
+    a, b, long_parts, empty = json.loads(out)
+    assert a == ["Acme likes email", "Hooli renews in March", "Globex is quiet"]
+    assert b == ["First note still the first", "Second note"] or b == ["First note" + chr(10) + "still the first", "Second note"]
+    assert long_parts >= 2 and empty == []

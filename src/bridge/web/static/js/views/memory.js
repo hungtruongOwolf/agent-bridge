@@ -13,6 +13,7 @@ import { MemoryMap } from "../components/memory-map.js";
 import { noteCard } from "../components/note-card.js";
 import { drawProposals } from "../components/proposals.js";
 import { setupMemoryForms } from "../components/memory-forms.js";
+import { openAdd } from "../components/add-dialog.js";
 
 const PAGE = 30;
 let map = null;
@@ -50,11 +51,13 @@ function drawShelfActions() {
   const box = $("shelfactions");
   box.replaceChildren();
   $("shelftitle").textContent = trash ? "Trash" : sel ? `Notes on “${pretty(sel)}” and below` : "All notes";
-  if (!sel || trash) return;
+  if (trash) return;
   const s = shelves().find((x) => x.path === sel);
-  if (!s) return;
+  box.append(btn(sel ? "+ Add a note here" : "+ Add a note", "btn go2 sm", () => openAdd({ shelf: sel })),
+             btn(sel ? "+ New shelf inside" : "+ New shelf", "btn sm", () => openAdd({ shelf: sel, newShelf: true })));
+  if (!sel || !s) return;
   const form = el("div", "shelfform");
-  box.append(btn("Rename or move this shelf", "btn", () => shelfForm(form, "move")), btn(s.label ? "Change the note about it" : "Add a note about this shelf", "btn", () => shelfForm(form, "note")), form);
+  box.append(btn("Rename or move", "btn sm", () => shelfForm(form, "move")), btn(s.label ? "Change its description" : "Describe this shelf", "btn sm", () => shelfForm(form, "note")), form);
 }
 
 function shelfForm(form, kind) {
@@ -183,6 +186,7 @@ export const memoryView = {
     $("selectmode").onclick = () => { selecting = !selecting; picked.clear(); $("selectmode").textContent = selecting ? "Done selecting" : "Select several"; drawBulk(); drawNotes(true); };
     $("memq").oninput = debounce(() => { query = $("memq").value.trim(); drawNotes(true); }, 300);
     $("memmore").onclick = () => drawNotes(false);
+    $("addbtn").onclick = () => openAdd({ shelf: sel });
     setupMemoryForms();
   },
 

@@ -149,7 +149,10 @@
 
 <section id="view-memory" class="view memview" hidden>
   <div class="panel memintro"><div class="title">My memory</div><div class="body">
-    <p>Your notes, kept on shelves. Helpers only see the shelves you tick. <b>Secret</b> files are never shared.</p>
+    <div class="introrow">
+      <p>Your notes, kept on shelves. Helpers only see the shelves you tick. <b>Secret</b> files are never shared.</p>
+      <button class="btn go2 bigbtn" id="addbtn" type="button">+ Add to memory</button>
+    </div>
     <details class="more"><summary>More about memory</summary><p class="small">Nothing is saved behind your back. Memory changes only when you write something here or say yes to a helper's suggestion.</p></details>
     <div id="suggest"></div>
     <p class="small warnline" id="memnote" role="status"></p>
@@ -181,37 +184,18 @@
       <button class="btn" id="memmore" type="button" hidden>Show more</button>
     </div></div>
   </div>
-  <div class="cols memgrid">
-    <div class="panel"><div class="title">Add to memory</div><div class="body">
-      <form id="memform" class="memform" autocomplete="off">
-        <textarea id="memtext" rows="5" maxlength="80000" placeholder="Write or paste anything: a short fact, or a whole page of notes. Long notes are kept whole." aria-label="What to remember"></textarea>
-        <div class="small muted" id="memcount" aria-live="polite"></div>
-        <label class="small fieldrow" id="memtitlerow" hidden>Title <input id="memtitle" type="text" maxlength="120" placeholder="optional" aria-label="Title of this long note"></label>
-        <label class="small fieldrow">Shelf <input id="memshelf" type="text" list="shelfnames" placeholder="work/clients" maxlength="800" aria-label="Which shelf"></label>
-        <datalist id="shelfnames"></datalist>
-        <div class="composerrow">
-          <span id="memlevelslot"></span>
-          <select id="memkind" aria-label="What kind of thing is it"><option value="note">A note</option><option value="contact">A person</option></select>
-          <button class="btn go2" type="submit">Save to memory</button>
-        </div>
-      </form>
-    </div></div>
-    <div class="panel"><div class="title">Backup and import</div><div class="body">
-      <div class="memform">
-        <h3 class="sub" style="margin-top:0">Backup</h3>
-        <p class="small muted">Everything in memory, secret notes included, as one file only you keep.</p>
-        <div class="acts"><button class="btn" id="memexport" type="button">Download a backup</button></div>
-        <label class="small fieldrow">Put one back <input id="memrestore" type="file" accept=".json,application/json" aria-label="Choose a backup file"></label>
-      </div>
-      <div class="memform">
-        <h3 class="sub">Or bring in a file</h3>
-        <p class="small muted">A .txt, .md or .csv file, up to 300 KB. Keep it as one long note, or split it into short notes.</p>
-        <input id="memfile" type="file" accept=".txt,.md,.csv,text/plain" aria-label="Choose a text file to import">
-        <div id="importbox"></div>
-      </div>
-    </div></div>
-  </div>
+  <div class="panel backup"><div class="title">Backup and restore</div><div class="body">
+    <p class="small muted">Everything in memory, secret notes included, as one file only you keep.</p>
+    <div class="acts">
+      <button class="btn" id="memexport" type="button">Download a backup</button>
+      <label class="small fieldrow">Put one back <input id="memrestore" type="file" accept=".json,application/json" aria-label="Choose a backup file"></label>
+    </div>
+  </div></div>
 </section>
+
+<datalist id="shelfnames"></datalist>
+
+<dialog id="adddlg" class="profile wide" aria-label="Add to memory"><div id="adddlgbody"></div></dialog>
 
 <dialog id="wallet" class="profile" aria-label="Payments">
   <div id="walletbody"></div>

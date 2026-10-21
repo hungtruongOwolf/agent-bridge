@@ -253,7 +253,6 @@ canvas#floor{display:block;image-rendering:pixelated;max-width:100%;margin:0 aut
 .legend2{display:flex;gap:6px 16px;flex-wrap:wrap}
 .sw{display:inline-block;width:14px;height:14px;border:2px solid var(--ink-900);margin-right:8px;vertical-align:middle}
 
-.memgrid{grid-template-columns:minmax(0,3fr) minmax(0,2fr)}
 .memform>*+*{margin-top:8px}
 .memsearch input{width:100%}
 .memsearch+.acts,.memsearch+.acts+.acts{margin-top:8px}
@@ -283,6 +282,29 @@ button.twist:hover{color:var(--ink-900)}
 .shelfpick.part{background:var(--lemon-light);border-color:var(--ink-900)}
 .shelfform{display:flex;gap:8px;align-items:center;flex-wrap:wrap;width:100%}
 .shelfform input{flex:1;min-width:140px}
+
+/* adding to memory: one dialog */
+.introrow{display:flex;gap:16px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.bigbtn{padding:11px 20px;font-size:15px}
+dialog.profile.wide{max-width:720px}
+.pane>*+*{margin-top:8px}
+.chooser>*+*{margin-top:8px}
+.chooser .where{padding:8px 10px;background:var(--cream-50);border:2px solid var(--ink-900)}
+.chooser .seg{font-weight:600}
+.chooser .seg.isnew{color:#9a5b12;background:var(--peach-light);padding:0 4px}
+.chooser input[type=text]{width:100%}
+.treelist{max-height:220px;overflow:auto;border:2px solid var(--ink-900);background:var(--cream-50);padding:4px}
+.trow{display:flex;align-items:center;gap:2px}
+.trow.on{background:var(--mint-light)}
+.trow .pickshelf{flex:1;text-align:left;background:none;border:0;padding:5px 6px}
+.trow .pickshelf:hover{background:var(--lemon-light)}
+.levelcards{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.levelcard{display:flex;gap:10px;align-items:flex-start;border:2px solid var(--ink-900);background:var(--cream-50);padding:10px;cursor:pointer}
+.levelcard:has(input:checked){background:var(--mint-light)}
+.levelcard span{display:grid;gap:2px}
+dialog .ptabs button{flex:1}
+dialog .acts{margin-top:14px}
+@media (max-width:560px){.levelcards{grid-template-columns:1fr}}
 
 /* ===== 7. my helpers ===== */
 .studiocols{grid-template-columns:minmax(0,1fr) 360px}
