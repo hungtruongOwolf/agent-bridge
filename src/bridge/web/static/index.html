@@ -40,7 +40,9 @@
     <form id="composer" class="composer" hidden autocomplete="off">
       <textarea id="draft" rows="2" maxlength="1000" placeholder="Write a message. Enter sends, Shift+Enter makes a new line." aria-label="Your message"></textarea>
       <div class="composerrow">
-        <label class="theft"><input type="checkbox" id="misbehave"><span>Test mode: make the helper misbehave, to see the guard work.</span></label>
+        <details class="demotools"><summary>Demo tools</summary>
+          <label class="theft"><input type="checkbox" id="misbehave"><span>Make the helper misbehave, to see the guard work.</span></label>
+        </details>
         <button class="btn go2" id="send" type="submit">Send</button>
       </div>
     </form>
