@@ -320,11 +320,13 @@ class App:
         action = body.get("action")
         if action == "add":
             return self.memory.add(str(body.get("type", "")), str(body.get("text", "")), str(body.get("sensitivity", "low")))
+        if action == "add_many":
+            return self.memory.add_many(body.get("items"), str(body.get("sensitivity", "low")), str(body.get("type", "note")))
         if action == "update":
             return self.memory.update(str(body.get("id", "")), text=body.get("text"), sensitivity=body.get("sensitivity"), type=body.get("type"))
         if action == "delete":
             return self.memory.delete(str(body.get("id", "")))
-        raise ValueError("action must be add, update or delete")
+        raise ValueError("action must be add, add_many, update or delete")
 
 
 POST_ROUTES = {
@@ -430,7 +432,7 @@ def make_handler(app: App):
                 n = int(self.headers.get("Content-Length") or 0)
             except ValueError:
                 n = 0
-            if n > 20000:
+            if n > 100000:
                 left = min(n, 1_000_000)  # drain a bounded amount so the client sees the 413, not a reset
                 while left > 0:
                     chunk = self.rfile.read(min(65536, left))

@@ -313,3 +313,14 @@ def test_how_an_answer_was_made_is_told_in_plain_sentences(srv):
     text = " ".join(steps)
     assert "read" in text and "thinking service" in text and "guard checked the final answer" in text
     assert call(url + "/api/how?run_id=nope")[0] == 404
+
+
+def test_several_notes_can_be_imported_at_once_all_or_nothing(srv):
+    app, url, _ = srv
+    before = len(app.memory.list())
+    code, out = call(url + "/api/memory", {"action": "add_many", "items": ["First note", "Second note"], "sensitivity": "low", "type": "note"}, app.token)
+    assert code == 200 and len(out["ids"]) == 2 and len(set(out["ids"])) == 2 and len(app.memory.list()) == before + 2
+    assert call(url + "/api/memory", {"action": "add_many", "items": ["fine", ""], "sensitivity": "low", "type": "note"}, app.token)[0] == 400
+    assert len(app.memory.list()) == before + 2  # the bad batch saved nothing
+    assert call(url + "/api/memory", {"action": "add_many", "items": [], "sensitivity": "low", "type": "note"}, app.token)[0] == 400
+    assert call(url + "/api/memory", {"action": "add_many", "items": [5], "sensitivity": "low", "type": "note"}, app.token)[0] == 400

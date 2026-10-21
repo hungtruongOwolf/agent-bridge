@@ -63,6 +63,12 @@
         <button class="btn" type="submit">Save to memory</button>
       </div>
     </form>
+    <div class="memform">
+      <h3 class="sub">Or bring in a file</h3>
+      <p class="small muted">Pick a text file (.txt, .md or .csv). It is read in your browser, split into short notes, and you choose which ones to keep. Nothing is saved until you press Save.</p>
+      <input id="memfile" type="file" accept=".txt,.md,.csv,text/plain" aria-label="Choose a text file to import">
+      <div id="importbox"></div>
+    </div>
     <p class="small warnline" id="memnote" role="status"></p>
     <div id="memlist"></div>
   </div></div>

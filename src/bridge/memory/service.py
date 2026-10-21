@@ -100,6 +100,29 @@ class MemoryService:
         rec = self._mutate(go)
         return {"id": rec.id}
 
+    def add_many(self, items: list, sensitivity: str, type: str) -> dict:
+        """Save several notes at once (for example from an imported file), all or nothing."""
+        if not isinstance(items, list) or not items or len(items) > 50:
+            raise MemoryChangeError("add between 1 and 50 notes at a time")
+        now = self.clock()
+
+        def go(v: Vault):
+            ids = []
+            taken = self._referenced()
+            for text in items:
+                if not isinstance(text, str):
+                    raise MemoryChangeError("each note must be text")
+                rid = v.next_id("m")
+                while rid in taken:
+                    rid = "m" + str(int(rid[1:]) + 1)
+                try:
+                    v.add(Record(rid, type, sensitivity, text.strip(), created=now))
+                except ValueError as e:
+                    raise MemoryChangeError(str(e)) from e
+                ids.append(rid)
+            return ids
+        return {"ids": self._mutate(go)}
+
     def update(self, record_id: str, *, text=None, sensitivity=None, type=None) -> dict:
         now = self.clock()
 

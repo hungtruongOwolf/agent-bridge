@@ -324,6 +324,41 @@
     };
   }
 
+  /* ---------- bring in a file ---------- */
+  function splitNotes(text) {
+    const out = [];
+    text.replace(/\r\n/g, "\n").split(/\n\s*\n/).forEach((para) => {
+      let p = para.trim().replace(/[ \t]+/g, " "); if (!p) return;
+      while (p.length > 800) {  // long paragraphs are cut at a sentence end so each note stays readable
+        let cut = p.lastIndexOf(". ", 800); if (cut < 200) cut = p.lastIndexOf(" ", 800); if (cut < 200) cut = 800;
+        out.push(p.slice(0, cut + 1).trim()); p = p.slice(cut + 1).trim();
+      }
+      if (p) out.push(p);
+    });
+    return out;
+  }
+
+  function setupImport() {
+    $("memfile").onchange = async (ev) => {
+      const f = ev.target.files[0], box = $("importbox"); box.replaceChildren(); if (!f) return;
+      if (f.size > 300000) { box.append(el("p", "warnline", "That file is bigger than 300 KB. Cut it into smaller parts first.")); return; }
+      const notes = splitNotes(await f.text()).slice(0, 50);
+      if (!notes.length) { box.append(el("p", "warnline", "There is no text in that file.")); return; }
+      box.append(el("p", "small", "Found " + notes.length + " note(s). Untick the ones you do not want."));
+      const list = el("ul", "filelist"), boxes = [];
+      notes.forEach((t) => { const li = el("li"), c = document.createElement("input"); c.type = "checkbox"; c.checked = true; c.setAttribute("aria-label", "Keep: " + t.slice(0, 60)); boxes.push(c); li.append(c, el("span", null, t)); list.append(li); });
+      const sel = privacySelect("low"), type = document.createElement("input"); type.type = "text"; type.value = "note"; type.size = 10; type.maxLength = 20; type.setAttribute("aria-label", "Which drawer");
+      const row = el("div", "composerrow"); row.append(el("label", "small", "Drawer "), type, sel);
+      const save = btn("Save the ticked notes", "btn go2", async () => {
+        const keep = notes.filter((_, i) => boxes[i].checked); if (!keep.length) { $("memnote").textContent = "Tick at least one note."; return; }
+        save.disabled = true;
+        try { await B.api("/api/memory", { action: "add_many", items: keep, sensitivity: sel.value, type: type.value.trim().toLowerCase() || "note" }); box.replaceChildren(); $("memfile").value = ""; $("memnote").textContent = "Saved " + keep.length + " note(s)."; await B.refresh(); drawMemory(); }
+        catch (e) { $("memnote").textContent = e.message; save.disabled = false; }
+      });
+      box.append(list, row, save);
+    };
+  }
+
   /* ---------- meet a helper ---------- */
   async function profile(key) {
     const dlg = $("profile"), body = $("profilebody"); body.replaceChildren(el("p", null, "Loading…"));
@@ -382,7 +417,7 @@
     $("draft").oninput = () => { clearTimeout(draftTimer); draftTimer = setTimeout(loadContext, 350); };
     $("draft").onkeydown = (e) => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); $("composer").requestSubmit(); } };
     $("profileclose").onclick = () => $("profile").close();
-    setupMemoryForm(); drawPicker();
+    setupMemoryForm(); setupImport(); drawPicker();
     let v = "chat"; try { v = sessionStorage.getItem("ab-view") || "chat"; } catch (e) { /* default tab */ }
     showView(v); drawConversation();
     if (!B.state().threads.length) $("picker").hidden = false;
