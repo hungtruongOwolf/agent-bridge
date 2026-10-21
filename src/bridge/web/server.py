@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import secrets
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -17,6 +18,8 @@ from ..engine.tavily import TavilySearch, load_tavily_key
 from ..memory.broker import Lens
 from ..memory.quarantine import Quarantine, QuarantineError
 from ..memory.vault import Vault
+from ..payments.ledger import Ledger, PendingError, StateError
+from ..payments.provider import FakeProvider, ProviderError
 from ..pack.digest import tree_digest
 from ..runner import run_pack
 from ..world import World
@@ -58,7 +61,7 @@ class LazySearch:
 
 class App:
     def __init__(self, world: World, packs_dir: Path, vault_path: Path, env_file: Path, cell=None,
-                 model_factory=None, web=None):
+                 model_factory=None, web=None, ledger=None, clock=None):
         self.world, self.vault_path, self.env_file, self.cell = world, Path(vault_path), Path(env_file), cell
         self.web = web or LazySearch(lambda: TavilySearch(load_tavily_key(self.env_file)))
         self.model_factory = model_factory or (lambda: NebiusModel(load_api_key(self.env_file)))
@@ -71,6 +74,11 @@ class App:
         if not self.vault_file.exists():
             Vault.load(self.vault_path).save(self.vault_file)
         self.quarantine = Quarantine()
+        self.clock = clock or time.time
+        self.requester = "you"
+        # money is TEST money: a fake provider now, the PayPal sandbox client when credentials exist
+        self.ledger = ledger or Ledger(FakeProvider(path=self.world.state / "provider.json"),
+                                       path=self.world.state / "ledger.json", holdback_s=0)
         self.reports: dict[str, dict] = {}  # run_id -> full report (this session)
         self.history: list[dict] = []
 
@@ -88,6 +96,7 @@ class App:
                        "trust": r.trust_tier, "from_run": (r.origin or {}).get("run_id")} for r in v.all()],
             "proposals": self._proposals(),
             "history": list(reversed(self.history[-20:])),
+            "payments": self._payments_summary(),
             "model": "NVIDIA Nemotron on Nebius",
         }
 
@@ -110,17 +119,77 @@ class App:
             model = LazyModel(self.model_factory)
         self.runs += 1
         run_id = f"run-{self.runs}-{secrets.token_hex(3)}"
-        rep = run_pack(pack_dir, self.vault(), Lens(types=types, max_sensitivity=sens), model,
-                       seed=run_id, cell=self.cell, expected_digest=rec.digest, run_id=run_id, web=self.web)
+        price = max(1, round(rec.listing.price_usd * 100))
+        now = self.clock()
+        try:  # order of events: authorize the cap last before starting, never charge before a result exists
+            self.ledger.hire(run_id, rec.key, rec.publisher_key[:8], self.requester, price, now)
+            self.ledger.start(run_id, now)
+        except ProviderError as e:
+            raise ValueError(f"payment could not be authorized: {e}") from e
+        try:
+            rep = run_pack(pack_dir, self.vault(), Lens(types=types, max_sensitivity=sens), model,
+                           seed=run_id, cell=self.cell, expected_digest=rec.digest, run_id=run_id, web=self.web)
+        except Exception:
+            self.ledger.fail_infra(run_id, self.clock(), "run crashed before a result")
+            raise
+        self._settle_outcome(rec, run_id, rep)
         out = dict(rep.__dict__)
         raw = out.pop("proposals_raw")
         added, problems = self.quarantine.add(run_id, rep.digest, raw) if rep.outcome == "COMPLETE" else ([], [])
         out["proposals"] = [{"id": p.id, "type": p.type, "text": p.text} for p in added]
         out["proposal_problems"] = problems
+        out["payment"] = self.payment(run_id)
         self.reports[run_id] = out
         self.history.append({"run_id": run_id, "pack": f"{rep.pack_id} v{rep.version}", "outcome": rep.outcome,
                              "summary": rep.summary, "n": self.runs})
         return out
+
+    # -- money ------------------------------------------------------------------------------------
+    def _settle_outcome(self, rec, run_id: str, rep) -> None:
+        now = self.clock()
+        if rep.outcome == "COMPLETE":
+            self.ledger.result_ready(run_id, now)  # floor fee captured; the requester decides on the rest
+        elif rep.outcome == "KILLED":
+            why = rep.broker_events[0]["kind"] if rep.broker_events else "evidence of theft"
+            self.ledger.kill(run_id, now, why)  # a held claim, never a final void of delivered work
+            if self.world.market.status(rec) == "flagged":
+                # the Certifier independently reproduced a violation for this exact pack digest
+                self.ledger.adjudicate(run_id, True, now)
+        else:
+            self.ledger.fail_infra(run_id, now, f"no usable result ({rep.outcome})")
+
+    def payment(self, run_id: str) -> dict:
+        row = self.ledger.rows[run_id]
+        return {
+            "state": row.state, "price": row.price, "floor": row.floor, "captured": row.captured(),
+            "refunded": sum(c["amount"] for c in row.captures if c["id"] in row.refunded),
+            "accept_by": row.accept_by, "payout": row.payout, "test_money": True,
+            "events": [{"to": e["to"], "why": e["why"]} for e in row.events],
+        }
+
+    def _payments_summary(self) -> dict:
+        self.ledger.tick(self.clock())
+        self.ledger.release_payouts(self.clock())
+        return {**self.ledger.summary(), "test_money": True, "holdback": "demo holdback 0 s; production would hold for days"}
+
+    def settle(self, body: dict) -> dict:
+        run_id, action, now = str(body.get("run_id", "")), body.get("action"), self.clock()
+        if run_id not in self.ledger.rows:
+            raise ValueError("unknown run")
+        try:
+            if action == "accept":
+                self.ledger.accept(run_id, now)
+            elif action == "reject":
+                self.ledger.reject(run_id, now, str(body.get("reason", "rejected"))[:80])
+            else:
+                raise ValueError("action must be accept or reject")
+        except StateError as e:
+            raise ValueError(str(e)) from e
+        self.ledger.release_payouts(now)
+        pay = self.payment(run_id)
+        if run_id in self.reports:
+            self.reports[run_id]["payment"] = pay
+        return pay
 
     def decide(self, body: dict) -> dict:
         try:
@@ -204,6 +273,8 @@ def make_handler(app: App):
                     return self._json(200, app.run(body))
                 if self.path == "/api/proposal":
                     return self._json(200, app.decide(body))
+                if self.path == "/api/settle":
+                    return self._json(200, app.settle(body))
                 if self.path == "/api/revert":
                     return self._json(200, app.revert(body))
                 if self.path == "/api/star":
@@ -212,6 +283,8 @@ def make_handler(app: App):
                 self._json(404, {"error": "not found"})
             except (ValueError, KeyError) as e:
                 self._json(400, {"error": str(e)})
+            except PendingError as e:
+                self._json(503, {"error": "the payment provider has not confirmed yet; try again shortly"})
             except Exception as e:  # never leak internals or keys to the page
                 self._json(500, {"error": f"run failed: {type(e).__name__}"})
 

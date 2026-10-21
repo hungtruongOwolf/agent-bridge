@@ -217,3 +217,96 @@ def test_history_lists_newest_first(mem_app):
     a = run_brief(app, url)[1]["run_id"]
     b = run_brief(app, url)[1]["run_id"]
     assert [h["run_id"] for h in call(url + "/api/state")[1]["history"][:2]] == [b, a]
+
+
+# ---- money (TEST money through the fake provider) -------------------------------------------------
+
+def pay(rep):
+    return rep["payment"]
+
+
+def test_a_completed_run_captures_only_the_floor_until_you_decide(mem_app):
+    app, url = mem_app
+    rep = run_brief(app, url)[1]  # deal-brief costs $0.60
+    p = pay(rep)
+    assert p["state"] == "RESULT_READY" and p["price"] == 60 and p["captured"] == 15 and p["test_money"] is True
+    assert app.ledger.provider.captured_total() == 15
+
+
+def test_accept_captures_the_rest_and_pays_the_author(mem_app):
+    app, url = mem_app
+    rep = run_brief(app, url)[1]
+    code, p = call(url + "/api/settle", {"run_id": rep["run_id"], "action": "accept"}, app.token)
+    assert code == 200 and p["state"] == "SETTLED" and p["captured"] == 60
+    assert p["payout"]["status"] == "paid" and p["payout"]["amount"] == 54  # 60 minus a 10% platform fee
+    st = call(url + "/api/state")[1]["payments"]
+    assert st["captured"] == 60 and st["paid_out"] == 54 and st["test_money"] is True
+
+
+def test_reject_keeps_only_the_floor(mem_app):
+    app, url = mem_app
+    rep = run_brief(app, url)[1]
+    code, p = call(url + "/api/settle", {"run_id": rep["run_id"], "action": "reject", "reason": "not useful"}, app.token)
+    assert p["state"] == "SETTLED_REJECTED" and p["captured"] == 15 and p["payout"]["amount"] == 14
+
+
+def test_settling_twice_or_with_a_bad_action_is_a_400(mem_app):
+    app, url = mem_app
+    rid = run_brief(app, url)[1]["run_id"]
+    call(url + "/api/settle", {"run_id": rid, "action": "accept"}, app.token)
+    assert call(url + "/api/settle", {"run_id": rid, "action": "accept"}, app.token)[0] == 400
+    assert call(url + "/api/settle", {"run_id": rid, "action": "burn"}, app.token)[0] == 400
+    assert call(url + "/api/settle", {"run_id": "nope", "action": "accept"}, app.token)[0] == 400
+    assert call(url + "/api/settle", {"run_id": rid, "action": "accept"})[0] == 403  # needs the token
+
+
+def test_a_flagged_pack_that_gets_killed_costs_you_nothing(mem_app):
+    app, url = mem_app
+    code, rep = call(url + "/api/run", {"key": key_of(app, "quick-insights"), "types": ["note", "contact"]}, app.token)
+    p = pay(rep)
+    assert rep["outcome"] == "KILLED" and p["state"] == "DISPUTE_UPHELD" and p["captured"] == 0
+    assert app.ledger.provider.captured_total() == 0 and p["payout"]["status"] == "none"
+    assert any("kill claim" in e["why"] for e in p["events"])
+
+
+def test_a_model_outage_voids_the_hold_and_nobody_is_blamed(mem_app):
+    app, url = mem_app
+
+    def down():
+        class Down:
+            def complete(self, prompt, inputs):
+                raise TimeoutError("provider down")
+        return Down()
+
+    app.model_factory = down
+    rep = run_brief(app, url)[1]
+    assert rep["outcome"] == "FAILED_INFRA" and pay(rep)["state"] == "VOIDED" and pay(rep)["captured"] == 0
+
+
+def test_a_killed_pack_that_the_certifier_has_not_flagged_stays_in_dispute(mem_app):
+    app, url = mem_app
+    key = key_of(app, "quick-insights")
+    app.world.market._atts.pop(app.world.registry.records[key].digest)  # no independent evidence for this claim
+    code, rep = call(url + "/api/run", {"key": key, "types": ["note", "contact"]}, app.token)
+    assert rep["outcome"] == "KILLED"
+    assert pay(rep)["state"] == "DISPUTE_HOLD" and pay(rep)["captured"] == 0
+    assert app.ledger.summary()["held"] == 10  # the whole $0.10 stays held, nobody is paid
+
+
+def test_unaccepted_results_auto_accept_after_the_deadline(mem_app):
+    app, url = mem_app
+    t = {"now": 1_000_000.0}
+    app.clock = lambda: t["now"]
+    rid = run_brief(app, url)[1]["run_id"]
+    t["now"] += 49 * 3600  # past the 48 h accept window
+    st = call(url + "/api/state")[1]["payments"]
+    assert app.ledger.rows[rid].state == "SETTLED" and st["captured"] == 60
+
+
+def test_money_state_persists_across_a_restart(mem_app):
+    app, url = mem_app
+    rid = run_brief(app, url)[1]["run_id"]
+    again = server.App(app.world, EX / "packs", EX / "vault.json", app.env_file, cell=FakeCell(), web=FakeWeb())
+    assert again.ledger.rows[rid].state == "RESULT_READY" and again.ledger.provider.captured_total() == 15
+    again.settle({"run_id": rid, "action": "accept"})
+    assert again.ledger.provider.captured_total() == 60
