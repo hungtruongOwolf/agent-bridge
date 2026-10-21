@@ -198,7 +198,7 @@ def test_web_pack_run_uses_the_public_search_and_keeps_records_private(mem_app):
 
 def test_oversized_body_is_refused(srv):
     app, url = srv
-    assert call(url + "/api/run", {"key": "x" * 130000}, app.token)[0] in (413,)
+    assert call(url + "/api/run", {"key": "x" * 430000}, app.token)[0] in (413,)
 
 
 def test_history_and_per_run_report_are_available(mem_app):
