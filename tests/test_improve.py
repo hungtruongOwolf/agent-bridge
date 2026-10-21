@@ -120,3 +120,34 @@ def test_gives_up_cleanly_if_the_model_never_returns_variants(work):
     src, out, cert = work
     rep = improve(src, out, Wobbly([GOOD_VARIANT], bad_first=99), cert, log=lambda *_: None)
     assert rep.chosen is None and rep.variants == [] and "nothing to publish" in rep.note
+
+
+class WrongShape(PromptSensitive):
+    """Answers the rewrite request the way a model without hidden reasoning sometimes does."""
+
+    def complete(self, prompt, inputs):
+        if prompt.startswith("You improve the instruction"):
+            return ModelReply({"new instruction text": GOOD_VARIANT, "...": GOOD_VARIANT, "note": "ok"}, tokens=1)
+        return super().complete(prompt, inputs)
+
+
+def test_variants_are_recovered_from_a_wrongly_shaped_reply(work):
+    src, out, cert = work
+    rep = improve(src, out, WrongShape([]), cert, log=lambda *_: None)
+    assert len(rep.variants) == 1 and rep.chosen == 0  # duplicates and the short note are ignored
+
+
+def test_the_rewrite_request_describes_the_reply_format_in_words():
+    seen = {}
+
+    class Spy(PromptSensitive):
+        def complete(self, prompt, inputs):
+            if prompt.startswith("You improve"):
+                seen.update(inputs)
+            return super().complete(prompt, inputs)
+
+    import shutil, tempfile
+    d = Path(tempfile.mkdtemp())
+    shutil.copytree(EX / "private-analyst", d / "p")
+    improve(d / "p", d / "out", Spy([GOOD_VARIANT]), Certifier(signing.generate_key(), sales_dev_suite(), runs_per_task=1), log=lambda *_: None)
+    assert isinstance(seen["answer_format"], str) and '"variants"' in seen["answer_format"]

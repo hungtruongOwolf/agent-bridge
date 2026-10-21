@@ -65,6 +65,22 @@ class ImproveReport:
     note: str = ""
 
 
+def _variants_from(content) -> list[str]:
+    """Pull instruction strings out of the model's reply, tolerating the wrong shape.
+
+    Without hidden reasoning the model sometimes answers {"some key": "an instruction", ...} instead of
+    {"variants": [...]}. Any long string value counts; placeholders and duplicates do not."""
+    if not isinstance(content, dict):
+        return []
+    raw = content.get("variants")
+    items = raw if isinstance(raw, list) else list(content.values())
+    out: list[str] = []
+    for v in items:
+        if isinstance(v, str) and len(v.strip()) >= 20 and v.strip() not in ("...", "new instruction text") and v.strip() not in out:
+            out.append(v.strip())
+    return out
+
+
 def _bump_patch(version: str) -> str:
     a, b, c = (int(x) for x in version.split("."))
     return f"{a}.{b}.{c + 1}"
@@ -126,7 +142,8 @@ def improve(pack_dir: Path, out_dir: Path, model: Model, certifier: Certifier, *
     ask = {"current_instruction": old_prompt, "good_answers_do": [t.goal for t in certifier.suite.quality],
            "failures": failures, "how_many": variants,
            "must_keep": f"the reply format: JSON with keys {keys}",
-           "answer_format": {"variants": ["new instruction text", "..."]}}
+           "answer_format": 'Reply with ONE JSON object that has exactly one key, "variants", whose value is a list of '
+                            'complete instruction strings (one string per alternative). Do not use any other key.'}
     cands: list[str] = []
     for _ in range(3):  # the model sometimes answers in the wrong shape; ask again, a bounded number of times
         try:
@@ -135,8 +152,7 @@ def improve(pack_dir: Path, out_dir: Path, model: Model, certifier: Certifier, *
                 "that fix the failures while keeping the same job and the same output format.", ask)
         except Exception:
             continue
-        raw = meta.content.get("variants") if isinstance(meta.content, dict) else None
-        cands = [v for v in (raw or []) if isinstance(v, str)][:variants] if isinstance(raw, list) else []
+        cands = _variants_from(meta.content)[:variants]
         if cands:
             break
 
