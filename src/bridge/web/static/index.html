@@ -123,8 +123,8 @@ function drawMarket(){
   const box = $("market"); box.replaceChildren();
   S.market.forEach(p => {
     const c = el("div", "pack" + (selected === p.key ? " sel" : ""));
-    c.onclick = () => { selected = p.key; drawMarket(); $("go").disabled = running; $("go").textContent = "Run " + p.id + " on my data"; };
-    const top = el("div","row"); top.append(el("span","name",p.id));
+    c.onclick = () => { selected = p.key; drawMarket(); $("go").disabled = running; $("go").textContent = "Run " + p.id + " v" + p.version + " on my data"; };
+    const top = el("div","row"); const nm = el("span","name",p.id); nm.append(el("span","meta"," v" + p.version)); top.append(nm);
     const price = el("span","meta","$" + p.price_usd.toFixed(2) + " / " + p.unit); top.append(price); c.append(top);
     c.append(el("div","sum",p.summary));
     const chips = el("div","row");
