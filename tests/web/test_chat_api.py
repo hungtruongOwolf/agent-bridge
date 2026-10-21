@@ -303,3 +303,13 @@ def test_the_front_door_suggests_helpers_by_their_skills(srv):
     assert code == 200 and out["matches"] and out["matches"][0]["matched"]
     assert all(m["id"] not in ("friendly-helper", "quick-insights") for m in out["matches"])
     assert call(url + "/api/match")[1]["matches"]  # an empty question still gets the best tested helpers
+
+
+def test_how_an_answer_was_made_is_told_in_plain_sentences(srv):
+    app, url, _ = srv
+    t = new_chat(app, url, pid="deal-brief")
+    _, out = send(app, url, t["id"], "Which accounts are at risk?")
+    steps = call(url + "/api/how?run_id=" + out["report"]["run_id"])[1]["steps"]
+    text = " ".join(steps)
+    assert "read" in text and "thinking service" in text and "guard checked the final answer" in text
+    assert call(url + "/api/how?run_id=nope")[0] == 404

@@ -33,3 +33,30 @@ def failure_message(outcome: str, reason: str = "") -> str:
     if outcome == "PARTIAL_BUDGET":
         return "The helper ran out of its working budget before it could finish. You were not charged for this answer."
     return "The helper could not give an answer I can trust, so I am not passing it on. You were not charged for this answer."
+
+
+def how_made(steps: list[dict], vault_texts: dict[str, str] | None = None) -> list[str]:
+    """What happened during one answer, in plain sentences, from the run's own record (never from the helper's claims)."""
+    out: list[str] = []
+    kind_of: dict[str, str] = {}
+    for e in steps:
+        ev, sid = e.get("event"), e.get("step", "")
+        if ev == "step_started":
+            kind_of[sid] = e.get("kind", "")
+        elif ev == "step_committed" and "records" in e:
+            n = len(e["records"])
+            out.append(f"Looked through the files you share and read {n} of them." if n else "Looked through the files you share and found nothing that matches.")
+            if e.get("blocked"):
+                out.append("It also " + blocked_phrase(e["blocked"]) + ", which the guard refused.")
+        elif ev == "model_call":
+            out.append("Asked the thinking service to write or check something.")
+        elif ev == "web_search":
+            out.append(f"Looked something up on the public web (“{e.get('query', '')}”). Your files were not part of that search.")
+        elif ev == "cell_run":
+            out.append("Ran its own small program in a sealed room with no internet." + (" It ran too long and was stopped." if e.get("timed_out") else ""))
+        elif ev == "step_committed" and kind_of.get(sid) == "gate":
+            out.append("Checked its own answer: " + ("it passed." if e.get("passed") else "it did not pass."))
+        elif ev == "incident":
+            out.append("The guard raised an alarm.")
+    out.append("The guard checked the final answer before it reached you.")
+    return out

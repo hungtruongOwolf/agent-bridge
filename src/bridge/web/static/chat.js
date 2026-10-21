@@ -99,6 +99,15 @@
         m.files.forEach((id) => { const r = S.vault.find((x) => x.id === id); f.append(el("div", "small", r ? r.text : "A file you have since deleted")); });
         d.append(f);
       } else meta.append("Written without any of your files. ");
+      if (m.run_id) {
+        const how = el("details", "based"); how.append(el("summary", null, "How this answer was made"));
+        how.addEventListener("toggle", async () => {
+          if (!how.open || how.dataset.done) return; how.dataset.done = "1";
+          try { const r = await B.api("/api/how?run_id=" + encodeURIComponent(m.run_id)); r.steps.forEach((t) => how.append(el("div", "small", "• " + t))); }
+          catch (e) { how.append(el("div", "small muted", e.message)); }
+        });
+        d.append(how);
+      }
       if (m.proposals) meta.append(m.proposals + " thing(s) to remember are waiting in My memory. ");
     }
     if (m.payment) {

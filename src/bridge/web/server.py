@@ -22,7 +22,7 @@ from ..memory.broker import Lens
 from ..memory.quarantine import Quarantine
 from ..memory.service import MemoryChangeError, MemoryService
 from ..memory.vault import Vault
-from ..chat.plain import BLOCKED
+from ..chat.plain import BLOCKED, how_made
 from ..chat.service import ChatBusy, ChatService
 from ..chat.threads import ThreadError, ThreadStore
 from ..engine.limits import clean_history
@@ -410,6 +410,12 @@ def make_handler(app: App):
                     return self._json(200, app.chat.view(q.get("id", "")))
                 if route == "/api/thread/context":
                     return self._json(200, app.chat.context(q.get("id", ""), q.get("draft", "")[:1000]))
+                if route == "/api/how":
+                    with app.lock:
+                        rep = app.reports.get(q.get("run_id", ""))
+                    if rep is None:
+                        return self._json(404, {"error": "the details of this answer are no longer kept"})
+                    return self._json(200, {"steps": how_made(rep["steps"])})
                 if route == "/api/match":
                     return self._json(200, {"matches": app.world.market.match(q.get("q", "")[:300])})
                 if route == "/api/memory":
