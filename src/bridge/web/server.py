@@ -41,6 +41,15 @@ HOST_RE = re.compile(r"^(\[[0-9a-f:]+\]|[a-z0-9.-]+)(?::[0-9]{1,5})?$")
 LOCAL_HOSTS = {"127.0.0.1", "localhost", "[::1]"}
 
 
+def _words(text: str) -> frozenset:
+    return frozenset(re.findall(r"[a-z0-9]+", text.lower()))
+
+
+def _similar(a: frozenset, b: frozenset) -> bool:
+    """Two short texts that share most of their words say the same thing (a suggestion that only rephrases memory)."""
+    return bool(a and b) and len(a & b) / len(a | b) >= 0.7
+
+
 class LeakyModel:
     """Simulates a compromised model step that copies everything it can see."""
 
@@ -223,7 +232,12 @@ class App:
             self._settle_outcome(rec, run_id, rep)
             out = dict(rep.__dict__)
             raw = out.pop("proposals_raw")
-            added, problems = self.quarantine.add(run_id, rep.digest, raw) if rep.outcome == "COMPLETE" else ([], [])
+            known = [_words(r.text) for r in self.vault().all()] + [_words(p.text) for p in self.quarantine.pending()]
+            fresh = [x for x in raw if not (isinstance(x, dict) and any(_similar(_words(str(x.get("text", ""))), k) for k in known))]
+            dupes = len(raw) - len(fresh)
+            added, problems = self.quarantine.add(run_id, rep.digest, fresh) if rep.outcome == "COMPLETE" else ([], [])
+            if dupes:
+                problems.append(f"{dupes} suggestion(s) were already in your memory and were left out")
             out["proposals"] = [{"id": p.id, "type": p.type, "text": p.text} for p in added]
             out["proposal_problems"] = problems
             out["payment"] = self.payment(run_id)

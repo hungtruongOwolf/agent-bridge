@@ -278,3 +278,20 @@ def test_the_reply_describes_a_chat_that_is_free_again_and_named_after_the_first
     t = new_chat(app, url)
     _, out = send(app, url, t["id"], "Which accounts are at risk?")
     assert out["thread"]["busy"] is False and out["thread"]["title"] == "Which accounts are at risk?"
+
+
+def test_a_suggestion_that_repeats_existing_memory_is_left_out(srv):
+    app, url, _ = srv
+    existing = "Maria Lopez, Acme's head of sales, prefers email on Mondays."
+
+    class Suggester:
+        def complete(self, prompt, inputs):
+            if "proposals" in prompt:
+                return ModelReply({"proposals": [{"type": "note", "text": existing}, {"type": "note", "text": "A brand new fact"}]}, tokens=1)
+            return ModelReply({"summary": "ok", "risk": "low"}, tokens=1)
+
+    app.model_factory = lambda: Suggester()
+    t = new_chat(app, url, pid="deal-brief")
+    _, out = send(app, url, t["id"], "briefing please")
+    texts = [p["text"] for p in out["report"]["proposals"]]
+    assert texts == ["A brand new fact"] and any("already in your memory" in x for x in out["report"]["proposal_problems"])
