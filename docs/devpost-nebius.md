@@ -82,7 +82,8 @@ Based on what we observed, not guesses:
 
 - `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B` and `nvidia/nemotron-3-super-120b-a12b` called a single tool correctly 5 of 5 times at temperature 0.
 - Over a few hundred workflow calls we saw occasional empty or non-JSON `content` in chat completions even at temperature 0 and with a JSON-only
-  system prompt. We have not isolated the cause. Raising `max_tokens` from 800 to 1200 and retrying up to three times removed it for our use.
+  system prompt. We have not isolated the cause. Raising `max_tokens` from 800 to 1200 and retrying up to three times reduced it a lot, but did not
+  eliminate it: in one certification, 1 of 12 runs still failed after three attempts and was excluded from the score.
 - Identical prompts at temperature 0 did not always return identical answers, so pass-rate measurements needed several runs per task.
 - The model catalogue is clear and the OpenAI-compatible endpoint made integration quick. It would help to see per-model guidance on JSON-mode reliability
   and on whether a hidden reasoning budget counts against `max_tokens`.
