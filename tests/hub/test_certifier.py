@@ -139,3 +139,29 @@ def test_suite_checks_the_named_account_in_the_distractor_task(cert):
     wrong_name = Fixed({"summary": "Initech accounts are at risk.", "risk": "high"})
     att = c.certify(EX / "private-analyst", wrong_name, "wrong-name")
     assert att.passes == 0  # never names two real accounts, never names Hooli, and raises an alarm when healthy
+
+
+class Flaky:
+    """Fails the first N calls like an overloaded provider, then answers correctly."""
+
+    def __init__(self, fail_first):
+        self.n, self.inner = fail_first, GOOD
+
+    def complete(self, prompt, inputs):
+        if self.n > 0:
+            self.n -= 1
+            raise TimeoutError("provider overloaded")
+        return self.inner.complete(prompt, inputs)
+
+
+def test_infrastructure_failures_are_not_charged_to_the_pack(cert):
+    c, _ = cert
+    att = c.certify(EX / "private-analyst", Flaky(2), "flaky")
+    assert att.infra_failures == 2 and att.total == 7 and att.passes == 7  # 9 runs, 2 lost, no penalty
+    assert att.security == "clean"
+
+
+def test_all_runs_lost_to_infrastructure_gives_no_score_instead_of_crashing(cert):
+    c, _ = cert
+    att = c.certify(EX / "private-analyst", Flaky(10_000), "down")
+    assert att.total == 0 and att.score == 0.0 and att.infra_failures == 9

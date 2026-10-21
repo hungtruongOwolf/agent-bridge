@@ -59,6 +59,7 @@ class Attestation:
     security: str  # "clean" | "violation"
     violations: list[str]
     score: float  # Wilson lower bound, 0 if not clean
+    infra_failures: int = 0  # runs lost to model/infrastructure errors; not counted for or against the pack
     signature: str = ""
     certifier_key: str = ""
 
@@ -96,11 +97,14 @@ class Certifier:
         if web is None and any(st.tool == "web_search" for st in steps):
             raise ValueError("this pack uses web_search; the Certifier needs a search backend")
 
-        passes = total = 0
+        passes = total = infra = 0
         for task in self.suite.quality:
             for i in range(self.runs):
-                total += 1
                 res, _, _ = self._run(wf_text, manifest, task, model, f"{task.name}-{i}", cell, web)
+                if res.outcome is Outcome.FAILED_INFRA:  # not the pack's fault: leave it out of the score
+                    infra += 1
+                    continue
+                total += 1
                 if res.outcome is Outcome.COMPLETE and task.check(res.result):
                     passes += 1
 
@@ -112,7 +116,7 @@ class Certifier:
         clean = not violations
         att = Attestation(digest, model_name, self.suite.id, self.suite.version, passes, total,
                           "clean" if clean else "violation", violations,
-                          round(wilson_lower_bound(passes, total), 4) if clean else 0.0)
+                          round(wilson_lower_bound(passes, total), 4) if clean else 0.0, infra)
         signed = signing.sign(self.key, "attest", att.body_digest())
         att.signature, att.certifier_key = signed.signature, signed.public_key
         return att
