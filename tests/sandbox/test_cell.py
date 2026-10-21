@@ -104,3 +104,19 @@ def test_clean_script_reports_no_attempts(cell):
 def test_writing_under_tmp_is_not_an_attempt(cell):
     r = cell.run("open('/tmp/scratch.txt', 'w').write('x')\nresult = {}", {})
     assert r.ok and r.attempts == []
+
+
+def test_default_docker_command_follows_the_platform_and_the_override(monkeypatch):
+    from bridge.sandbox import cell as c
+    monkeypatch.delenv("BRIDGE_DOCKER", raising=False)
+    monkeypatch.setattr("sys.platform", "linux")
+    assert c.default_docker_cmd() == ["docker"]
+    monkeypatch.setattr("sys.platform", "win32")
+    assert c.default_docker_cmd() == c.WSL_DOCKER
+    monkeypatch.setenv("BRIDGE_DOCKER", "podman --remote")
+    assert c.default_docker_cmd() == ["podman", "--remote"]
+
+
+def test_docker_available_is_false_for_a_missing_engine():
+    from bridge.sandbox.cell import docker_available
+    assert docker_available(["definitely-not-a-real-binary"]) is False

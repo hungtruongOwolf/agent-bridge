@@ -50,6 +50,24 @@ sys.stdout.write(chr(10) + "@@RESULT@@" + out)
 """
 
 WSL_DOCKER = ["wsl", "-d", "Ubuntu-22.04", "-u", "root", "--", "/usr/bin/docker"]
+
+
+def default_docker_cmd() -> list[str]:
+    """How to reach a container engine: BRIDGE_DOCKER if set, WSL on Windows, plain `docker` elsewhere."""
+    import os
+    import shlex
+    import sys
+
+    if os.environ.get("BRIDGE_DOCKER"):
+        return shlex.split(os.environ["BRIDGE_DOCKER"])
+    return WSL_DOCKER if sys.platform == "win32" else ["docker"]
+
+
+def docker_available(cmd: list[str] | None = None) -> bool:
+    try:
+        return subprocess.run((cmd or default_docker_cmd()) + ["version"], capture_output=True, timeout=30).returncode == 0
+    except Exception:
+        return False
 IMAGE = "python:3.12-slim"
 BOOT_PATH = "/tmp/bridge_cell_boot.py"
 
@@ -81,7 +99,7 @@ def _attempts(text: str) -> list[str]:
 class DockerCell:
     def __init__(self, docker_cmd: list[str] | None = None, *, image: str = IMAGE,
                  memory: str = "256m", pids: int = 64, max_output: int = 65536, timeout: float = 30.0):
-        self.docker = docker_cmd or WSL_DOCKER
+        self.docker = docker_cmd or default_docker_cmd()
         self.image, self.memory, self.pids = image, memory, pids
         self.max_output, self.timeout = max_output, timeout
         self._ready = False
@@ -99,6 +117,9 @@ class DockerCell:
                 if subprocess.run(self.docker + ["info"], capture_output=True, timeout=30).returncode == 0:
                     break
                 subprocess.run(prefix + ["sleep", "2"], timeout=10)
+        else:  # native docker: the boot file is written on the host and bind-mounted
+            from pathlib import Path
+            Path(BOOT_PATH).write_text(BOOT, encoding="utf-8")
         self._ready = True
 
     def run(self, script: str, inputs: dict) -> CellResult:

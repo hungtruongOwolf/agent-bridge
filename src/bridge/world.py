@@ -60,6 +60,10 @@ def seed(world: World, packs_dir: Path, model: Model, model_name: str, *, cell=N
     for name, listing in DEMO_PACKS.items():
         rec = world.registry.publish(Path(packs_dir) / name, world.author_key, listing)
         log(f"published {rec.key}  {rec.digest[:19]}...")
-        att = world.certifier.certify(Path(packs_dir) / name, model, model_name, cell=cell, web=web)
+        try:
+            att = world.certifier.certify(Path(packs_dir) / name, model, model_name, cell=cell, web=web)
+        except ValueError as e:  # e.g. the pack needs a Cell and this machine has no container engine
+            log(f"skipped certifying {name}: {e}")
+            continue
         world.market.add_attestation(att)
         log(f"certified {name}: security={att.security} passes={att.passes}/{att.total} score={att.score}")

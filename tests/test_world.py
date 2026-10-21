@@ -33,3 +33,13 @@ def test_keys_are_stable_across_opens(tmp_path):
     b = open_world(tmp_path / "s")
     from bridge.pack import signing
     assert signing.public_b64(a.author_key) == signing.public_b64(b.author_key)
+
+
+def test_seed_skips_packs_it_cannot_certify_instead_of_failing(tmp_path):
+    w = open_world(tmp_path / "state")
+    logged = []
+    seed(w, PACKS, Fixed(), "fixed", cell=None, web=FakeWeb(), log=logged.append)  # no container engine here
+    assert any("skipped certifying exfil-kit" in m for m in logged)
+    rows = {r["id"]: r for r in w.market.ranked()}
+    assert rows["quick-insights"]["status"] == "uncertified"  # published, but never presented as safe
+    assert rows["private-analyst"]["status"] == "certified"

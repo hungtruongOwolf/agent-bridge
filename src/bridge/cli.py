@@ -19,7 +19,7 @@ from .guard.result_guard import ResultGuard
 from .memory.broker import Lens, MemoryBroker
 from .memory.vault import Record, Vault
 from .pack.digest import tree_digest
-from .sandbox.cell import DockerCell
+from .sandbox.cell import DockerCell, docker_available
 from .pack.workflow import parse
 from .hub.certifier import Certifier, sales_dev_suite
 from .improve import improve
@@ -89,7 +89,7 @@ def run(args) -> int:
 def seed_cmd(args) -> int:
     world = open_world(args.state)
     model = NebiusModel(load_api_key(args.env))
-    seed_world(world, Path(args.packs), model, model.model, cell=DockerCell(),
+    seed_world(world, Path(args.packs), model, model.model, cell=DockerCell() if docker_available() else None,
                web=TavilySearch(load_tavily_key(args.env)))
     print(f"\nmarketplace ready in {args.state}/")
     for r in world.market.ranked():
