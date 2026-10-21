@@ -312,12 +312,6 @@ def test_money_state_persists_across_a_restart(mem_app):
     assert again.ledger.provider.captured_total() == 60
 
 
-def test_page_labels_money_as_test_money_and_wires_the_settle_endpoint(srv):
-    app, url = srv
-    html = call(url + "/")[1].decode()
-    assert "Test money" in html and "/api/settle" in html and "Accept result" in html
-
-
 # ---- PayPal-style approval: the run waits until the buyer approves the hold ---------------------------
 
 @pytest.fixture
@@ -379,25 +373,9 @@ def test_the_author_is_paid_at_their_listing_email_or_the_demo_email(approval_ap
     assert app.ledger.rows[out["run_id"]].author == "author@example.com"
 
 
-def test_page_handles_the_approval_step_and_only_opens_https_links(srv):
-    app, url = srv
-    html = call(url + "/")[1].decode()
-    assert "I approved, continue" in html and "/api/run/continue" in html
-    assert "^https:" in html  # the approval link is opened only when it is https
-
-
 def test_state_reports_which_payment_provider_is_in_use(srv):
     app, url = srv
     assert call(url + "/api/state")[1]["payments"]["provider"] == "test"
-
-
-def test_new_console_page_has_the_run_visualisation_and_no_raw_codes_in_copy(srv):
-    app, url = srv
-    html = call(url + "/")[1].decode()
-    for needle in ('id="diagram"', "Sealed cell", "Memory broker", "Result guard", "Your sidecar", "replay"):
-        assert needle in html
-    assert "autocomplete=\"off\"" in html  # the simulate switch must not be restored by the browser
-    assert "http://" not in html.replace("http://www.w3.org/2000/svg", "")  # no outside requests
 
 
 def test_static_files_are_served_with_the_right_type(srv):
@@ -414,3 +392,49 @@ def test_static_files_are_served_with_the_right_type(srv):
 def test_static_route_refuses_anything_that_is_not_a_known_plain_file(srv, path):
     app, url = srv
     assert call(url + path)[0] == 404
+
+
+JARGON = ("broker", "sidecar", "digest", "hash", "lens", "journal", "quarantine", "certifier", "canary", "schema", "attestation", "ledger")
+
+
+def static_text(url, name):
+    import urllib.request
+    with urllib.request.urlopen(url + "/static/" + name) as r:
+        return r.read().decode()
+
+
+def test_the_page_loads_the_stylesheet_and_every_script_and_all_of_them_are_served(srv):
+    app, url = srv
+    html = call(url + "/")[1].decode()
+    for name in ("style.css", "intent.js", "office.js", "story.js", "app.js"):
+        assert "/static/" + name in html
+        assert len(static_text(url, name)) > 200
+    assert 'id="floor"' in html and 'data-token="' + app.token in html
+
+
+def test_the_page_speaks_plain_language_with_no_developer_words(srv):
+    import re
+    app, url = srv
+    html = call(url + "/")[1].decode().lower()
+    visible = re.sub(r"<script.*?</script>|<style.*?</style>", "", html, flags=re.S)
+    for word in JARGON:
+        assert word not in visible, word
+    for needle in ("who do you want to hire", "what may they look at", "start the job", "remember this", "test coins"):
+        assert needle in visible
+
+
+def test_money_decisions_and_the_approval_step_are_wired_in_the_script(srv):
+    app, url = srv
+    js = static_text(url, "app.js")
+    for needle in ("/api/settle", "/api/run/continue", "Good: pay in full", "I approved, continue", "^https:", "Test coins"):
+        assert needle in js
+    assert "http://" not in js  # nothing in the script points outside this machine
+
+
+def test_the_floor_replays_the_run_record_and_says_so(srv):
+    app, url = srv
+    story = static_text(url, "story.js")
+    for needle in ("step_started", "step_committed", "cell_run", "incident", "run_finished", "model_call"):
+        assert needle in story
+    assert "replays what really happened" in static_text(url, "app.js")
+
