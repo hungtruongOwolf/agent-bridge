@@ -48,7 +48,8 @@ class RunReport:
 
 def run_pack(pack_dir: Path, vault: Vault, lens: Lens, model: Model, *, seed: str, cell=None,
              expected_digest: str | None = None, journal_path: Path | None = None,
-             run_id: str | None = None, web=None, task: str = "", history: list | None = None) -> RunReport:
+             run_id: str | None = None, web=None, task: str = "", history: list | None = None,
+             journal: Journal | None = None) -> RunReport:
     pack_dir = Path(pack_dir)
     digest = tree_digest(pack_dir)
     if expected_digest is not None and digest != expected_digest:
@@ -57,7 +58,7 @@ def run_pack(pack_dir: Path, vault: Vault, lens: Lens, model: Model, *, seed: st
     wf = parse((pack_dir / "workflow.yaml").read_text(encoding="utf-8"))
     broker = MemoryBroker(vault, lens, run_seed=seed)
     validator = Draft202012Validator(manifest["result_schema"])
-    journal = Journal(journal_path)
+    journal = journal or Journal(journal_path)
     engine = Engine(wf, model=model, broker=broker, guard=ResultGuard(manifest["result_schema"]),
                     journal=journal, cell=cell, web=web, task=task, history=history,
                     checks={"result_matches_schema": lambda i: validator.is_valid(next(iter(i.values()), None))})

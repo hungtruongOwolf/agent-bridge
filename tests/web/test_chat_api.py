@@ -324,3 +324,19 @@ def test_several_notes_can_be_imported_at_once_all_or_nothing(srv):
     assert len(app.memory.list()) == before + 2  # the bad batch saved nothing
     assert call(url + "/api/memory", {"action": "add_many", "items": [], "sensitivity": "low", "type": "note"}, app.token)[0] == 400
     assert call(url + "/api/memory", {"action": "add_many", "items": [5], "sensitivity": "low", "type": "note"}, app.token)[0] == 400
+
+
+def test_progress_shows_what_a_running_answer_has_done_so_far(srv):
+    app, url, model = srv
+    t = new_chat(app, url, pid="deal-brief")
+    seen = {}
+
+    class Slow:
+        def complete(self, prompt, inputs):
+            seen["progress"] = call(url + "/api/thread/progress?id=" + t["id"])[1]
+            return ModelReply({"summary": "ok", "risk": "low"} if "proposals" not in prompt else {"proposals": []}, tokens=1)
+
+    app.model_factory = lambda: Slow()
+    send(app, url, t["id"], "briefing")
+    assert seen["progress"]["working"] is True and any("read" in s for s in seen["progress"]["steps"])
+    assert call(url + "/api/thread/progress?id=" + t["id"])[1] == {"working": False, "steps": []}

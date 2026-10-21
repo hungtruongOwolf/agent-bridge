@@ -26,6 +26,7 @@ from ..chat.plain import BLOCKED, how_made
 from ..chat.service import ChatBusy, ChatService
 from ..chat.threads import ThreadError, ThreadStore
 from ..engine.limits import clean_history
+from ..engine.journal import Journal
 from ..payments.ledger import Ledger, PendingError, StateError
 from ..payments.provider import FakeProvider, ProviderError
 from ..pack.digest import tree_digest
@@ -110,6 +111,7 @@ class App:
         # money is TEST money: a fake provider now, the PayPal sandbox client when credentials exist
         self.ledger = ledger or Ledger(FakeProvider(path=self.world.state / "provider.json"),
                                        path=self.world.state / "ledger.json", holdback_s=0)
+        self.live: dict[str, object] = {}  # run id -> journal of a run in progress, so the page can show what is happening
         self.reports: dict[str, dict] = {}  # run_id -> full report (this session)
         self.history: list[dict] = []
         self.chat = ChatService(self)
@@ -218,9 +220,16 @@ class App:
         try:
             with self.lock:
                 self.ledger.start(run_id, self.clock())
-            rep = run_pack(pack_dir, self.vault(), params["lens"], model, seed=run_id, cell=self.cell,
-                           expected_digest=rec.digest, run_id=run_id, web=self.web,
-                           task=params["task"], history=params["history"])
+            journal = Journal()
+            with self.lock:
+                self.live[run_id] = journal
+            try:
+                rep = run_pack(pack_dir, self.vault(), params["lens"], model, seed=run_id, cell=self.cell,
+                               expected_digest=rec.digest, run_id=run_id, web=self.web,
+                               task=params["task"], history=params["history"], journal=journal)
+            finally:
+                with self.lock:
+                    self.live.pop(run_id, None)
         except Exception:
             with self.lock:
                 try:
@@ -412,6 +421,8 @@ def make_handler(app: App):
                     return self._json(200, app.chat.view(q.get("id", "")))
                 if route == "/api/thread/context":
                     return self._json(200, app.chat.context(q.get("id", ""), q.get("draft", "")[:1000]))
+                if route == "/api/thread/progress":
+                    return self._json(200, app.chat.progress(q.get("id", "")))
                 if route == "/api/how":
                     with app.lock:
                         rep = app.reports.get(q.get("run_id", ""))

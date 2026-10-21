@@ -5,7 +5,7 @@
   let B = null;          // shared helpers from app.js
   let cur = null;        // the open chat (as the server describes it)
   let ctx = null;        // the latest "what the helper will see" preview
-  let ctxKey = "", sending = false, sendingId = null, draftTimer = null, pendingApproval = null;
+  let pendingText = "", progressLines = [], progressTimer = null, ctxKey = "", sending = false, sendingId = null, draftTimer = null, pendingApproval = null;
   const $ = (id) => document.getElementById(id);
   const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; };
   const btn = (text, cls, fn) => { const b = el("button", cls || "btn", text); b.type = "button"; if (fn) b.onclick = fn; return b; };
@@ -80,7 +80,11 @@
     if (!cur.messages.length) box.append(el("p", "empty", "Say what you need. For example: “Which of my accounts need attention this week?”"));
     cur.messages.forEach((m) => box.append(bubble(m)));
     if (pendingApproval && pendingApproval.threadId === cur.id) box.append(approvalCard());
-    if (sending && sendingId === cur.id) { const w = el("div", "msg helper thinking"); w.append(el("div", "text", "Working on it…")); box.append(w); }
+    if (sending && sendingId === cur.id) {
+      if (pendingText) { const u = el("div", "msg user"); u.append(el("div", "text", pendingText)); box.append(u); }
+      const w = el("div", "msg helper thinking"); w.id = "workbubble"; w.append(el("div", "text", "Working on it…"), el("div", "small muted", progressLines.join(" ")));
+      box.append(w);
+    }
     box.scrollTop = box.scrollHeight;
     const waiting = (pendingApproval && pendingApproval.threadId === cur.id) || (sending && sendingId === cur.id);
     if (cur.busy && !waiting) { const r = el("div", "msg system"); r.append(el("div", "text", "This chat still looks busy, maybe because the page was reloaded."), btn("Reset this chat", "btn", resetBusy)); box.append(r); }
@@ -139,16 +143,28 @@
     ev.preventDefault();
     const box = $("draft"), text = box.value.trim();
     if (!cur || sending || !text) return;
-    const mine = cur.id; sending = true; sendingId = mine; say(""); drawConversation();
+    const mine = cur.id; sending = true; sendingId = mine; pendingText = text; progressLines = []; say(""); drawConversation(); watchProgress(mine);
     try {
       const r = await B.api("/api/thread/send", { id: mine, text, simulate: $("misbehave").checked });
       box.value = "";
       if (r.needs_approval) pendingApproval = Object.assign({ threadId: mine }, r);
       if (cur && cur.id === mine) cur = r.thread;
     } catch (e) { say(e.message); try { const t = await B.api("/api/thread?id=" + mine); if (cur && cur.id === mine) cur = t; } catch (_) { /* keep what is on screen */ } }
-    sending = false; sendingId = null;
+    sending = false; sendingId = null; pendingText = ""; clearInterval(progressTimer);
     try { await B.refresh(); } catch (_) { /* the screen already shows the answer */ }
     drawConversation(); loadContext(); drawThreads();
+  }
+
+  function watchProgress(id) {
+    clearInterval(progressTimer);
+    progressTimer = setInterval(async () => {
+      if (!sending || sendingId !== id) { clearInterval(progressTimer); return; }
+      try {
+        const p = await B.api("/api/thread/progress?id=" + encodeURIComponent(id));
+        progressLines = p.steps;
+        const w = $("workbubble"); if (w && w.lastChild) w.lastChild.textContent = p.steps.length ? p.steps[p.steps.length - 1] : "";
+      } catch (e) { /* the answer itself will report problems */ }
+    }, 900);
   }
 
   function approvalCard() {

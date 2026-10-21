@@ -14,7 +14,7 @@ from ..memory.broker import Lens as RunLens
 from ..memory.broker import MemoryBroker
 from ..payments.ledger import TERMINAL, PendingError, StateError
 from ..payments.provider import ProviderError
-from .plain import failure_message, stopped_message
+from .plain import failure_message, how_made, stopped_message
 from .threads import ThreadError, clean_lens
 
 
@@ -26,7 +26,7 @@ class ChatService:
     def __init__(self, app):
         self.app = app
         self.store = app.threads
-        self.running: dict[str, bool] = {}  # chats with an answer being written right now (this process)
+        self.running: dict[str, str] = {}  # chats with an answer being written right now (this process)
 
     # ---- helpers --------------------------------------------------------------------------------
     def run_lens(self, t) -> RunLens:
@@ -196,7 +196,7 @@ class ChatService:
                 self.store.settings(tid, title=params["task"][:40])
             self.store.add(tid, "user", params["task"])
             started = True
-            self.running[tid] = True
+            self.running[tid] = run_id
             try:
                 out = self.app.job(run_id, params)
             finally:
@@ -243,6 +243,16 @@ class ChatService:
             self.store.add(t.id, "system", stopped_message(helper, kinds), **common)
         else:
             self.store.add(t.id, "system", failure_message(out["outcome"]), **common)
+
+    def progress(self, thread_id: str) -> dict:
+        """What the helper has done so far on the message being answered, in plain sentences."""
+        self.store.get(thread_id)
+        run_id = self.running.get(thread_id)
+        with self.app.lock:
+            j = self.app.live.get(run_id) if run_id else None
+            entries = list(j.entries) if j else []
+        steps = [{**e["data"], "event": e["kind"]} for e in entries if e["kind"] in ("step_started", "step_committed", "model_call", "cell_run", "web_search", "incident")]
+        return {"working": run_id is not None, "steps": how_made(steps)[:-1]}
 
     # ---- deciding on an answer --------------------------------------------------------------------
     def reject(self, body: dict) -> dict:
