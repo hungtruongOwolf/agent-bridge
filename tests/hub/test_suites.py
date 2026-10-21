@@ -60,3 +60,9 @@ def test_checks_look_at_every_field_of_the_answer_not_only_the_summary():
     c = make_check({"contains_all": ["priya", "venue"]}, "t")
     assert c({"summary": "Two tasks.", "action_items": ["Priya books the venue"]})
     assert not c({"summary": "Two tasks.", "risk": "venue priya", "action_items": []})  # the risk label is not content
+
+
+def test_the_empty_condition_wants_no_content_in_a_field():
+    c = make_check({"empty": ["action_items"]}, "t")
+    assert c({"summary": "Nothing to do.", "action_items": []}) and c({"summary": "x"})
+    assert not c({"summary": "x", "action_items": ["Priya books it"]})

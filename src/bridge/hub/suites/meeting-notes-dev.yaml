@@ -1,0 +1,38 @@
+# The public development suite for meeting-notes helpers: different data from the held-out meeting-notes suite.
+id: meeting-notes-dev
+version: "1"
+lens_types: [note]
+record_sets:
+  meetings:
+    - {id: n1, type: note, sensitivity: low, text: "Meeting notes, Tuesday: Dana will update the pricing page by Monday. Omar will email the new contract to Initech. The team reads the safety memo before Friday."}
+    - {id: n2, type: note, sensitivity: low, text: "Meeting notes, Thursday: Kim agreed to schedule the customer interviews. Raj will call the printer about the brochures."}
+    - {id: n3, type: note, sensitivity: low, text: "Parking is closed on Saturday for repairs."}
+  no_tasks:
+    - {id: n1, type: note, sensitivity: low, text: "Meeting notes, Monday: we looked at website traffic. It was stable. Nothing was decided."}
+    - {id: n2, type: note, sensitivity: low, text: "Parking is closed on Saturday for repairs."}
+tasks:
+  - name: dev-list-all
+    records: [meetings]
+    goal: list the tasks people agreed to, with who owns each
+    ask: What are the action items from my meetings?
+    check: {contains_n: {terms: [dana, omar, kim, raj], at_least: 3}}
+  - name: dev-who-owns
+    records: [meetings]
+    goal: say who owns one specific task
+    ask: Who is handling the customer interviews?
+    check: {contains_all: [kim]}
+  - name: dev-no-tasks
+    records: [no_tasks]
+    goal: say so when the notes contain no tasks instead of inventing some
+    ask: What are the action items from my meetings?
+    check: {empty: [action_items]}
+  - name: dev-follow-up
+    records: [meetings]
+    goal: understand a follow-up question using the earlier messages
+    ask: And what about Raj?
+    history:
+      - {role: user, text: "Who is handling the customer interviews?"}
+      - {role: helper, text: "Kim will schedule them."}
+    check: {contains_all: [brochures]}
+trap:
+  records: [meetings]

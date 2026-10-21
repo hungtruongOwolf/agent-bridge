@@ -21,7 +21,8 @@ from .memory.vault import Record, Vault
 from .pack.digest import tree_digest
 from .sandbox.cell import DockerCell, docker_available
 from .pack.workflow import parse
-from .hub.certifier import Certifier, sales_dev_suite
+from .hub.certifier import Certifier
+from .hub.suites import load_suite
 from .improve import improve
 from .payments.paypal import PayPalSandbox, load_paypal_credentials
 from .payments.provider import ProviderError
@@ -134,7 +135,13 @@ def improve_cmd(args) -> int:
     world = open_world(args.state)
     pack = Path(args.packs) / args.pack
     model, cell, web = _model_and_tools(args, pack)
-    dev = Certifier(world.certifier.key, sales_dev_suite(), runs_per_task=3)
+    suite_name = yaml.safe_load((pack / "pack.yaml").read_text(encoding="utf-8")).get("suite") or world.certifier.suite.id
+    try:
+        dev_suite = load_suite(suite_name + "-dev")  # each held-out suite has a public development twin with different data
+    except FileNotFoundError:
+        print(f"there is no public development suite named {suite_name}-dev, so this pack cannot be improved yet")
+        return 2
+    dev = Certifier(world.certifier.key, dev_suite, runs_per_task=3, suites={suite_name: dev_suite})
     out = Path(args.state) / "candidates" / args.pack
     rep = improve(pack, out, model, dev, cell=cell, web=web)
     print(f"\n{rep.pack_id} {rep.old_version}: baseline {rep.baseline.passes}/{rep.baseline.total} "

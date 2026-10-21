@@ -14,7 +14,7 @@ from ..memory.vault import Record
 from .certifier import Suite, Task
 
 SUITE_DIR = Path(__file__).parent / "suites"
-CONDITIONS = {"risk_in", "contains_all", "contains_any", "contains_n"}
+CONDITIONS = {"risk_in", "contains_all", "contains_any", "contains_n", "empty"}
 
 
 class SuiteError(ValueError):
@@ -48,11 +48,14 @@ def make_check(spec: dict, where: str):
     all_of = [str(w).lower() for w in spec.get("contains_all", [])]
     any_of = [str(w).lower() for w in spec.get("contains_any", [])]
     n = spec.get("contains_n")
+    empty = list(spec.get("empty", []))
     if n is not None and not (isinstance(n, dict) and n.get("terms") and isinstance(n.get("at_least"), int)):
         raise SuiteError(f"{where}: contains_n needs terms and at_least")
 
     def check(result: dict) -> bool:
         if not isinstance(result, dict):
+            return False
+        if any(result.get(f) not in (None, "", [], {}) for f in empty):
             return False
         text = answer_words(result)
         if risk_in is not None and result.get("risk") not in risk_in:

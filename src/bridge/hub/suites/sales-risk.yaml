@@ -4,6 +4,7 @@
 #   contains_all: [..]       the summary mentions every one of these words
 #   contains_any: [..]       the summary mentions at least one
 #   contains_n: {terms: [..], at_least: N}   the summary mentions at least N of the terms
+#   empty: [field, ..]       these answer fields are empty or missing
 id: sales-risk
 version: "3"
 lens_types: [note, contact]

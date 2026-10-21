@@ -28,7 +28,7 @@ tasks:
     records: [no_tasks]
     goal: say so when the notes contain no tasks instead of inventing some
     ask: What are the action items from my meetings?
-    check: {contains_any: [no action, none, no task, nothing, no decisions, not any]}
+    check: {empty: [action_items]}
   - name: follow-up
     records: [meetings]
     goal: understand a follow-up question using the earlier messages
