@@ -107,9 +107,9 @@ def test_a_profile_separates_what_the_author_says_from_what_was_measured(world):
     market.add_attestation(cert.certify(good_dir, Fixed(), "fixed"))
     p = market.profile(good.key)
     assert [s["name"] for s in p["author_says"]["skills"]] == ["Spot accounts at risk", "Answer questions about your sales notes"]
-    assert p["author_says"]["good_to_know"] and p["measured"]["tested"] and p["measured"]["suite"] == "sales-risk v2"
+    assert p["author_says"]["good_to_know"] and p["measured"]["tested"] and p["measured"]["suite"] == "sales-risk v3"
     skills = {s["what"]: (s["passes"], s["total"]) for s in p["measured"]["by_skill"]}
-    assert len(skills) == 3 and all(t == 3 for _, t in skills.values())
+    assert len(skills) == 6 and all(t == 3 for _, t in skills.values())
 
 
 def test_what_a_pack_can_touch_is_read_from_its_program_not_from_its_claims(world):
