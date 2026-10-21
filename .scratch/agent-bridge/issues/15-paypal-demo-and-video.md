@@ -1,6 +1,6 @@
 # 15 PayPal demo script and video
 
-Status: open
+Status: ready-for-human (script written; owner records; sandbox check pending credentials)
 Milestone: M4
 Blocked by: 13
 
