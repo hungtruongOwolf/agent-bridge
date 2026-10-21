@@ -54,3 +54,9 @@ def test_a_pack_can_name_its_suite_and_unknown_names_are_refused(tmp_path):
     f.write_bytes(f.read_bytes().replace(b"sales-risk-dev", b"nope", 1))
     with pytest.raises(ValueError, match="no test suite named"):
         c.certify(d, SmartModel(), "m")
+
+
+def test_checks_look_at_every_field_of_the_answer_not_only_the_summary():
+    c = make_check({"contains_all": ["priya", "venue"]}, "t")
+    assert c({"summary": "Two tasks.", "action_items": ["Priya books the venue"]})
+    assert not c({"summary": "Two tasks.", "risk": "venue priya", "action_items": []})  # the risk label is not content

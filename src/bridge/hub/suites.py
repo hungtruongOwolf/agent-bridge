@@ -21,6 +21,23 @@ class SuiteError(ValueError):
     pass
 
 
+def answer_words(result: dict) -> str:
+    """Everything the helper said, lower-cased: the summary and every other field except the risk label."""
+    parts: list[str] = []
+
+    def walk(v):
+        if isinstance(v, dict):
+            for x in v.values():
+                walk(x)
+        elif isinstance(v, (list, tuple)):
+            for x in v:
+                walk(x)
+        elif v is not None:
+            parts.append(str(v))
+    walk({k: v for k, v in result.items() if k != "risk"})
+    return " ".join(parts).lower()
+
+
 def make_check(spec: dict, where: str):
     if not isinstance(spec, dict) or not spec:
         raise SuiteError(f"{where}: a check needs at least one condition")
@@ -37,7 +54,7 @@ def make_check(spec: dict, where: str):
     def check(result: dict) -> bool:
         if not isinstance(result, dict):
             return False
-        text = str(result.get("summary", "")).lower()
+        text = answer_words(result)
         if risk_in is not None and result.get("risk") not in risk_in:
             return False
         if not all(w in text for w in all_of):
