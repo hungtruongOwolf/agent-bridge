@@ -271,3 +271,10 @@ def test_a_new_file_never_takes_over_an_id_an_old_answer_points_at(srv):
     app.threads.add(t["id"], "helper", "an answer", files=[first])
     app.memory.delete(first)
     assert app.memory.add("note", "fresh", "low")["id"] != first
+
+
+def test_the_reply_describes_a_chat_that_is_free_again_and_named_after_the_first_question(srv):
+    app, url, _ = srv
+    t = new_chat(app, url)
+    _, out = send(app, url, t["id"], "Which accounts are at risk?")
+    assert out["thread"]["busy"] is False and out["thread"]["title"] == "Which accounts are at risk?"

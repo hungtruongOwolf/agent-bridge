@@ -192,6 +192,8 @@ class ChatService:
             t = self.store.get(tid)
             params = dict(params, lens=self.run_lens(t), history=clean_history(self.history(t)))  # settings changed while waiting count
             self._accept_previous(t, run_id)
+            if t.title == "New chat" and not t.messages:  # name a fresh chat after its first question
+                self.store.settings(tid, title=params["task"][:40])
             self.store.add(tid, "user", params["task"])
             started = True
             self.running[tid] = True
@@ -200,8 +202,8 @@ class ChatService:
             finally:
                 self.running.pop(tid, None)
             self._record_answer(t, run_id, out, params["rec"])
-            view = self.view(tid)
-            return {"thread": view, "report": out}
+            self.store.end(tid)  # the answer is in: the chat is free again before we describe it
+            return {"thread": self.view(tid), "report": out}
         except BaseException:
             if not started:  # never leave a hold open for a run that did not start
                 with self.app.lock:
