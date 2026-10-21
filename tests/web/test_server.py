@@ -402,12 +402,28 @@ def static_text(url, name):
         return r.read().decode()
 
 
+def all_js(url):
+    from pathlib import Path
+    root = Path(__file__).resolve().parent.parent.parent / "src" / "bridge" / "web" / "static" / "js"
+    return "".join(p.read_text(encoding="utf-8") for p in sorted(root.rglob("*.js")))
+
+
+def test_every_screen_address_serves_the_page_so_reload_and_deep_links_work(srv):
+    app, url = srv
+    for path in ("/hire", "/chats/abc", "/helpers", "/helpers/x/try", "/memory", "/memory/shelf/People/Ann", "/memory/note/n1",
+                 "/memory/trash", "/market/some%3Akey", "/wallet", "/help"):
+        code, body = call(url + path)
+        assert code == 200 and b'type="module"' in body, path
+    assert call(url + "/nope")[0] == 404
+    assert call(url + "/api/nope")[0] == 404
+
+
 def test_the_page_loads_the_stylesheet_and_every_script_and_all_of_them_are_served(srv):
     app, url = srv
     html = call(url + "/")[1].decode()
-    for name in ("style.css", "chat.js", "office.js", "story.js", "app.js"):
-        assert "/static/" + name in html
+    for name in ("style.css", "js/main.js", "js/views/chat.js", "js/pixel/office.js", "js/pixel/story.js", "js/lib/router.js"):
         assert len(static_text(url, name)) > 200
+    assert "/static/style.css" in html and "/static/js/main.js" in html
     assert 'id="floor"' in html and 'data-token="' + app.token in html
 
 
@@ -424,18 +440,18 @@ def test_the_page_speaks_plain_language_with_no_developer_words(srv):
 
 def test_money_decisions_and_the_approval_step_are_wired_in_the_script(srv):
     app, url = srv
-    js = static_text(url, "chat.js") + static_text(url, "app.js")
+    js = all_js(url)
     for needle in ("/api/thread/reject", "/api/run/continue", "Not helpful", "I approved, continue", "^https?:", "Coins"):
         assert needle in js
-    assert "http://" not in js  # nothing in the script points outside this machine
+    assert "http://" not in js.replace("http://www.w3.org/2000/svg", "")  # nothing in the script points outside this machine (the SVG namespace is a name, not an address)
 
 
 def test_the_floor_replays_the_run_record_and_says_so(srv):
     app, url = srv
-    story = static_text(url, "story.js")
+    story = static_text(url, "js/pixel/story.js")
     for needle in ("step_started", "step_committed", "cell_run", "incident", "run_finished", "model_call"):
         assert needle in story
-    assert "office.play(report" in static_text(url, "chat.js")
+    assert "office.play(report" in all_js(url)
 
 
 

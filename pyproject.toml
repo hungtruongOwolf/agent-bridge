@@ -23,5 +23,5 @@ where = ["src"]
 testpaths = ["tests"]
 
 [tool.setuptools.package-data]
-"bridge.web" = ["static/*", "static/fonts/*"]
+"bridge.web" = ["static/*", "static/fonts/*", "static/js/*.js", "static/js/*/*.js", "static/js/package.json"]
 "bridge.hub" = ["suites/*.yaml"]

@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Agent Bridge</title>
 <link rel="stylesheet" href="/static/style.css">
+<meta name="color-scheme" content="light">
 </head>
 <body data-token="__TOKEN__">
 <header class="top">
@@ -12,21 +13,21 @@
   <form class="assistant" id="askform" autocomplete="off">
     <input id="ask" type="text" placeholder="Ask for help, like: which accounts need attention?" aria-label="What do you need help with?">
     <button class="btn go2" type="submit">Find a helper</button>
-    <button class="btn" id="helpbtn" type="button" title="How this works">? Help</button>
+    <a class="btn" href="/help" data-link title="How this works">? Help</a>
     <button class="btn mic" id="mic" type="button" aria-pressed="false" title="Speak to your assistant">Talk</button>
   </form>
-  <button class="coins" id="coinbtn" type="button" title="See every payment"><b id="coinlabel">Coins</b><span id="coinchip"></span></button>
+  <a class="coins" id="coinbtn" href="/wallet" data-link title="See every payment"><b id="coinlabel">Coins</b><span id="coinchip"></span></a>
 </header>
 <div class="recs" id="recs" aria-live="polite"></div>
 
-<nav class="tabs" role="tablist" aria-label="Where do you want to be?">
-  <button id="tab-office" role="tab" aria-selected="true" aria-controls="view-office" type="button">My office</button>
-  <button id="tab-studio" role="tab" aria-selected="false" aria-controls="view-studio" type="button">My helpers</button>
-  <button id="tab-memory" role="tab" aria-selected="false" aria-controls="view-memory" type="button">My memory</button>
+<nav class="tabs" aria-label="Where do you want to be?">
+  <a href="/" data-link data-nav="office">My office</a>
+  <a href="/helpers" data-link data-nav="studio">My helpers</a>
+  <a href="/memory" data-link data-nav="memory">My memory</a>
 </nav>
 
 <!-- The market floor: one stall for every chat you have open, all in one picture. -->
-<section id="view-office" class="floorview" role="tabpanel">
+<section id="view-office" class="floorview">
   <div class="panel welcome" id="welcome" hidden>
     <div class="title">Welcome</div>
     <div class="body">
@@ -57,9 +58,9 @@
 </section>
 
 <!-- One chat = one small office. -->
-<section id="view-chat" class="chatview" role="tabpanel" hidden>
+<section id="view-chat" class="chatview" hidden>
   <aside class="chatleft">
-    <button class="btn" id="backtofloor" type="button">← All my chats</button>
+    <a class="btn" href="/" data-link>← All my chats</a>
     <div class="panel minioffice">
       <div class="title" id="officetitle">This chat's office</div>
       <div class="body">
@@ -88,7 +89,7 @@
 </section>
 
 <!-- Build, test, publish and manage your own helpers. -->
-<section id="view-studio" class="studioview" role="tabpanel" hidden>
+<section id="view-studio" class="studioview" hidden>
   <aside class="studioleft">
     <div class="panel"><div class="title">Helpers I built</div><div class="body">
       <div class="threads" id="helperlist"></div>
@@ -144,7 +145,7 @@
   </aside>
 </section>
 
-<section id="view-memory" class="memview" role="tabpanel" hidden>
+<section id="view-memory" class="memview" hidden>
   <div class="panel memintro"><div class="title">My memory</div><div class="body">
     <p>Your notes, kept on shelves. Helpers only see the shelves you tick. <b>Secret</b> files are never shared.</p>
     <details class="more"><summary>More about memory</summary><p class="small">Nothing is saved behind your back. Memory changes only when you write something here or say yes to a helper's suggestion.</p></details>
@@ -210,7 +211,7 @@
 
 <dialog id="wallet" class="profile" aria-label="Payments">
   <div id="walletbody"></div>
-  <div class="acts"><button class="btn" id="walletclose" type="button">Close</button></div>
+  <div class="acts"><button class="btn" data-close type="button">Close</button></div>
 </dialog>
 
 <dialog id="help" class="profile" aria-label="How this works">
@@ -222,20 +223,14 @@
     <li><b>Secret</b> notes never leave. A guard checks every answer.</li>
     <li><b>Coins</b> are demo money. Nothing real is charged.</li>
   </ol>
-  <div class="acts"><button class="btn" id="helpclose" type="button">Got it</button></div>
+  <div class="acts"><button class="btn" data-close type="button">Got it</button></div>
 </dialog>
 
 <dialog id="profile" class="profile" aria-label="About this helper">
   <div id="profilebody"></div>
-  <div class="acts"><button class="btn" id="profileclose" type="button">Close</button></div>
+  <div class="acts"><button class="btn" data-close type="button">Close</button></div>
 </dialog>
 
-<script src="/static/office.js"></script>
-<script src="/static/story.js"></script>
-<script src="/static/market.js"></script>
-<script src="/static/memory.js"></script>
-<script src="/static/studio.js"></script>
-<script src="/static/chat.js"></script>
-<script src="/static/app.js"></script>
+<script type="module" src="/static/js/main.js"></script>
 </body>
 </html>
