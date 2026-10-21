@@ -73,12 +73,26 @@ class MemoryService:
             v.save(self.file)
             return out
 
+    def _referenced(self) -> set[str]:
+        """Ids that a chat's settings or past answers still point at; a new file must never take one over."""
+        ids: set[str] = set()
+        if self.threads is not None:
+            with self.threads.lock:
+                for t in self.threads.threads.values():
+                    ids.update(t.lens.include, t.lens.exclude)
+                    for m in t.messages:
+                        ids.update(m.files)
+        return ids
+
     def add(self, type: str, text: str, sensitivity: str) -> dict:
         now = self.clock()
 
         def go(v: Vault):
+            rid = v.next_id("m")
+            while rid in self._referenced():
+                rid = "m" + str(int(rid[1:]) + 1)
             try:
-                rec = Record(v.next_id("m"), type, sensitivity, (text or "").strip(), created=now)
+                rec = Record(rid, type, sensitivity, (text or "").strip(), created=now)
             except ValueError as e:
                 raise MemoryChangeError(str(e)) from e
             v.add(rec)
@@ -88,6 +102,10 @@ class MemoryService:
 
     def update(self, record_id: str, *, text=None, sensitivity=None, type=None) -> dict:
         now = self.clock()
+
+        for name, val in (("text", text), ("sensitivity", sensitivity), ("type", type)):
+            if val is not None and not isinstance(val, str):
+                raise MemoryChangeError(f"{name} must be text")
 
         def go(v: Vault):
             if v.get(record_id) is None:

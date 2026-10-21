@@ -281,12 +281,18 @@ class Ledger:
                     self._move(row, {"AWAITING_APPROVAL"}, "VOIDED", now, "the buyer did not approve in time")
                     done.append((row.run_id, "approval expired"))
                 elif row.state == "RESULT_READY" and row.accept_by is not None and now >= row.accept_by:
-                    self.accept(row.run_id, now, "auto-accept: no decision before the deadline")
-                    done.append((row.run_id, "auto-accepted"))
+                    try:
+                        self.accept(row.run_id, now, "auto-accept: no decision before the deadline")
+                        done.append((row.run_id, "auto-accepted"))
+                    except (ProviderError, PendingError):
+                        done.append((row.run_id, "auto-accept will be retried"))
                 elif row.state == "RUNNING" and row.run_deadline is not None and now >= row.run_deadline:
                     # silence after start: the floor is captured, the outcome falls to the auto-accept default
-                    self.result_ready(row.run_id, now, "silence after start: floor captured")
-                    done.append((row.run_id, "silence: floor captured"))
+                    try:
+                        self.result_ready(row.run_id, now, "silence after start: floor captured")
+                        done.append((row.run_id, "silence: floor captured"))
+                    except (ProviderError, PendingError):
+                        done.append((row.run_id, "capture will be retried"))
                 elif row.state == "DISPUTE_HOLD" and row.dispute_by is not None and now >= row.dispute_by \
                         and not any(e["why"] == "dispute overdue" for e in row.events):
                     row.events.append({"t": now, "from": row.state, "to": row.state, "why": "dispute overdue"})

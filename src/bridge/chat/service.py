@@ -12,7 +12,8 @@ from __future__ import annotations
 from ..engine.limits import clean_history
 from ..memory.broker import Lens as RunLens
 from ..memory.broker import MemoryBroker
-from ..payments.ledger import TERMINAL, StateError
+from ..payments.ledger import TERMINAL, PendingError, StateError
+from ..payments.provider import ProviderError
 from .plain import failure_message, stopped_message
 from .threads import ThreadError, clean_lens
 
@@ -44,8 +45,8 @@ class ChatService:
     def money(self, t) -> dict:
         """What this chat has cost, and what is still undecided, in cents."""
         spent = held = 0
-        for m in t.messages:
-            row = self.app.ledger.rows.get(m.run_id) if m.run_id else None
+        for rid in t.runs:
+            row = self.app.ledger.rows.get(rid)
             if row is None:
                 continue
             taken = row.captured()
@@ -58,8 +59,8 @@ class ChatService:
     def _projected(self, t) -> int:
         """Cost so far if every undecided answer counts as good (the next message makes them so)."""
         total = 0
-        for m in t.messages:
-            row = self.app.ledger.rows.get(m.run_id) if m.run_id else None
+        for rid in t.runs:
+            row = self.app.ledger.rows.get(rid)
             if row is None:
                 continue
             total += row.price if row.state in ("RESULT_READY", "SETTLED", "RUNNING", "AUTHORIZED") else row.captured()
@@ -79,12 +80,21 @@ class ChatService:
                     "types": t.lens.types, "max_sensitivity": t.lens.max_sensitivity, "include": t.lens.include, "exclude": t.lens.exclude},
                 "history_turns": t.history_turns, "budget": self.money(t), "messages": msgs, "busy": t.busy}
 
+    def history(self, t) -> list[dict]:
+        """Earlier turns for the next run. Answers written from a file that is locked now are left out."""
+        vault = self.app.memory.vault()
+        shared = set(MemoryBroker(vault, self.run_lens(t), run_seed="history").manifest)
+        banned = {m.id for m in t.messages if m.role == "helper" and any(f not in shared for f in m.files)}
+        turns = [m for m in t.messages if m.role in ("user", "helper") and m.id not in banned]
+        out = [{"role": m.role, "text": m.text} for m in turns]
+        return out[-t.history_turns:] if t.history_turns else []
+
     # ---- thread management ----------------------------------------------------------------------
     def create(self, body: dict) -> dict:
         key = str(body.get("agent_key", ""))
         self.app.resolve_agent(key)  # refuses helpers that are gone or revoked
         lens = None
-        if any(k in body for k in ("types", "max_sensitivity")):
+        if any(k in body for k in ("types", "max_sensitivity", "include", "exclude")):
             lens = clean_lens(body.get("types", ["note", "contact"]), body.get("max_sensitivity", "medium"),
                               body.get("include", []), body.get("exclude", []))
         t = self.store.create(key, str(body.get("title", "")), lens)
@@ -138,7 +148,7 @@ class ChatService:
                 item.pop("text")
                 locked.append(item)
         likely = [x["id"] for x in broker.search(draft, fallback=True).records] if draft.strip() else []
-        hist = self.store.history_for(thread_id)
+        hist = self.history(t)
         return {"thread": t.id, "helper": self._agent(t), "shared": shared, "locked": locked, "likely": likely,
                 "history": hist, "history_turns": t.history_turns, "budget": self.money(t),
                 "goes_to_the_brain": ("To write an answer, your message, the files that match it and the last " + str(t.history_turns) +
@@ -163,8 +173,9 @@ class ChatService:
                                       "Raise the limit in the chat settings to keep going.")
             run_id = self.app.new_run_id()
             row = self.app.hire(rec, run_id)
+            self.store.track(tid, run_id)
             params = {"rec": rec, "pack_dir": pack_dir, "lens": self.run_lens(t), "task": text.strip(),
-                      "history": clean_history(self.store.history_for(tid)), "simulate": bool(body.get("simulate")), "thread_id": tid}
+                      "history": clean_history(self.history(t)), "simulate": bool(body.get("simulate")), "thread_id": tid}
             if row.state == "AWAITING_APPROVAL":  # the chat stays busy until you approve or cancel
                 with self.app.lock:
                     self.app.pending[run_id] = params
@@ -176,10 +187,13 @@ class ChatService:
 
     def finish_turn(self, run_id: str, params: dict) -> dict:
         tid = params["thread_id"]
+        started = False
         try:
             t = self.store.get(tid)
+            params = dict(params, lens=self.run_lens(t), history=clean_history(self.history(t)))  # settings changed while waiting count
             self._accept_previous(t, run_id)
             self.store.add(tid, "user", params["task"])
+            started = True
             self.running[tid] = True
             try:
                 out = self.app.job(run_id, params)
@@ -188,20 +202,28 @@ class ChatService:
             self._record_answer(t, run_id, out, params["rec"])
             view = self.view(tid)
             return {"thread": view, "report": out}
+        except BaseException:
+            if not started:  # never leave a hold open for a run that did not start
+                with self.app.lock:
+                    try:
+                        self.app.ledger.fail_infra(run_id, self.app.clock(), "the message could not be started")
+                    except Exception:
+                        pass
+            raise
         finally:
             self.store.end(tid)
 
     def _accept_previous(self, t, new_run_id: str) -> None:
         """Sending a new message means the last answer was good enough: settle its money."""
         with self.app.lock:
-            for m in reversed(t.messages):
-                row = self.app.ledger.rows.get(m.run_id) if m.run_id else None
+            for rid in reversed([r for r in t.runs if r != new_run_id]):
+                row = self.app.ledger.rows.get(rid)
                 if row is not None and row.run_id != new_run_id and row.state == "RESULT_READY":
                     try:
                         self.app.ledger.accept(row.run_id, self.app.clock())
                         self.app.ledger.release_payouts(self.app.clock())
-                    except StateError:
-                        pass  # it was settled some other way in the meantime
+                    except (StateError, ProviderError, PendingError):
+                        pass  # settled some other way, or the provider is slow: the deadline settles it later
                 if row is not None:
                     break
 

@@ -196,3 +196,78 @@ def test_ipv6_host_forms_are_accepted_and_lookalikes_refused(srv):
         except urllib.error.HTTPError as e:
             code = e.code
         assert (code == 200) == ok, host
+
+
+def test_forgetting_or_clearing_messages_does_not_reset_the_spending_limit(srv):
+    app, url, model = srv
+    t = new_chat(app, url)
+    price = app.chat._agent(app.threads.get(t["id"]))["price_cents"]
+    call(url + "/api/thread/settings", {"id": t["id"], "budget_cents": price}, app.token)
+    send(app, url, t["id"], "one")
+    call(url + "/api/thread/clear", {"id": t["id"]}, app.token)
+    n = len(model.seen)
+    code, out = send(app, url, t["id"], "two")
+    assert code == 400 and "spending limit" in out["error"] and len(model.seen) == n
+
+
+def test_answers_from_a_file_you_later_lock_are_not_shown_to_the_helper_again(srv):
+    app, url, model = srv
+    t = new_chat(app, url)
+    _, out = send(app, url, t["id"], "Acme renewal risk")
+    used = out["thread"]["messages"][-1]["files"]
+    assert used
+    call(url + "/api/thread/settings", {"id": t["id"], "exclude": used}, app.token)
+    send(app, url, t["id"], "and now?")
+    assert "Answer to: Acme renewal risk" not in model.seen[-1]
+
+
+def test_non_object_and_wrongly_typed_bodies_get_400_not_500(srv):
+    app, url, _ = srv
+    for path in ("/api/memory", "/api/threads", "/api/thread/send", "/api/run", "/api/star", "/api/settle"):
+        for body in ([], "x", 5):
+            assert call(url + path, body, app.token)[0] == 400, (path, body)
+    assert call(url + "/api/memory", {"action": "update", "id": "m1", "text": 123}, app.token)[0] == 400
+    assert call(url + "/api/run", {"key": ["a"], "types": ["note"]}, app.token)[0] == 400
+    assert call(url + "/api/run", {"key": key_of(app, "private-analyst"), "types": 5}, app.token)[0] == 400
+
+
+def test_an_expired_approval_ends_cleanly_and_frees_the_chat(srv):
+    app, url, _ = srv
+    t = new_chat(app, url)
+    run_id = "run-expired"
+    row = app.hire(app.resolve_agent(key_of(app, "private-analyst"))[0], run_id)
+    app.ledger.rows[run_id].state = "VOIDED"
+    app.threads.get(t["id"]).busy = True
+    app.pending[run_id] = {"thread_id": t["id"]}
+    code, out = call(url + "/api/run/continue", {"run_id": run_id}, app.token)
+    assert code == 400 and "Send the message again" in out["error"] and app.threads.get(t["id"]).busy is False
+
+
+def test_pages_cannot_be_framed(srv):
+    app, url, _ = srv
+    r = urllib.request.urlopen(url + "/")
+    assert r.headers["X-Frame-Options"] == "DENY" and "frame-ancestors 'none'" in r.headers["Content-Security-Policy"]
+
+
+def test_votes_come_from_the_local_user_not_a_name_in_the_request(srv):
+    app, url, _ = srv
+    k = key_of(app, "private-analyst")
+    for who in ("a", "b", "c"):
+        code, out = call(url + "/api/star", {"key": k, "user": who}, app.token)
+    assert out["stars"] == 1
+
+
+def test_a_refused_settings_change_changes_nothing(srv):
+    app, url, _ = srv
+    t = new_chat(app, url)
+    code, _ = call(url + "/api/thread/settings", {"id": t["id"], "title": "Renamed", "budget_cents": -5}, app.token)
+    assert code == 400 and app.threads.get(t["id"]).title == "New chat"
+
+
+def test_a_new_file_never_takes_over_an_id_an_old_answer_points_at(srv):
+    app, url, _ = srv
+    t = new_chat(app, url)
+    first = app.memory.add("note", "temporary", "low")["id"]
+    app.threads.add(t["id"], "helper", "an answer", files=[first])
+    app.memory.delete(first)
+    assert app.memory.add("note", "fresh", "low")["id"] != first

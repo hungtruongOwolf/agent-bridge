@@ -65,6 +65,7 @@ class Thread:
     budget_cents: int = DEFAULT_BUDGET_CENTS
     messages: list = field(default_factory=list)
     busy: bool = False  # a message is being answered right now
+    runs: list = field(default_factory=list)  # every paid run of this chat; never shrinks, so deleting messages cannot hide spending
 
 
 def clean_lens(types, max_sensitivity, include, exclude) -> Lens:
@@ -128,6 +129,16 @@ class ThreadStore:
                  history_turns=None, budget_cents=None) -> Thread:
         with self.lock:
             t = self.get(thread_id)
+            import copy
+            backup = copy.deepcopy(t)
+            try:
+                return self._apply(t, title, types, max_sensitivity, include, exclude, history_turns, budget_cents)
+            except ThreadError:
+                t.__dict__.update(backup.__dict__)  # a refused request changes nothing
+                raise
+
+    def _apply(self, t, title, types, max_sensitivity, include, exclude, history_turns, budget_cents) -> Thread:
+        if True:
             if title is not None:
                 if not isinstance(title, str) or not title.strip():
                     raise ThreadError("a chat needs a name")
@@ -163,6 +174,13 @@ class ThreadStore:
                 raise ThreadError("this chat is full; start a new one")
             t.busy = True
             return t
+
+    def track(self, thread_id: str, run_id: str) -> None:
+        with self.lock:
+            t = self.get(thread_id)
+            if run_id not in t.runs:
+                t.runs.append(run_id)
+                self._save()
 
     def end(self, thread_id: str) -> None:
         with self.lock:

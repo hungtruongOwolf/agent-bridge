@@ -90,9 +90,10 @@ class App:
             Vault.load(self.vault_path).save(self.vault_file)
         self.quarantine = Quarantine()
         self.clock = clock or time.time
+        self.lock = threading.RLock() if not hasattr(self, 'lock') else self.lock
         self.threads = ThreadStore(self.world.state / "threads.json", clock=self.clock)
         self.memory = MemoryService(self.vault_file, self.quarantine, threads=self.threads,
-                                    registry=self.world.registry, clock=self.clock)
+                                    registry=self.world.registry, clock=self.clock, lock=self.lock)
         self.requester = "you"
         self.demo_author_email = demo_author_email
         self.payments_mode = payments_mode
@@ -113,6 +114,8 @@ class App:
             return f"run-{self.runs}-{secrets.token_hex(3)}"
 
     def resolve_agent(self, key: str):
+        if not isinstance(key, str):
+            raise ValueError("unknown or revoked pack")
         rec = self.world.registry.records.get(key)
         if rec is None or rec not in self.world.registry.installable():
             raise ValueError("unknown or revoked pack")
@@ -130,6 +133,10 @@ class App:
             raise ValueError(f"payment could not be authorized: {e}") from e
 
     def _proposals(self) -> list[dict]:
+        with self.lock:
+            return self._proposals_locked()
+
+    def _proposals_locked(self) -> list[dict]:
         return [{"id": p.id, "type": p.type, "text": p.text, "run_id": p.run_id} for p in self.quarantine.pending()]
 
     def state(self) -> dict:
@@ -147,6 +154,8 @@ class App:
     def run(self, body: dict) -> dict:
         """One-off run (the office's quick hire): no conversation, the lens comes from the request."""
         rec, pack_dir = self.resolve_agent(body.get("key", ""))
+        if not isinstance(body.get("types", []), list):
+            raise ValueError("types must be a list")
         types = frozenset(t for t in body.get("types", []) if isinstance(t, str))
         if not types:
             raise ValueError("choose at least one record type to share")
@@ -174,7 +183,16 @@ class App:
             raise ValueError("no run is waiting for approval under that id")
         try:
             with self.lock:
-                self.ledger.confirm_approval(run_id, self.clock())
+                row = self.ledger.rows.get(run_id)
+                if row is not None and row.state == "AWAITING_APPROVAL":
+                    self.ledger.confirm_approval(run_id, self.clock())
+                elif row is None or row.state in ("VOIDED",):
+                    self.pending.pop(run_id, None)
+                    if params.get("thread_id"):
+                        self.threads.end(params["thread_id"])
+                    raise ValueError("the approval ran out of time, so nothing was held. Send the message again.")
+        except StateError as e:
+            raise ValueError("this approval can no longer be used. Send the message again.") from e
         except ProviderError as e:
             raise ValueError(f"the hold is not approved yet: {e}") from e
         with self.lock:
@@ -210,6 +228,9 @@ class App:
             out["proposal_problems"] = problems
             out["payment"] = self.payment(run_id)
             self.reports[run_id] = out
+            while len(self.reports) > 100:
+                self.reports.pop(next(iter(self.reports)))
+            del self.history[:-100]
             self.history.append({"run_id": run_id, "pack": f"{rep.pack_id} v{rep.version}", "outcome": rep.outcome,
                                  "summary": rep.summary, "n": self.runs})
         return out
@@ -243,8 +264,11 @@ class App:
 
     def _payments_summary(self) -> dict:
         with self.lock:
-            self.ledger.tick(self.clock())
-            self.ledger.release_payouts(self.clock())
+            try:
+                self.ledger.tick(self.clock())
+                self.ledger.release_payouts(self.clock())
+            except (ProviderError, PendingError):
+                pass  # the provider is slow; show what we know and try again on the next refresh
             summary = self.ledger.summary()
         return {**summary, "test_money": True, "provider": self.payments_mode, "holdback": "demo holdback 0 s; production would hold for days"}
 
@@ -309,6 +333,8 @@ POST_ROUTES = {
 
 def make_handler(app: App):
     class H(BaseHTTPRequestHandler):
+        timeout = 15  # a client that stalls mid-request cannot pin a worker forever
+
         def log_message(self, *a):  # quiet
             pass
 
@@ -323,7 +349,8 @@ def make_handler(app: App):
             self.send_header("Cache-Control", "no-store")
             self.send_header("X-Content-Type-Options", "nosniff")
             self.send_header("Content-Security-Policy", "default-src 'self' 'unsafe-inline' data:; connect-src 'self'; "
-                                                         "font-src 'self' data:; img-src 'self' data:")
+                                                         "font-src 'self' data:; img-src 'self' data:; frame-ancestors 'none'")
+            self.send_header("X-Frame-Options", "DENY")
             self.end_headers()
             self.wfile.write(body)
 
@@ -395,13 +422,17 @@ def make_handler(app: App):
                 return self._json(403, {"error": "forbidden"})
             try:
                 body = json.loads(raw or b"{}")
+                if not isinstance(body, dict):
+                    raise ValueError("the request must be a JSON object")
                 if self.path == "/api/star":
-                    stars = app.world.registry.star(body["key"], str(body.get("user", "you"))[:40])
+                    stars = app.world.registry.star(str(body["key"]), app.requester)
                     return self._json(200, {"stars": stars})
                 fn = POST_ROUTES.get(self.path)
                 if fn is not None:
                     return self._json(200, fn(app, body))
                 self._json(404, {"error": "not found"})
+            except ProviderError:
+                self._json(502, {"error": "the payment service refused this. Nothing else was changed."})
             except ChatBusy as e:
                 self._json(409, {"error": str(e)})
             except (ValueError, KeyError) as e:  # includes ThreadError and MemoryChangeError
