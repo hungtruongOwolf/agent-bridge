@@ -1,6 +1,6 @@
 # 14 Payouts and holdback
 
-Status: open
+Status: resolved (2026-10-20), proven on the fake provider; PayPal sandbox run pending ticket 11
 Milestone: M3
 Blocked by: 12
 

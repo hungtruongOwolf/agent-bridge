@@ -1,6 +1,6 @@
 # 11 Payment provider interface and PayPal sandbox client
 
-Status: open
+Status: in progress (client written against the documented API; NOT verified until the owner provides sandbox credentials)
 Milestone: M3
 Blocked by: owner provides PayPal sandbox client id and secret in .env (PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET)
 
