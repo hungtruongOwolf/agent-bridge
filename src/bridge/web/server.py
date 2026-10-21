@@ -32,6 +32,7 @@ from ..payments.provider import FakeProvider, ProviderError
 from ..pack.digest import tree_digest
 from ..runner import run_pack
 from ..hub.market import MarketError
+from ..studio import Studio
 from ..world import World
 
 STATIC = Path(__file__).parent / "static"
@@ -90,7 +91,7 @@ class App:
         self.web = web or LazySearch(lambda: TavilySearch(load_tavily_key(self.env_file)))
         self.model_factory = model_factory or (lambda: NebiusModel(load_api_key(self.env_file)))
         self.token = secrets.token_urlsafe(16)
-        roots = [Path(packs_dir), self.world.state / "candidates"]  # approved improvements live in candidates
+        roots = [Path(packs_dir), self.world.state / "candidates", self.world.state / "published"]  # improvements and the helpers you published live in state
         self.dirs = {tree_digest(d): d for r in roots if r.exists() for d in sorted(r.iterdir()) if (d / "pack.yaml").exists()}
         self.lock = threading.RLock()  # guards counters, reports, history and pending approvals
         self.runs = 0
@@ -115,6 +116,7 @@ class App:
         self.reports: dict[str, dict] = {}  # run_id -> full report (this session)
         self.history: list[dict] = []
         self.chat = ChatService(self)
+        self.studio = Studio(self)
 
     def vault(self) -> Vault:
         return self.memory.vault()
@@ -354,6 +356,14 @@ POST_ROUTES = {
     "/api/thread/forget": lambda a, b: a.chat.forget(b),
     "/api/thread/clear": lambda a, b: a.chat.clear(b),
     "/api/thread/delete": lambda a, b: a.chat.delete(b),
+    "/api/studio/create": lambda a, b: a.studio.create(b.get("id"), b.get("template")),
+    "/api/studio/save": lambda a, b: a.studio.save(b.get("id"), b),
+    "/api/studio/delete": lambda a, b: a.studio.delete(b.get("id")),
+    "/api/studio/try": lambda a, b: a.studio.try_it(b.get("id"), b.get("task"), b.get("shelves")),
+    "/api/studio/publish": lambda a, b: a.studio.publish(b.get("id"), b.get("price_usd"), b.get("payout_email", "")),
+    "/api/studio/retest": lambda a, b: a.studio.retest(b.get("key")),
+    "/api/studio/retire": lambda a, b: a.studio.retire(b.get("key")),
+    "/api/studio/price": lambda a, b: a.studio.set_price(b.get("key"), b.get("price_usd"), b.get("payout_email", "")),
 }
 
 
@@ -422,6 +432,10 @@ def make_handler(app: App):
                     return self._json(200, app.chat.view(q.get("id", "")))
                 if route == "/api/thread/context":
                     return self._json(200, app.chat.context(q.get("id", ""), q.get("draft", "")[:1000]))
+                if route == "/api/studio":
+                    return self._json(200, app.studio.list())
+                if route == "/api/studio/helper":
+                    return self._json(200, app.studio.get(q.get("id", "")))
                 if route == "/api/office":
                     return self._json(200, app.chat.office())
                 if route == "/api/thread/progress":

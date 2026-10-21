@@ -280,3 +280,17 @@ ul.shelves .shelfnote{padding:0 0 4px 30px}
 .fieldrow{display:flex;gap:8px;align-items:center;margin-top:8px}
 .fieldrow input,.mem input[type=text]{flex:1;padding:4px 6px;background:var(--cream-50);border:2px solid var(--ink-900)}
 #memmore{margin-top:10px}
+
+/* ===== market floor, wide ===== */
+.floorview{max-width:1700px!important}
+.floorgrid{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:16px;align-items:start}
+.floorgrid .market .body{background:repeating-conic-gradient(#e8d9a0 0 25%,#f1e6bc 0 50%) 0 0/32px 32px;min-height:320px}
+.stalls{grid-template-columns:repeat(auto-fill,minmax(270px,1fr))!important;margin-top:0!important}
+.square .panel+.panel{margin-top:14px}
+.sqbody{display:grid;gap:12px}
+.sqwide{width:100%}
+.sqcard{display:grid;grid-template-columns:44px 1fr;gap:10px;align-items:start;border:2px solid var(--ink-900);background:var(--cream-50);padding:8px}
+.sqicon{image-rendering:pixelated;width:44px;height:52px;background:var(--cream-200);border:2px solid var(--ink-900)}
+.sqtitle{font:9px/14px var(--display);margin-bottom:4px}
+.sqtext .btn{margin-top:6px;padding:4px 10px}
+@media (max-width:1000px){.floorgrid{grid-template-columns:minmax(0,1fr)}}

@@ -29,7 +29,7 @@
   function drawCoins() {
     const w = S.payments; if (!w) return;
     $("coinchip").textContent = "Paid to helpers " + cents(w.paid_out) + ", on hold " + cents(w.held);
-    $("coinlabel").textContent = w.provider === "paypal-sandbox" ? "PayPal test coins" : "Test coins";
+    $("coinlabel").textContent = w.provider === "paypal-sandbox" ? "PayPal coins" : "Coins";
   }
 
   async function refresh() {

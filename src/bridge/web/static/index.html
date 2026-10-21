@@ -14,7 +14,7 @@
     <button class="btn go2" type="submit">Find a helper</button>
     <button class="btn mic" id="mic" type="button" aria-pressed="false" title="Speak to your assistant">Talk</button>
   </form>
-  <div class="coins" title="No real money moves in this demo."><b id="coinlabel">Test coins</b><span id="coinchip"></span></div>
+  <div class="coins" title="No real money moves in this demo."><b id="coinlabel">Coins</b><span id="coinchip"></span></div>
 </header>
 <div class="recs" id="recs" aria-live="polite"></div>
 
@@ -25,12 +25,12 @@
 
 <!-- The market floor: one stall for every chat you have open, all in one picture. -->
 <section id="view-office" class="floorview" role="tabpanel">
-  <div class="market panel">
-    <div class="title">Your market floor</div>
-    <div class="body">
-      <div class="marketbar" id="marketbar" aria-live="polite"></div>
-      <div class="stalls" id="stalls" aria-label="Your chats, one stall each"></div>
+  <div class="floorgrid">
+    <div class="market panel">
+      <div class="title">Your market floor</div>
+      <div class="body"><div class="stalls" id="stalls" aria-label="Your chats, one stall each"></div></div>
     </div>
+    <aside class="square" id="square" aria-live="polite" aria-label="The market square"></aside>
   </div>
   <div class="panel hirepanel" id="hirepanel" hidden>
     <div class="title">Open a new stall: who do you want to talk with?</div>
@@ -66,9 +66,7 @@
       <div id="hint" class="hint" aria-live="polite"></div>
       <textarea id="draft" rows="2" maxlength="1000" placeholder="Write a message. Enter sends, Shift+Enter makes a new line." aria-label="Your message"></textarea>
       <div class="composerrow">
-        <details class="demotools"><summary>Demo tools</summary>
-          <label class="theft"><input type="checkbox" id="misbehave"><span>Make the helper misbehave, to see the guard work.</span></label>
-        </details>
+        <span class="small muted">Enter sends</span>
         <button class="btn go2" id="send" type="submit">Send</button>
       </div>
     </form>

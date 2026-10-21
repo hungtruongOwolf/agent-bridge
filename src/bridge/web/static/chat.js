@@ -163,7 +163,7 @@
     if (office) { office.showIdle(agentInfo()); drawDrawers(); office.say("agent", "Let me see…", 3000); caption("The helper is working on your message."); }
     let report = null;
     try {
-      const r = await B.api("/api/thread/send", { id: mine, text, simulate: $("misbehave").checked });
+      const r = await B.api("/api/thread/send", { id: mine, text, simulate: false });
       box.value = "";
       if (r.needs_approval) pendingApproval = Object.assign({ threadId: mine }, r);
       if (cur && cur.id === mine) cur = r.thread;
@@ -379,5 +379,5 @@
     let v = "office"; try { v = sessionStorage.getItem("ab-view") || "office"; } catch (e) { /* default tab */ }
     showView(v === "memory" ? "memory" : "office");
   }
-  window.ChatUI = { mount, profile, startWith, startNew, open, redraw: () => { if (view === "chat" && cur) { drawBudget(); } } };
+  window.ChatUI = { mount, profile, startWith, startNew, open, show: showView, redraw: () => { if (view === "chat" && cur) { drawBudget(); } } };
 })();

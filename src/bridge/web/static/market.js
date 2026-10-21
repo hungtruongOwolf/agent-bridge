@@ -49,13 +49,31 @@
   /* ---------- the floor ---------- */
   function chip(text, cls) { return el("span", "chip " + (cls || ""), text); }
 
+  function icon(look) {
+    const cv = el("canvas"); cv.width = 22; cv.height = 26; cv.className = "sqicon"; cv.setAttribute("aria-hidden", "true");
+    const c = cv.getContext("2d"); c.imageSmoothingEnabled = false; c.fillStyle = "#F4E9C7"; c.fillRect(0, 0, 22, 26);
+    window.OfficeArt.person(c, 11, 25, Object.assign({ pose: "idle", facing: "f" }, look), 0); return cv;
+  }
+  function squareCard(look, title, lines, extra) {
+    const card = el("div", "sqcard"), t = el("div", "sqtext");
+    t.append(el("div", "sqtitle", title)); lines.forEach((l) => t.append(el("div", "small", l)));
+    card.append(icon(look), t); if (extra) t.append(extra); return card;
+  }
+  /* the market square: the shared places every stall depends on */
   function bar(d) {
-    const b = $("marketbar"); b.replaceChildren();
-    const n = d.stalls.length;
-    b.append(chip(n ? n + (n === 1 ? " chat open" : " chats open") + (d.working ? ", " + d.working + " working now" : "") : "No chats yet", d.working ? "busy" : ""));
-    b.append(chip("Guard: " + (d.guard.stopped ? "stopped " + d.guard.stopped + " sneaky attempt" + (d.guard.stopped === 1 ? "" : "s") : "nothing suspicious so far"), d.guard.stopped ? "alarm" : "calm"));
-    b.append(chip("Memory: " + d.memory.total + " files" + (d.memory.secret ? ", " + d.memory.secret + " secret stay home" : "")));
-    b.append(btn(picking || !n ? "Hide the helpers" : "+ Open a new stall", "btn go2", () => { picking = !picking; $("hirepanel").hidden = !(picking || !n); drawPicker(); bar(d); }));
+    const sq = $("square"); sq.replaceChildren();
+    const n = d.stalls.length, pay = B.state().payments || { paid_out: 0, held: 0 };
+    const head = el("div", "panel"); head.append(el("div", "title", "The market square")); const body = el("div", "body sqbody"); head.append(body);
+    body.append(btn(picking || !n ? "Hide the helpers" : "+ Open a new stall", "btn go2 sqwide", () => { picking = !picking; $("hirepanel").hidden = !(picking || !n); drawPicker(); bar(d); }));
+    body.append(squareCard({ shirt: "#3D2E4A", hat: "guard", skin: "#E0AC82", hair: "#1A1320" }, "Guard post",
+      [d.guard.stopped ? "Stopped " + d.guard.stopped + " sneaky attempt" + (d.guard.stopped === 1 ? "" : "s") + "." : "Nothing suspicious so far.", "Checks every answer before it reaches you."]));
+    body.append(squareCard({ shirt: "#DCAB3C", hat: "visor", skin: "#C68642", hair: "#3B2A20" }, "Bank",
+      ["Paid to helpers: " + B.cents(pay.paid_out), "On hold for you: " + B.cents(pay.held), "Money only moves after a helper answers."]));
+    const open = btn("Open my memory", "btn", () => window.ChatUI.show("memory"));
+    body.append(squareCard({ shirt: "#9482D3", hat: "glasses", skin: "#F5CBA7", hair: "#8A5A2B" }, "Library",
+      [d.memory.total + " files on shelves", d.memory.secret ? d.memory.secret + " secret, never shared" : "No secret files yet"], open));
+    body.append(el("p", "small muted", n ? n + (n === 1 ? " chat open" : " chats open") + (d.working ? ", " + d.working + " working now." : ".") : "No chats yet."));
+    sq.append(head);
   }
 
   function stallCard(s) {
@@ -140,7 +158,6 @@
         const reasons = [...new Set((m.violations || []).filter((v) => v !== "KILLED").map((v) => B.bad[v] || v))];
         box.append(el("p", "small", B.niceName(m.id) + " " + (reasons.length ? reasons.join(", and ") + "." : "was caught cheating.")));
       });
-      box.append(el("p", "small muted", "To watch the guard work, open any chat and tick “Make the helper misbehave” under Demo tools."));
     }
   }
 
