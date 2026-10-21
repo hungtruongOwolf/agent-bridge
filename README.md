@@ -40,8 +40,8 @@ Other commands:
 
 ```bash
 bridge run examples/packs/private-analyst --vault examples/vault.json --types note,contact
-bridge improve quick-skim      # propose better instructions, measured on a public dev suite
-bridge approve quick-skim      # owner approval: publish the candidate, certify it on the held-out suite
+bridge improve deal-brief      # propose better instructions, measured on a public dev suite
+bridge approve deal-brief      # owner approval: publish the candidate, certify it on the held-out suite
 bridge paypal-check            # optional: verify PayPal sandbox credentials (creates one uncharged test order)
 bridge serve --payments paypal # optional: use the PayPal sandbox instead of the built-in test money
 pytest                         # ~310 tests; the container tests are skipped if no engine is found
@@ -115,10 +115,12 @@ socket, a file handle or the model key. Anything it wants goes through the Broke
   output channel is bounded, not that detectors catch every theft.
 - **The Certifier suite is small.** Three quality tasks plus a security trap. A pack with 3 of 3 passes scores
   lower than one with 28 of 30 on purpose. Scores say "evaluated on this suite", never "safe".
-- **Improvement partly overfits the dev suite.** In our live run `quick-skim` moved from 0.30 to 0.61 on the
-  public dev suite but only from 0.55 to 0.62 on the held-out suite.
-- **The model is not perfectly stable.** Nemotron sometimes returns empty or malformed JSON. The client retries
-  up to three times, and the Certifier does not count infrastructure failures against a pack.
+- **Improvement partly fits the dev suite.** In our live run `deal-brief` moved from 0.35 to 0.57 on the public
+  dev suite and from 0.39 to 0.55 on the held-out suite. The dev gain is larger, so part of it is fitting to that suite.
+- **The model needed care.** Nemotron reasons in a hidden field and can spend its whole token budget before it
+  writes an answer, which looked like empty replies. The client turns thinking off (complete answers in about 40
+  tokens instead of 300 to 1,200), retries up to three times, and the Certifier does not count infrastructure
+  failures against a pack. Thinking off also changes scores, so every number here was measured with it off.
 - **Built in this repo:** the workflow engine, Memory Broker, Result Guard, sealed Cell, registry, Certifier,
   ranking, payment ledger (test money), local console. **Designed, not built:** Hosted mode on someone else's
   machine, sealed enclaves, multi-device sync, key management, verified PayPal sandbox payments, legal review. See `.scratch/agent-bridge/architecture-v2.1.md`.

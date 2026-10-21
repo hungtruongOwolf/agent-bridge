@@ -40,9 +40,9 @@ Select `deal-brief`, run. A suggestion appears under *Waiting for your decision*
 Click undo to show it goes away.
 
 **2:20 to 2:42, how packs improve** (**recorded**, label it "recorded run")
-Show the terminal output of `bridge improve quick-skim` and `bridge approve quick-skim`.
+Show the terminal output of `bridge improve deal-brief` and `bridge approve deal-brief`.
 "A pack improves by measurement. Variants are scored on a public dev suite, a typed diff proves only the instruction changed,
-and the owner approves before it is scored on the hidden suite: 0.55 to 0.62." Say once: "the dev-suite gain was bigger,
+and the owner approves before it is scored on the hidden suite: 0.39 to 0.55." Say once: "the dev-suite gain was bigger,
 so part of it is overfitting."
 
 **2:42 to 2:50, close**

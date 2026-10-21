@@ -50,12 +50,12 @@ Packs can suggest things to remember, but nothing enters your memory unless you 
 - Making "the pack cannot send anything" a property of the runtime, not a promise. We went through two designs before settling on a
   closed language plus a no-network container.
 - Honest evaluation. Our first suite gave every pack 3 of 3. A harder suite with a "no false alarm" task spread them from 0.39 to 0.76.
-- Model variance: replies were sometimes empty or not JSON, so the client retries and the Certifier does not count infrastructure failures against a pack.
+- Model behaviour: Nemotron reasons in a hidden field and can use its whole token budget before answering, which looked like empty replies. We found it by reading `finish_reason`, turned thinking off, and made the client retry and the Certifier ignore infrastructure failures.
 
 ## Accomplishments
 
 - A malicious pack with real code is caught live, and the Certifier flags it by behaviour.
-- A measured improvement on a held-out suite (`quick-skim` 0.55 to 0.62), with the overfitting stated rather than hidden.
+- A measured improvement on a held-out suite (`deal-brief` 0.39 to 0.55, after 0.35 to 0.57 on the dev suite), with the overfitting stated rather than hidden.
 - 240 automated tests, and a clean-clone check of the quickstart.
 
 ## What we learned
@@ -81,10 +81,11 @@ Python, NVIDIA Nemotron, Nebius Token Factory, Tavily, Docker, Ed25519 (cryptogr
 Based on what we observed, not guesses:
 
 - `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B` and `nvidia/nemotron-3-super-120b-a12b` called a single tool correctly 5 of 5 times at temperature 0.
-- Over a few hundred workflow calls we saw occasional empty or non-JSON `content` in chat completions even at temperature 0 and with a JSON-only
-  system prompt. We have not isolated the cause. Raising `max_tokens` from 800 to 1200 and retrying up to three times reduced it a lot, but did not
-  eliminate it: in one certification, 1 of 12 runs still failed after three attempts and was excluded from the score.
+- We saw chat completions with empty `content`. The cause: Nemotron writes its reasoning to a separate `reasoning` field and can hit `max_tokens`
+  (`finish_reason: "length"`) before it writes an answer. With `max_tokens` 1200 about half of our calls were empty on one prompt. Passing
+  `chat_template_kwargs: {"enable_thinking": false}` gave complete answers in about 40 completion tokens instead of 300 to 1,200. We did not find
+  this in the model card or the API reference; documenting the switch next to the model would have saved us a day.
+- Turning thinking off changes quality: several multi-step packs scored lower, which is useful signal but means scores are only comparable at the same setting.
 - Identical prompts at temperature 0 did not always return identical answers, so pass-rate measurements needed several runs per task.
-- The model catalogue is clear and the OpenAI-compatible endpoint made integration quick. It would help to see per-model guidance on JSON-mode reliability
-  and on whether a hidden reasoning budget counts against `max_tokens`.
+- The model catalogue is clear and the OpenAI-compatible endpoint made integration quick. It would help to see per-model guidance on JSON-mode reliability.
 - We could not find speech models in the catalogue; a voice front end would need another provider.
