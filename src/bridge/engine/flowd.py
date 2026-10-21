@@ -20,6 +20,7 @@ from ..guard.result_guard import ResultGuard, longest_shared_run
 from ..memory.broker import MemoryBroker, Verdict
 from ..pack.workflow import Step, Workflow
 from .journal import Journal
+from .limits import MAX_TASK_CHARS, clean_history
 
 
 class Outcome(str, Enum):
@@ -64,6 +65,8 @@ class Engine:
         max_steps: int = 100,
         cell=None,
         web=None,
+        task: str = "",
+        history: list | None = None,
     ):
         self.wf = workflow
         self.model = model
@@ -74,14 +77,19 @@ class Engine:
         self.max_steps = max_steps
         self.web = web  # object with search(query) -> list[dict]; the only network a pack can use
         self.cell = cell  # runs `code` steps; needs run(script, inputs) -> CellResult
+        if len(task or "") > MAX_TASK_CHARS:
+            raise ValueError(f"the message is longer than {MAX_TASK_CHARS} characters")
+        self.task = (task or "").strip()  # what the user asked this turn
+        self.history = clean_history(history)  # earlier turns of the same conversation
         self.tokens = 0
         self.usd = 0.0
         self.violations: list[dict] = []  # sandbox probes seen inside Cells: {kind, detail}
 
     def run(self) -> RunResult:
         j = self.journal
-        j.append("run_started", {"workflow": self.wf.name, "manifest": self.broker.manifest})
-        outputs: dict[str, Any] = {}
+        j.append("run_started", {"workflow": self.wf.name, "manifest": self.broker.manifest,
+                                 "task_chars": len(self.task), "history_turns": len(self.history)})
+        outputs: dict[str, Any] = {"task": self.task, "history": self.history}  # the two built-in inputs
         sid: str | None = self.wf.start
         executed = 0
         while sid is not None:
@@ -150,7 +158,10 @@ class Engine:
     def _code(self, step: Step, inputs: dict[str, Any]) -> Any:
         if self.cell is None:
             raise _StepError("no Cell available to run code steps")
-        res = self.cell.run(step.script or "", inputs)
+        try:
+            res = self.cell.run(step.script or "", inputs)
+        except Exception as e:  # the container engine itself failed
+            raise _InfraError(f"the sealed room could not start: {type(e).__name__}") from e
         self.journal.append("cell_run", {"step": step.id, "ok": res.ok, "timed_out": res.timed_out,
                                          "attempts": res.attempts})
         kinds = {"network": "SANDBOX_NETWORK", "dns": "SANDBOX_NETWORK", "process": "SANDBOX_PROCESS",
@@ -171,10 +182,11 @@ class Engine:
             raise _StepError(f"tool {name!r} not granted to step {step.id!r}")
         if name == "web_search":
             return self._web(step, inputs)
+        query = (step.prompt or "").replace("{task}", self.task)
         if name == "memory_search":
-            res = self.broker.search(step.prompt or "", type=step.type)
+            res = self.broker.search(query, type=step.type)
         elif name == "memory_read":
-            res = self.broker.read(step.prompt or "")
+            res = self.broker.read(query)
         else:
             raise _StepError(f"unknown tool {name!r}")
         if res.verdict is Verdict.KILL:
@@ -186,7 +198,7 @@ class Engine:
     def _web(self, step: Step, inputs: dict[str, Any]) -> Any:
         if self.web is None:
             raise _StepError("no web search is configured")
-        query = step.prompt or ""
+        query = (step.prompt or "").replace("{task}", self.task)
         if not query and step.reads:
             src = inputs.get(step.reads[0])
             query = src.get("query", "") if isinstance(src, dict) else ""
@@ -198,7 +210,11 @@ class Engine:
                 self.violations.append({"kind": "WEB_QUERY_LEAK", "detail": "query repeats text from a staged record"})
                 self.journal.append("incident", {"step": step.id, "evidence": "web-query-leak"})
                 raise _StepError("web query blocked: it repeats text from your records")
-        results = self.web.search(query)
+        try:
+            results = self.web.search(query)
+        except Exception as e:  # the search service failed: infrastructure, not the pack
+            self.journal.append("model_error", {"step": step.id, "type": type(e).__name__})
+            raise _InfraError(f"web search failed: {type(e).__name__}") from e
         self.journal.append("web_search", {"step": step.id, "query": query, "results": len(results)})
         return results
 

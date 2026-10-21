@@ -13,6 +13,10 @@ import yaml
 from jsonschema import Draft202012Validator
 
 KINDS = ("llm", "tool", "code", "gate", "return")
+# Built-in inputs a step may list in `reads` besides earlier steps:
+#   task     what the user asked this turn (typed by the user, so it may go to a web search)
+#   history  earlier turns of the conversation; they contain answers about your files, so it counts as private
+RESERVED_READS = ("task", "history")
 
 SCHEMA = {
     "type": "object",
@@ -146,6 +150,13 @@ def parse(text: str) -> Workflow:
                 problems.append(f"step {s.id!r}: code steps get no tools and no memory, only declared reads")
         elif s.script:
             problems.append(f"step {s.id!r}: only code steps may have `script`")
+        for r in s.reads:
+            if r not in steps and r not in RESERVED_READS:
+                problems.append(f"step {s.id!r}: reads {r!r}, which is neither a step nor one of {', '.join(RESERVED_READS)}")
+            elif r == s.id:
+                problems.append(f"step {s.id!r}: a step cannot read itself")
+        if "{task}" in (s.prompt or "") and s.kind != "tool":
+            problems.append(f"step {s.id!r}: `{{task}}` works only in a tool step's prompt; an llm step lists `task` in `reads`")
         if s.kind == "gate" and not s.check:
             problems.append(f"step {s.id!r}: gate step needs `check`")
         if s.memory == "lens" and s.kind not in ("llm", "tool"):
@@ -166,7 +177,7 @@ def _scope_problems(steps: dict[str, Step]) -> list[str]:
     A step is private if it reads the memory lens or reads a private step. Web results may flow INTO
     private steps (research, then analysis) but private data may never flow OUT to a web step.
     """
-    private = {sid for sid, s in steps.items() if s.memory == "lens"}
+    private = {sid for sid, s in steps.items() if s.memory == "lens"} | {"history"}
     changed = True
     while changed:
         changed = False
@@ -208,6 +219,25 @@ def _graph_problems(steps: dict[str, Step], start: str) -> list[str]:
     for sid in steps:
         if sid not in state:
             problems.append(f"step {sid!r} is unreachable from start")
+
+    preds: dict[str, set[str]] = {sid: set() for sid in steps}
+    for sid, st in steps.items():
+        for t in _edges(st):
+            preds[t].add(sid)
+    ancestors: dict[str, set[str]] = {}
+
+    def before(sid: str) -> set[str]:
+        if sid not in ancestors:
+            ancestors[sid] = set()
+            for pr in preds[sid]:
+                ancestors[sid] |= {pr} | before(pr)
+        return ancestors[sid]
+
+    for sid, st in steps.items():
+        if sid in state:
+            for r in st.reads:
+                if r in steps and r not in before(sid):
+                    problems.append(f"step {sid!r}: reads {r!r}, which never runs before it")
 
     # in an acyclic graph, every step must reach a return step
     reaches = {sid for sid, s in steps.items() if s.kind == "return"}

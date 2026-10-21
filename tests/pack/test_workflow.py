@@ -177,3 +177,64 @@ steps:
   - {id: done, kind: return, reads: [web]}
 """
     assert parse(text).steps["web"].reads == ("plan",)
+
+
+CHAT = """
+name: chatty
+start: read
+steps:
+  - {id: read, kind: tool, tool: memory_search, tools: [memory_search], memory: lens, prompt: "{task}", next: answer}
+  - {id: answer, kind: llm, prompt: Answer the question, reads: [task, history, read], next: done}
+  - {id: done, kind: return, reads: [answer]}
+"""
+
+
+def test_task_and_history_are_built_in_inputs():
+    wf = parse(CHAT)
+    assert wf.steps["answer"].reads == ("task", "history", "read")
+
+
+def test_reading_something_that_does_not_exist_is_an_error():
+    fails(CHAT.replace("reads: [task, history, read]", "reads: [task, ghost]"), "neither a step nor one of")
+
+
+def test_a_step_cannot_read_itself_or_a_step_that_runs_later():
+    fails(CHAT.replace("reads: [task, history, read]", "reads: [answer]"), "cannot read itself")
+    later = """
+name: later
+start: a
+steps:
+  - {id: a, kind: llm, prompt: p, reads: [b], next: b}
+  - {id: b, kind: llm, prompt: q, next: done}
+  - {id: done, kind: return, reads: [b]}
+"""
+    fails(later, "never runs before it")
+
+
+def test_the_task_placeholder_is_only_for_tool_prompts():
+    fails(CHAT.replace("prompt: Answer the question", "prompt: \"Answer {task}\""), "works only in a tool step")
+
+
+def test_a_web_step_may_read_the_task_but_never_the_history():
+    ok = """
+name: web
+start: w
+steps:
+  - {id: w, kind: tool, tool: web_search, tools: [web_search], prompt: "{task}", reads: [task], next: a}
+  - {id: a, kind: llm, prompt: Summarize, reads: [w], next: done}
+  - {id: done, kind: return, reads: [a]}
+"""
+    assert parse(ok).steps["w"].reads == ("task",)
+    fails(ok.replace("reads: [task], next: a", "reads: [history], next: a"), "holds private data")
+
+
+def test_a_step_that_reads_the_history_is_private_so_it_cannot_feed_a_web_step():
+    text = """
+name: leak
+start: a
+steps:
+  - {id: a, kind: llm, prompt: p, reads: [history], next: w}
+  - {id: w, kind: tool, tool: web_search, tools: [web_search], reads: [a], next: done}
+  - {id: done, kind: return, reads: [w]}
+"""
+    fails(text, "holds private data")

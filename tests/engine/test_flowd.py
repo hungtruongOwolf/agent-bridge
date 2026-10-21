@@ -1,3 +1,5 @@
+import pytest
+
 from bridge.engine.flowd import Engine, ModelReply, Outcome
 from bridge.engine.journal import Journal
 from bridge.guard.result_guard import ResultGuard
@@ -326,3 +328,98 @@ def test_web_steps_record_how_many_results_came_back():
     eng.run()
     c = next(e["data"] for e in eng.journal.entries if e["kind"] == "step_committed" and e["data"]["step"] == "web")
     assert c["results"] == 1 and c["records"] == []
+
+
+CHAT_WF = """
+name: chat
+start: read
+steps:
+  - {id: read, kind: tool, tool: memory_search, tools: [memory_search], memory: lens, prompt: "{task}", next: answer}
+  - {id: answer, kind: llm, prompt: Answer, reads: [task, history, read], next: done}
+  - {id: done, kind: return, reads: [answer]}
+"""
+
+
+def chat_engine(model, task, history=None, wf=CHAT_WF):
+    eng, broker = build(model, wf=wf)
+    eng.task = task
+    from bridge.engine.limits import clean_history
+    eng.history = clean_history(history)
+    return eng, broker
+
+
+def test_the_question_and_history_reach_the_model_and_drive_the_memory_search():
+    model = Scripted(ModelReply({"summary": "Acme is at risk."}))
+    eng, _ = chat_engine(model, "any pipeline news?", [{"role": "user", "text": "hi"}, {"role": "helper", "text": "hello"}])
+    r = eng.run()
+    seen = model.seen[0]
+    assert r.outcome is Outcome.COMPLETE and seen["task"] == "any pipeline news?"
+    assert [h["role"] for h in seen["history"]] == ["user", "helper"]
+    assert [rec["id"] for rec in seen["read"]] == ["n1"]  # found because the question mentions pipeline
+
+
+def test_the_run_record_counts_the_message_but_does_not_store_its_text():
+    eng, _ = chat_engine(Scripted(ModelReply({"summary": "ok"})), "pipeline secrets of the CEO", [{"role": "user", "text": "earlier"}])
+    eng.run()
+    start = eng.journal.entries[0]["data"]
+    assert start["task_chars"] == len("pipeline secrets of the CEO") and start["history_turns"] == 1
+    assert "CEO" not in str(eng.journal.entries)
+
+
+def test_a_message_longer_than_the_limit_is_refused_up_front():
+    from bridge.engine.limits import MAX_TASK_CHARS
+    eng, broker = build(Scripted(), wf=CHAT_WF)
+    with pytest.raises(ValueError, match="longer than"):
+        Engine(eng.wf, model=Scripted(), broker=broker, guard=eng.guard, task="x" * (MAX_TASK_CHARS + 1))
+
+
+def test_history_is_trimmed_to_recent_short_plain_turns():
+    from bridge.engine.limits import MAX_HISTORY_TEXT, MAX_HISTORY_TURNS, clean_history
+    many = [{"role": "user", "text": f"m{i}"} for i in range(30)]
+    kept = clean_history(many)
+    assert len(kept) == MAX_HISTORY_TURNS and kept[-1]["text"] == "m29"
+    long_one = clean_history([{"role": "helper", "text": "y" * 5000}])
+    assert len(long_one[0]["text"]) == MAX_HISTORY_TEXT
+    assert clean_history([{"role": "system", "text": "evil"}, {"role": "user"}, "junk", None]) == []
+
+
+def test_a_web_search_that_fails_ends_the_run_as_an_infrastructure_problem():
+    class Down:
+        def search(self, q):
+            raise TimeoutError("search service down")
+
+    eng, _ = build(Scripted(), wf=WEB_WF)
+    eng.web = Down()
+    r = eng.run()
+    assert r.outcome is Outcome.FAILED_INFRA and "web search failed" in r.reasons[0]
+
+
+def test_a_container_engine_that_cannot_start_is_an_infrastructure_problem():
+    class Broken:
+        def run(self, script, inputs):
+            raise FileNotFoundError("wsl.exe")
+
+    eng, _ = build(Scripted(), wf=CODE_WF)
+    eng.cell = Broken()
+    r = eng.run()
+    assert r.outcome is Outcome.FAILED_INFRA and "sealed room" in r.reasons[0]
+
+
+def test_the_task_can_be_the_web_query_and_is_still_checked_against_your_records():
+    wf = """
+name: ask-web
+start: web
+steps:
+  - {id: web, kind: tool, tool: web_search, tools: [web_search], prompt: "{task}", reads: [task], next: out}
+  - {id: out, kind: return, reads: [web]}
+"""
+    eng, _ = build(Scripted(), wf=wf)
+    eng.web = FakeWeb()
+    eng.task = "saas renewal benchmarks"
+    eng.run()
+    assert eng.web.queries == ["saas renewal benchmarks"]
+    eng2, _ = build(Scripted(), wf=wf)
+    eng2.web = FakeWeb()
+    eng2.task = "Sales pipeline: three big accounts at risk"  # the user pasted a private note into the question
+    r = eng2.run()
+    assert eng2.web.queries == [] and [v["kind"] for v in eng2.violations] == ["WEB_QUERY_LEAK"]
