@@ -125,6 +125,15 @@ class App:
     def vault(self) -> Vault:
         return self.memory.vault()
 
+    def log_error(self, where: str, exc: BaseException) -> None:
+        """Keep the full story of an unexpected failure in <state>/errors.log, for the person running the console. Never sent to the page."""
+        import traceback
+        try:
+            with open(self.world.state / "errors.log", "a", encoding="utf-8") as f:
+                f.write(f"--- {time.strftime('%Y-%m-%d %H:%M:%S')} {where[:80]}\n" + "".join(traceback.format_exception(exc))[-3000:] + "\n")
+        except OSError:
+            pass
+
     def new_run_id(self) -> str:
         with self.lock:
             self.runs += 1
@@ -560,8 +569,9 @@ def make_handler(app: App):
                 if fn is not None:
                     return self._json(200, fn(app, body))
                 self._json(404, {"error": "not found"})
-            except ProviderError:
-                self._json(502, {"error": "the payment service refused this. Nothing else was changed."})
+            except ProviderError as e:
+                app.log_error(self.path, e)
+                self._json(502, {"error": "the payment service said: " + str(e)[:160] + ". Nothing else was changed."})
             except ChatBusy as e:
                 self._json(409, {"error": str(e)})
             except (ValueError, KeyError) as e:  # includes ThreadError and MemoryChangeError
@@ -569,6 +579,7 @@ def make_handler(app: App):
             except PendingError as e:
                 self._json(503, {"error": "the payment provider has not confirmed yet; try again shortly"})
             except Exception as e:  # never leak internals or keys to the page
+                app.log_error(self.path, e)
                 self._json(500, {"error": f"run failed: {type(e).__name__}"})
 
     return H
