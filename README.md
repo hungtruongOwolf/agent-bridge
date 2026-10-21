@@ -42,13 +42,24 @@ Other commands:
 bridge run examples/packs/private-analyst --vault examples/vault.json --types note,contact
 bridge improve quick-skim      # propose better instructions, measured on a public dev suite
 bridge approve quick-skim      # owner approval: publish the candidate, certify it on the held-out suite
-pytest                         # 240 tests; the container tests are skipped if no engine is found
+bridge paypal-check            # optional: verify PayPal sandbox credentials (creates one uncharged test order)
+bridge serve --payments paypal # optional: use the PayPal sandbox instead of the built-in test money
+pytest                         # ~310 tests; the container tests are skipped if no engine is found
 ```
 
 **Containers.** Code steps run in a container with no network. On Linux and macOS the default is
 `docker`. On Windows the engine is reached through WSL (`wsl -d Ubuntu-22.04 -u root -- /usr/bin/docker`).
 Set `BRIDGE_DOCKER` to use something else (for example `podman`). Without an engine, `bridge seed` still
 works: packs that need a cell are published but left *uncertified*, and never shown as safe.
+
+## Payments (test money)
+
+Each run is a hire. The requester places a hold for the pack's price, the pack runs, and money moves only through a
+ledger state machine: a **floor fee** is captured when a result exists, the **outcome fee** only when you accept
+(or when the accept window passes), and a rejected result keeps only the floor. A run that is stopped for theft is
+**held, not voided**; the hold is refunded when the Certifier independently reproduces the violation for that exact
+pack. Outages and crashes release the hold with no charge. The author is paid after a platform fee; the demo holdback
+is 0 seconds and the console says so. Everything is labelled TEST MONEY.
 
 ## How it works
 
@@ -87,13 +98,18 @@ socket, a file handle or the model key. Anything it wants goes through the Broke
 | Scores cannot be forged or bought | Signed attestations; stars never lift a pack above a certified one | `tests/hub/test_certifier.py`, `tests/hub/test_market.py` |
 | A new version cannot quietly gain powers | Capability set; widening needs a major version | `tests/pack/test_caps.py`, `tests/hub/test_registry.py` |
 | The run record cannot be edited | Hash-chained journal, torn-tail recovery | `tests/engine/test_journal.py` |
+| One hire makes one hold, one capture, one payout | State machine under one lock, idempotent provider calls, write-ahead recovery | `tests/payments/test_ledger.py` |
+| A kill never voids delivered work on its own | Kill goes to a held dispute; only independent evidence refunds | `tests/payments/test_ledger.py`, `tests/web/test_server.py` |
+| You are not charged for a result you never got | Floor fee only when a result exists; outage or crash voids the hold | `tests/payments/test_ledger.py` |
 | Another website cannot start runs | Local bind, host check, per-process token | `tests/web/test_server.py` |
 
 ## Honest limits
 
 - **Pull mode has no fair exchange.** The requester's machine runs the pack and could keep the output
   without paying. The payment design (a hold, a floor fee, dispute handling) limits the loss; it does not remove it.
-  Payments are not part of this build yet.
+- **Money is test money.** Payments run through a ledger with a fake in-memory provider. A PayPal sandbox client
+  exists but has **not been run against the live sandbox yet**; until `bridge paypal-check` and the contract tests
+  pass with real credentials, treat it as unverified. No real money moves anywhere in this repo.
 - **Detection is evidence, not proof.** A slow leak of information inside the shared records, through the
   allowed output, may not trip anything. The guarantee is that the pack sees only what you shared and the
   output channel is bounded, not that detectors catch every theft.
@@ -104,8 +120,8 @@ socket, a file handle or the model key. Anything it wants goes through the Broke
 - **The model is not perfectly stable.** Nemotron sometimes returns empty or malformed JSON. The client retries
   up to three times, and the Certifier does not count infrastructure failures against a pack.
 - **Built in this repo:** the workflow engine, Memory Broker, Result Guard, sealed Cell, registry, Certifier,
-  ranking, local console. **Designed, not built:** Hosted mode on someone else's machine, sealed enclaves,
-  multi-device sync, key management, a real payment ledger, legal review. See `.scratch/agent-bridge/architecture-v2.1.md`.
+  ranking, payment ledger (test money), local console. **Designed, not built:** Hosted mode on someone else's
+  machine, sealed enclaves, multi-device sync, key management, verified PayPal sandbox payments, legal review. See `.scratch/agent-bridge/architecture-v2.1.md`.
 - The "simulate a compromised model" switch in the console is a simulation. The code-based malicious pack is not.
 - Windows needs WSL2 for the Cell. The console's narrow-screen layout is written but was not visually verified.
 
