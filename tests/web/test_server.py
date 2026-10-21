@@ -425,7 +425,7 @@ def test_the_page_speaks_plain_language_with_no_developer_words(srv):
 def test_money_decisions_and_the_approval_step_are_wired_in_the_script(srv):
     app, url = srv
     js = static_text(url, "chat.js") + static_text(url, "app.js")
-    for needle in ("/api/thread/reject", "/api/run/continue", "Not helpful", "I approved, continue", "^https:", "Coins"):
+    for needle in ("/api/thread/reject", "/api/run/continue", "Not helpful", "I approved, continue", "^https?:", "Coins"):
         assert needle in js
     assert "http://" not in js  # nothing in the script points outside this machine
 

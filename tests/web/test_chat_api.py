@@ -490,3 +490,18 @@ def test_the_safety_net_is_reachable_over_http(srv):
     assert out[0] == 200 and out[1]["added"] == 0 and out[1]["skipped"] >= 7
     assert mem({"action": "restore_backup", "backup": {"format": "nope"}})[0] == 400
     assert mem({"action": "empty_trash"})[0] == 200
+
+
+def test_receipts_tell_every_payment_in_plain_words(srv):
+    app, url, _ = srv
+    assert call(url + "/api/payments")[1]["items"] == []
+    t = new_chat(app, url)
+    send(app, url, t["id"], "Acme renewal risk")
+    out = call(url + "/api/payments")[1]
+    assert out["mode"] == "test" and out["summary"]["on_hold"] > 0 and len(out["items"]) == 1
+    r = out["items"][0]
+    assert r["helper"] == "Private Analyst" and r["state"] == "RESULT_READY" and "keep going" in r["state_text"] and r["captured"] == 10
+    assert [e["to"] for e in r["events"]][:2] == ["Hold placed", "The helper is working"] and r["chat"]
+    call(url + "/api/thread/delete", {"id": t["id"]}, app.token)
+    done = call(url + "/api/payments")[1]
+    assert done["items"][0]["state"] == "SETTLED" and done["items"][0]["state_text"] == "Paid" and done["summary"]["on_hold"] == 0

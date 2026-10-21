@@ -91,7 +91,10 @@
     head.append(title, acts);
     if (!cur.messages.length) box.append(el("p", "empty", "Type your question below. Tick a shelf on the left if the helper should use your files."));
     cur.messages.forEach((m) => box.append(bubble(m)));
-    if (pendingApproval && pendingApproval.threadId === cur.id) box.append(approvalCard());
+    if (pendingApproval && pendingApproval.threadId === cur.id) {
+      if (pendingApproval.text) { const u = el("div", "msg user"); u.append(el("div", "text", pendingApproval.text)); box.append(u); }
+      box.append(approvalCard());
+    }
     if (sending && sendingId === cur.id) {
       if (pendingText) { const u = el("div", "msg user"); u.append(el("div", "text", pendingText)); box.append(u); }
       const w = el("div", "msg helper thinking"); w.id = "workbubble"; w.append(el("div", "text", "Working on it…"), el("div", "small muted", progressLines.join(" ")));
@@ -167,7 +170,7 @@
     try {
       const r = await B.api("/api/thread/send", { id: mine, text, simulate: false });
       box.value = "";
-      if (r.needs_approval) pendingApproval = Object.assign({ threadId: mine }, r);
+      if (r.needs_approval) { pendingApproval = Object.assign({ threadId: mine, text }, r); caption("Waiting for you to approve the hold on the payment page."); }
       if (cur && cur.id === mine) cur = r.thread;
       report = r.report || null;
     } catch (e) { say(e.message); try { const t = await B.api("/api/thread?id=" + mine); if (cur && cur.id === mine) cur = t; } catch (_) { /* keep what is on screen */ } }
@@ -190,27 +193,37 @@
     }, 900);
   }
 
+  async function continueApproved() {
+    const p = pendingApproval; if (!p || sending) return;
+    sending = true; sendingId = p.threadId; drawConversation();
+    let report = null;
+    try { const r = await B.api("/api/run/continue", { run_id: p.run_id }); pendingApproval = null; if (cur && cur.id === p.threadId) cur = r.thread; report = r.report; }
+    catch (e) { say(e.message + " If this keeps happening, press Cancel and send the message again."); }
+    sending = false; sendingId = null;
+    try { await B.refresh(); } catch (_) { /* optional */ }
+    drawConversation(); loadContext();
+    if (report && cur && cur.id === p.threadId) replay(report);
+  }
+
   function approvalCard() {
     const p = pendingApproval, d = el("div", "msg system");
     d.append(el("div", "text", "Before the helper starts, approve a hold of " + B.cents(p.price) + " on the payment page. Nothing is charged until there is an answer."));
     const acts = el("div", "acts");
-    if (/^https:\/\//.test(p.approve_url || "")) { const a = document.createElement("a"); a.href = p.approve_url; a.target = "_blank"; a.rel = "noopener noreferrer"; a.className = "btn"; a.textContent = "Open the approval page"; acts.append(a); }
-    acts.append(btn("I approved, continue", "btn", async () => {
-      sending = true; sendingId = p.threadId; drawConversation();
-      let report = null;
-      try { const r = await B.api("/api/run/continue", { run_id: p.run_id }); pendingApproval = null; if (cur && cur.id === p.threadId) cur = r.thread; report = r.report; }
-      catch (e) { say(e.message + " If this keeps happening, press Cancel and send the message again."); }
-      sending = false; sendingId = null;
-      try { await B.refresh(); } catch (_) { /* optional */ }
-      drawConversation(); loadContext();
-      if (report && cur && cur.id === p.threadId) replay(report);
-    }), btn("Cancel", "btn warn", async () => {
+    if (/^https?:\/\//.test(p.approve_url || "")) { const a = document.createElement("a"); a.href = p.approve_url; a.target = "_blank"; a.rel = "noopener noreferrer"; a.className = "btn go2"; a.textContent = "Open the approval page"; acts.append(a); }
+    acts.append(btn("I approved, continue", "btn", continueApproved), btn("Cancel", "btn warn", async () => {
       try { await B.api("/api/thread/cancel", { run_id: p.run_id }); } catch (e) { say(e.message); }
       pendingApproval = null;
       try { cur = await B.api("/api/thread?id=" + p.threadId); await B.refresh(); } catch (_) { /* optional */ }
       drawConversation();
     }));
-    d.append(acts); return d;
+    d.append(acts, el("div", "small muted", "When you approve on the other page, this chat carries on by itself.")); return d;
+  }
+
+  /* the approval page tells this tab when the buyer is done */
+  function listenForApproval() {
+    const onMsg = (what) => { if (what === "approved" && pendingApproval) continueApproved(); else if (what === "cancelled" && pendingApproval) say("The hold was cancelled on the payment page. Press Cancel here, then send your message again."); };
+    try { const ch = new BroadcastChannel("agent-bridge-paypal"); ch.onmessage = (e) => onMsg(e.data); } catch (e) { /* older browsers use the storage event below */ }
+    window.addEventListener("storage", (e) => { if (e.key === "agent-bridge-paypal" && e.newValue) onMsg(String(e.newValue).split(":")[0]); });
   }
 
   /* ---------- what the helper will see: the memory tree with tick boxes ---------- */
@@ -376,7 +389,7 @@
     });
     $("tab-office").onclick = () => showView("office"); $("tab-studio").onclick = () => showView("studio"); $("tab-memory").onclick = () => showView("memory");
     $("backtofloor").onclick = back;
-    $("composer").onsubmit = send;
+    $("composer").onsubmit = send; listenForApproval();
     $("draft").oninput = () => { clearTimeout(draftTimer); draftTimer = setTimeout(loadContext, 350); };
     $("draft").onkeydown = (e) => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); $("composer").requestSubmit(); } };
     $("profileclose").onclick = () => $("profile").close();

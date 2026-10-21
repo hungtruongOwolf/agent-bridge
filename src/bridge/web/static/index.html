@@ -15,7 +15,7 @@
     <button class="btn" id="helpbtn" type="button" title="How this works">? Help</button>
     <button class="btn mic" id="mic" type="button" aria-pressed="false" title="Speak to your assistant">Talk</button>
   </form>
-  <div class="coins" title="No real money moves in this demo."><b id="coinlabel">Coins</b><span id="coinchip"></span></div>
+  <button class="coins" id="coinbtn" type="button" title="See every payment"><b id="coinlabel">Coins</b><span id="coinchip"></span></button>
 </header>
 <div class="recs" id="recs" aria-live="polite"></div>
 
@@ -207,6 +207,11 @@
     </div></div>
   </div>
 </section>
+
+<dialog id="wallet" class="profile" aria-label="Payments">
+  <div id="walletbody"></div>
+  <div class="acts"><button class="btn" id="walletclose" type="button">Close</button></div>
+</dialog>
 
 <dialog id="help" class="profile" aria-label="How this works">
   <h2>How this works</h2>

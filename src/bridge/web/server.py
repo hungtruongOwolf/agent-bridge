@@ -86,7 +86,7 @@ class LazySearch:
 class App:
     def __init__(self, world: World, packs_dir: Path, vault_path: Path, env_file: Path, cell=None,
                  model_factory=None, web=None, ledger=None, clock=None, demo_author_email: str = "",
-                 payments_mode: str = "test"):
+                 payments_mode: str = "test", payments_dashboard: str = ""):
         self.world, self.vault_path, self.env_file, self.cell = world, Path(vault_path), Path(env_file), cell
         self.web = web or LazySearch(lambda: TavilySearch(load_tavily_key(self.env_file)))
         self.model_factory = model_factory or (lambda: NebiusModel(load_api_key(self.env_file)))
@@ -108,6 +108,7 @@ class App:
         self.requester = "you"
         self.demo_author_email = demo_author_email
         self.payments_mode = payments_mode
+        self.payments_dashboard = payments_dashboard  # where to look at the money, when the provider has a page for it
         self.pending: dict[str, dict] = {}  # runs waiting for the buyer to approve the hold
         # money is TEST money: a fake provider now, the PayPal sandbox client when credentials exist
         self.ledger = ledger or Ledger(FakeProvider(path=self.world.state / "provider.json"),
@@ -297,6 +298,27 @@ class App:
             summary["on_hold"] = on_hold
         return {**summary, "test_money": True, "provider": self.payments_mode, "holdback": "demo holdback 0 s; production would hold for days"}
 
+    STATE_WORDS = {"AWAITING_APPROVAL": "Waiting for you to approve the hold", "AUTHORIZED": "Hold placed", "RUNNING": "The helper is working",
+                   "RESULT_READY": "Answer delivered; the rest is paid when you keep going", "SETTLED": "Paid", "SETTLED_REJECTED": "You said not helpful: deposit only",
+                   "DISPUTE_HOLD": "On hold while it is checked", "DISPUTE_UPHELD": "Refunded: the helper was caught cheating", "VOIDED": "Not charged"}
+
+    def receipts(self) -> dict:
+        """Every payment as a plain receipt: who was hired, for which chat, what moved, and why the state is what it is."""
+        with self.lock:
+            chats = {rid: t.title for t in self.threads.threads.values() for rid in t.runs}
+            items = []
+            for row in list(self.ledger.rows.values())[-100:]:
+                rec = self.world.registry.records.get(row.pack_key)
+                refunded = sum(c["amount"] for c in row.captures if c["id"] in row.refunded)
+                items.append({"run_id": row.run_id, "helper": rec.id.replace("-", " ").title() if rec else row.pack_key, "chat": chats.get(row.run_id, ""),
+                              "price": row.price, "state": row.state, "state_text": self.STATE_WORDS.get(row.state, row.state), "captured": row.captured(),
+                              "refunded": refunded, "payout": {"status": row.payout["status"], "amount": row.payout["amount"]},
+                              "author": row.author if "@" in row.author else "", "reference": row.auth_id or "",
+                              "when": row.events[0]["t"] if row.events else 0,
+                              "events": [{"t": e["t"], "to": self.STATE_WORDS.get(e["to"], e["to"]), "why": e["why"]} for e in row.events]})
+        items.sort(key=lambda i: -i["when"])
+        return {"mode": self.payments_mode, "dashboard": self.payments_dashboard, "summary": self._payments_summary(), "items": items}
+
     def settle(self, body: dict) -> dict:
         run_id, action, now = str(body.get("run_id", "")), body.get("action"), self.clock()
         with self.lock:
@@ -421,10 +443,13 @@ def make_handler(app: App):
             if self.path == "/api/state":
                 return self._json(200, app.state())
             if self.path.split("?")[0] in ("/paypal/return", "/paypal/cancel"):
-                note = ("You approved the hold. Go back to the agent-bridge tab and press the continue button."
-                        if self.path.startswith("/paypal/return") else "You cancelled. Nothing was held or charged.")
+                ok = self.path.startswith("/paypal/return")
+                note = ("You approved the hold. This tab can be closed: the console carries on by itself."
+                        if ok else "You cancelled. Nothing was held or charged. You can close this tab.")
+                script = ("<script>try{const c=new BroadcastChannel('agent-bridge-paypal');c.postMessage('" + ("approved" if ok else "cancelled") + "');c.close();}catch(e){}"
+                          "try{localStorage.setItem('agent-bridge-paypal','" + ("approved" if ok else "cancelled") + ":'+Date.now())}catch(e){}</script>")
                 return self._send(200, ("<!doctype html><meta charset=utf-8><title>agent-bridge</title>"
-                                        "<body style='font:16px system-ui;padding:40px'>" + note + "</body>").encode(),
+                                        "<body style='font:16px system-ui;padding:40px'>" + note + script + "</body>").encode(),
                                   "text/html; charset=utf-8")
             if self.path.split("?")[0] == "/api/agent":
                 q = urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
@@ -449,6 +474,8 @@ def make_handler(app: App):
                     return self._json(200, app.studio.list())
                 if route == "/api/studio/helper":
                     return self._json(200, app.studio.get(q.get("id", "")))
+                if route == "/api/payments":
+                    return self._json(200, app.receipts())
                 if route == "/api/office":
                     return self._json(200, app.chat.office())
                 if route == "/api/thread/progress":

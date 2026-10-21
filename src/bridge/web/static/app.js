@@ -36,10 +36,41 @@
     return j;
   }
 
+  const MODE = {
+    test: { short: "Coins", name: "Demo coins", line: "These are demo coins kept in a file. Nothing real moves anywhere." },
+    "paypal-mock": { short: "PayPal (practice)", name: "Practice PayPal", line: "A practice server on this computer behaves like the PayPal sandbox, including the approval page. It is not PayPal and no real money is involved." },
+    "paypal-sandbox": { short: "PayPal sandbox", name: "PayPal sandbox", line: "Test money on PayPal's sandbox. You approve each hold on PayPal's own page. No real money moves." }
+  };
+  const when = (t) => (t ? new Date(t * 1000).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "");
+
+  /* every payment as a receipt */
+  async function wallet() {
+    const dlg = $("wallet"), body = $("walletbody"); body.replaceChildren(el("p", null, "Loading…")); if (!dlg.open) dlg.showModal();
+    let d; try { d = await api("/api/payments"); } catch (e) { body.replaceChildren(el("p", null, e.message)); return; }
+    const m = MODE[d.mode] || MODE.test, s = d.summary;
+    body.replaceChildren(el("h2", null, m.name), el("p", null, m.line));
+    if (d.dashboard) { const l = document.createElement("a"); l.href = d.dashboard; l.target = "_blank"; l.rel = "noopener noreferrer"; l.className = "btn"; l.textContent = "Open the practice PayPal page"; body.append(el("div", "acts", "")); body.lastChild.append(l); }
+    const sum = el("div", "walletsum");
+    [["Spent", cents(s.captured || 0)], ["On hold", cents(s.on_hold || 0)], ["Paid to helper authors", cents(s.paid_out || 0)]].forEach(([k, v]) => { const c = el("div", "wcell"); c.append(el("div", "small muted", k), el("b", null, v)); sum.append(c); });
+    body.append(sum, el("h3", "sub", "Receipts"));
+    if (!d.items.length) body.append(el("p", "empty", "No payments yet. Money only moves after you start a chat message."));
+    d.items.forEach((r) => {
+      const c = el("div", "receipt"), top = el("div", "rtop");
+      top.append(el("b", null, r.helper + (r.chat ? " · " + r.chat : "")), el("span", "small muted", when(r.when)));
+      c.append(top, el("div", "small", r.state_text));
+      const line = []; line.push("Price " + cents(r.price)); if (r.captured) line.push("charged " + cents(r.captured)); if (r.refunded) line.push("given back " + cents(r.refunded)); if (r.payout.amount) line.push("author gets " + cents(r.payout.amount) + (r.payout.status === "paid" ? " (paid)" : " (pending)"));
+      c.append(el("div", "small muted", line.join(" · ")));
+      const det = el("details", "more"); det.append(el("summary", null, "What happened"));
+      r.events.forEach((e) => det.append(el("div", "small", when(e.t) + " · " + e.to + (e.why ? " (" + e.why + ")" : ""))));
+      if (r.reference) det.append(el("div", "small muted", "Reference: " + r.reference));
+      c.append(det); body.append(c);
+    });
+  }
+
   function drawCoins() {
     const w = S.payments; if (!w) return;
     $("coinchip").textContent = "Spent " + cents(w.captured) + (w.on_hold ? ", on hold " + cents(w.on_hold) : "");
-    $("coinlabel").textContent = w.provider === "paypal-sandbox" ? "PayPal coins" : "Coins";
+    $("coinlabel").textContent = MODE[w.provider] ? MODE[w.provider].short : "Coins";
   }
 
   async function refresh() {
@@ -91,6 +122,7 @@
       $("askform").onsubmit = (e) => { e.preventDefault(); voiceOn = false; ask($("ask").value, false); $("ask").select(); };
       setupVoice();
       $("helpbtn").onclick = () => $("help").showModal(); $("helpclose").onclick = () => $("help").close();
+      $("coinbtn").onclick = wallet; $("walletclose").onclick = () => $("wallet").close();
       window.Bridge = { api, el, state: () => S, refresh, cents, toast, plural: window.plural, niceName: window.niceName, blocked: S.blocked_phrases, bad: BAD };
       window.Market.mount(window.Bridge); window.MemoryUI.mount(window.Bridge); window.Studio.mount(window.Bridge); window.ChatUI.mount(window.Bridge);
       const logo = $("logo"), c = logo.getContext("2d"); c.imageSmoothingEnabled = false; c.fillStyle = "#FFF8E7"; c.fillRect(0, 0, 20, 14);

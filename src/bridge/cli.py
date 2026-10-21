@@ -104,7 +104,20 @@ def serve_cmd(args) -> int:
     from .web.server import App, serve
 
     world = open_world(args.state)
-    ledger, author_email, mode = None, "", "test"
+    ledger, author_email, mode, dashboard = None, "", "test", ""
+    if args.payments == "paypal-mock":  # the local practice server stands in for the PayPal sandbox
+        import threading
+        from .payments.ledger import Ledger
+        from .payments.paypal_mock import MOCK_ID, MOCK_SECRET, serve_mock
+        mock, _api = serve_mock(args.port + 1, Path(args.state) / "paypal-mock.json")
+        threading.Thread(target=mock.serve_forever, daemon=True).start()
+        base = f"http://127.0.0.1:{args.port}"
+        ledger = Ledger(PayPalSandbox(MOCK_ID, MOCK_SECRET, base_url=f"http://127.0.0.1:{mock.server_address[1]}",
+                                      return_url=base + "/paypal/return", cancel_url=base + "/paypal/cancel"),
+                        path=Path(args.state) / "ledger-paypal-mock.json")
+        author_email, mode = "author@example.com", "paypal-mock"
+        dashboard = f"http://127.0.0.1:{mock.server_address[1]}/mock/state"
+        print(f"practice PayPal on http://127.0.0.1:{mock.server_address[1]}/mock/state  (no real money, no real account)")
     if args.payments == "paypal":
         from .payments.ledger import Ledger
         cid, secret = load_paypal_credentials(args.env)
@@ -115,7 +128,7 @@ def serve_cmd(args) -> int:
                              if l.startswith("PAYPAL_AUTHOR_EMAIL=")), "")
         mode = "paypal-sandbox"
     app = App(world, Path(args.packs), Path(args.vault), Path(args.env), cell=DockerCell(), ledger=ledger,
-              demo_author_email=author_email, payments_mode=mode)
+              demo_author_email=author_email, payments_mode=mode, payments_dashboard=dashboard)
     httpd = serve(app, args.port)
     print(f"console on http://127.0.0.1:{args.port}  (Ctrl+C to stop)")
     try:
@@ -177,6 +190,19 @@ def approve_cmd(args) -> int:
     return 0
 
 
+def paypal_mock_cmd(args) -> int:
+    from .payments.paypal_mock import MOCK_ID, MOCK_SECRET, serve_mock
+    Path(args.state).mkdir(parents=True, exist_ok=True)
+    httpd, _ = serve_mock(args.port, Path(args.state) / "paypal-mock.json")
+    print(f"practice PayPal on http://127.0.0.1:{httpd.server_address[1]}  client id {MOCK_ID}  secret {MOCK_SECRET}")
+    print(f"dashboard: http://127.0.0.1:{httpd.server_address[1]}/mock/state   (Ctrl+C to stop)")
+    try:
+        httpd.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    return 0
+
+
 def paypal_check_cmd(args) -> int:
     """Safe live check of the sandbox credentials: get a token and create one $0.01 AUTHORIZE order.
     No money moves: an order does nothing until a buyer approves it, and this command never approves."""
@@ -233,9 +259,14 @@ def main(argv: list[str] | None = None) -> int:
     sv.add_argument("--state", default=".bridge")
     sv.add_argument("--env", default=".env")
     sv.add_argument("--port", type=int, default=8787)
-    sv.add_argument("--payments", choices=["test", "paypal"], default="test",
-                    help="test = in-memory fake money; paypal = PayPal sandbox (needs credentials in .env)")
+    sv.add_argument("--payments", choices=["test", "paypal", "paypal-mock"], default="test",
+                    help="test = fake money kept in a file; paypal = PayPal sandbox (needs credentials in .env); "
+                         "paypal-mock = a local practice server that behaves like the sandbox, with an approval page")
     sv.set_defaults(fn=serve_cmd)
+    pm = sub.add_parser("paypal-mock", help="run the local PayPal practice server on its own")
+    pm.add_argument("--port", type=int, default=9797)
+    pm.add_argument("--state", default=".bridge")
+    pm.set_defaults(fn=paypal_mock_cmd)
     args = ap.parse_args(argv)
     return args.fn(args)
 
