@@ -8,7 +8,6 @@ see where an answer came from. The store keeps everything in one JSON file, writ
 from __future__ import annotations
 
 import json
-import os
 import secrets
 import threading
 from dataclasses import asdict, dataclass, field
@@ -16,6 +15,7 @@ from pathlib import Path
 
 from ..engine.limits import MAX_HISTORY_TURNS, MAX_TASK_CHARS
 from ..memory.vault import clean_path
+from ..storage.db import Database
 
 MAX_THREADS = 200
 MAX_MESSAGES = 400
@@ -92,19 +92,27 @@ class ThreadStore:
         self.clock = clock or time.time
         self.lock = threading.RLock()
         self.threads: dict[str, Thread] = {}
-        if self.path and self.path.exists():
-            for raw in json.loads(self.path.read_text(encoding="utf-8")):
+        self.docs = None
+        if self.path:  # chats live in a database beside the given name; an older JSON file of that name is imported once
+            self.docs = Database(self.path.with_suffix(".db")).collection("threads")
+            if self.path.exists() and self.docs.count() == 0:
+                for raw in json.loads(self.path.read_text(encoding="utf-8")):
+                    self.docs.put(raw["id"], raw, raw.get("updated", 0))
+            for _, raw in self.docs.items():
                 old = raw["lens"]  # older chats stored drawers and a privacy level; those become "nothing shared yet"
                 raw["lens"] = Lens(shelves=old.get("shelves", []), include=old.get("include", []), exclude=old.get("exclude", []))
                 raw["messages"] = [Message(**m) for m in raw["messages"]]
                 raw["busy"] = False  # nothing can be mid-answer after a restart
                 self.threads[raw["id"]] = Thread(**raw)
 
-    def _save(self) -> None:
-        if self.path:
-            tmp = self.path.with_suffix(".tmp")
-            tmp.write_text(json.dumps([asdict(t) for t in self.threads.values()], indent=1), encoding="utf-8")
-            os.replace(tmp, self.path)
+    def _put(self, *threads: Thread) -> None:
+        """Store these chats (and only these): one write per change, however many chats there are."""
+        if self.docs is not None and threads:
+            self.docs.write({t.id: asdict(t) for t in threads}, sorts={t.id: t.updated for t in threads})
+
+    def _drop(self, *ids: str) -> None:
+        if self.docs is not None:
+            self.docs.delete(*ids)
 
     def get(self, thread_id: str) -> Thread:
         t = self.threads.get(thread_id)
@@ -116,13 +124,15 @@ class ThreadStore:
         with self.lock:
             if len(self.threads) >= MAX_THREADS:
                 raise ThreadError(f"you have {MAX_THREADS} chats; delete some before starting a new one")
-            for tid in [i for i, o in self.threads.items() if not o.messages and not o.busy and not o.runs]:
+            blank = [i for i, o in self.threads.items() if not o.messages and not o.busy and not o.runs]
+            for tid in blank:
                 del self.threads[tid]  # a chat nobody wrote in is just clutter; only one blank chat is kept at a time
+            self._drop(*blank)
             now = self.clock()
             t = Thread(id="t_" + secrets.token_hex(4), title=(title.strip() or "New chat")[:MAX_TITLE], agent_key=agent_key,
                        created=now, updated=now, lens=lens or Lens())
             self.threads[t.id] = t
-            self._save()
+            self._put(t)
             return t
 
     def summaries(self) -> list[dict]:
@@ -162,7 +172,7 @@ class ThreadStore:
                     raise ThreadError(f"the spending limit must be between 0 and {MAX_BUDGET_CENTS // 100} dollars")
                 t.budget_cents = budget_cents
             t.updated = self.clock()
-            self._save()
+            self._put(t)
             return t
 
     def begin(self, thread_id: str, text: str) -> Thread:
@@ -185,7 +195,7 @@ class ThreadStore:
             t = self.get(thread_id)
             if run_id not in t.runs:
                 t.runs.append(run_id)
-                self._save()
+                self._put(t)
 
     def end(self, thread_id: str) -> None:
         with self.lock:
@@ -199,7 +209,7 @@ class ThreadStore:
             m = Message(id="m_" + secrets.token_hex(4), role=role, text=text, at=self.clock(), **fields)
             t.messages.append(m)
             t.updated = m.at
-            self._save()
+            self._put(t)
             return m
 
     def forget(self, thread_id: str, message_id: str) -> None:
@@ -210,22 +220,24 @@ class ThreadStore:
             t.messages = [m for m in t.messages if m.id != message_id]
             if len(t.messages) == before:
                 raise ThreadError("that message is not in this chat")
-            self._save()
+            self._put(t)
 
     def clear(self, thread_id: str) -> None:
         with self.lock:
-            self.get(thread_id).messages = []
-            self._save()
+            t = self.get(thread_id)
+            t.messages = []
+            self._put(t)
 
     def delete(self, thread_id: str) -> None:
         with self.lock:
             if self.threads.pop(thread_id, None) is None:
                 raise ThreadError("that chat does not exist any more")
-            self._save()
+            self._drop(thread_id)
 
     def save(self) -> None:
+        """Store every chat again (used after a shelf is renamed and every chat's choices change)."""
         with self.lock:
-            self._save()
+            self._put(*self.threads.values())
 
     def history_for(self, thread_id: str) -> list[dict]:
         """The earlier turns the next run will be shown: the last `history_turns` user and helper messages."""

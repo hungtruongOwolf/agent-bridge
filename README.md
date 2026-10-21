@@ -162,7 +162,8 @@ src/bridge/memory/    vault, Memory Broker, Quarantine
 src/bridge/guard/     Result Guard
 src/bridge/sandbox/   container Cell and its sensor
 src/bridge/hub/       registry, Certifier, marketplace ranking
-src/bridge/web/       local console
+src/bridge/web/       local console: api/ (router, transport), routes/, services/, static/js/ (modules + router)
+src/bridge/storage/   small SQLite databases for memory, chats, ledger and plans
 examples/             demo vault and 6 demo packs (4 honest, 2 malicious)
 .scratch/             design notes, spec and tickets
 ```

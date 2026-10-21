@@ -11,11 +11,11 @@ Plans belong to a helper (its publisher and id), not to one version, so an upgra
 from __future__ import annotations
 
 import json
-import os
 import threading
 from pathlib import Path
 
 from ..hub.pricing import SUBSCRIPTION_DAYS
+from ..storage.db import Database
 
 PAID_STATES = {"SETTLED"}
 DEAD_STATES = {"SETTLED_REJECTED", "DISPUTE_UPHELD", "VOIDED"}
@@ -31,15 +31,17 @@ class Subscriptions:
         self.lock = threading.RLock()
         self.pending: dict[str, dict] = {}  # run id -> a plan waiting for its payment to settle
         self.active: dict[str, dict] = {}  # "<buyer>|<plan key>" -> the running plan
-        if self.path and self.path.exists():
-            raw = json.loads(self.path.read_text(encoding="utf-8"))
-            self.pending, self.active = raw.get("pending", {}), raw.get("active", {})
+        self.docs = None
+        if self.path:  # plans live in a database beside the given name; an older JSON file of that name is imported once
+            self.docs = Database(self.path.with_suffix(".db")).collection("plans")
+            if self.path.exists() and self.docs.count() == 0:
+                raw = json.loads(self.path.read_text(encoding="utf-8"))
+                self.docs.write({"pending": raw.get("pending", {}), "active": raw.get("active", {})})
+            self.pending, self.active = self.docs.get("pending", {}), self.docs.get("active", {})
 
     def _save(self) -> None:
-        if self.path:
-            tmp = self.path.with_suffix(".tmp")
-            tmp.write_text(json.dumps({"pending": self.pending, "active": self.active}), encoding="utf-8")
-            os.replace(tmp, self.path)
+        if self.docs is not None:
+            self.docs.write({"pending": self.pending, "active": self.active})
 
     @staticmethod
     def _k(buyer: str, key: str) -> str:

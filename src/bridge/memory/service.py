@@ -1,13 +1,12 @@
 """Everything a person can do with their own memory: look at it, add to it, correct it, delete it.
 
-All changes go through one lock and an atomic file write, so two requests at once cannot overwrite each other.
+All changes go through one lock and one database transaction, so two requests at once cannot overwrite each other
+and a change is stored whole or not at all.
 Each item reports where it came from (written by you, or suggested by a helper and accepted by you) and
 how many answers it has been used in, so nothing in memory is a mystery.
 """
 from __future__ import annotations
 
-import json
-import os
 import threading
 from pathlib import Path
 from typing import Callable
@@ -18,6 +17,8 @@ from .safety_net import SafetyNet
 from .tree import MemoryTree, pretty
 from .vault import Record, Vault, clean_path, under
 from .words import tokens
+from ..storage.db import Database
+from ..storage.memory_store import MemoryStore
 
 PAGE = 30
 MAX_LABEL = 120
@@ -31,24 +32,21 @@ class MemoryService(SafetyNet):
     Error = MemoryChangeError
 
     def __init__(self, vault_file: Path, quarantine: Quarantine, *, threads=None, registry=None,
-                 clock: Callable[[], float], lock: threading.RLock | None = None):
+                 clock: Callable[[], float], lock: threading.RLock | None = None, seed: Path | None = None):
+        """`vault_file` names where the memory lives (the database sits beside it, same name); an older JSON file of that name is
+        imported once. `seed` is a starter set of notes, used only the very first time, when there is nothing yet."""
         self.file, self.quarantine, self.threads, self.registry, self.clock = Path(vault_file), quarantine, threads, registry, clock
         self.lock = lock or threading.RLock()
-        self._cache, self._overview = None, None
-        self.labels_file = self.file.with_name("shelves.json")  # the short notes a person wrote about their shelves
+        self.store = MemoryStore(Database(self.file.with_suffix(".db")))
+        self.store.import_legacy(self.file, clock())
+        if self.store.is_empty() and seed is not None and Path(seed).exists():
+            self.store.write_changes({}, {r.id: r for r in Vault.load(seed).all()})
+        self.store.mark_seeded()
+        self._vault, self._overview = self.store.load_vault(), None  # the notes stay in memory; a change writes only the rows it touches
 
     # -- the shelf notes -------------------------------------------------------------------------
     def labels(self) -> dict:
-        try:
-            raw = json.loads(self.labels_file.read_text(encoding="utf-8"))
-            return {k: v for k, v in raw.items() if isinstance(k, str) and isinstance(v, str)}
-        except (OSError, ValueError):
-            return {}
-
-    def _save_labels(self, labels: dict) -> None:
-        tmp = self.labels_file.with_suffix(".tmp")
-        tmp.write_text(json.dumps(labels, indent=1), encoding="utf-8")
-        os.replace(tmp, self.labels_file)
+        return self.store.labels()
 
     def set_label(self, path: str, text: str) -> dict:
         path = self._path(path)
@@ -58,32 +56,14 @@ class MemoryService(SafetyNet):
         with self.lock:
             if path not in MemoryTree(self.vault().all()).nodes:
                 raise MemoryChangeError("that shelf does not exist")
-            labels = self.labels()
-            if text:
-                labels[path] = text
-            else:
-                labels.pop(path, None)
-            self._save_labels(labels)
+            self.store.set_label(path, text)
+            self._overview = None
         return {"path": path, "label": text}
 
     # -- reading ---------------------------------------------------------------------------------
-    def _stamp(self):
-        try:
-            st = self.file.stat()
-            lab = self.labels_file.stat().st_mtime_ns if self.labels_file.exists() else 0
-            return (st.st_mtime_ns, st.st_size, lab)
-        except OSError:
-            return None
-
     def vault(self) -> Vault:
-        """The vault as it is on disk now. Reading is cached until the file changes, so a big memory is parsed once, not on every screen refresh."""
-        with self.lock:
-            stamp = self._stamp()
-            if stamp is not None and self._cache and self._cache[0] == stamp:
-                return self._cache[1]
-            v = Vault.load(self.file)
-            self._cache, self._overview = (stamp, v), None
-            return v
+        """The memory as it is now. Never re-read from disk: this service is the only writer, so the copy in memory is the truth."""
+        return self._vault
 
     def _helper_names(self) -> dict:
         names = {}
@@ -146,8 +126,8 @@ class MemoryService(SafetyNet):
     def overview(self) -> dict:
         """The whole tree without any file text: what the manager and the chat panels draw."""
         vault = self.vault()
-        if self._overview is not None and self._cache and self._overview[0] == self._cache[0]:
-            return self._overview[1]
+        if self._overview is not None:
+            return self._overview
         recs = vault.all()
         tree = MemoryTree(recs, self.labels())
         secret: dict[str, int] = {}
@@ -176,16 +156,16 @@ class MemoryService(SafetyNet):
                "contacts": len({r.unit for r in recs if r.type == "contact"}),
                "oldest": min(stamps) if stamps else 0, "newest": max(max((r.updated or r.created) for r in recs), 0) if recs else 0,
                "shelves": shelves}
-        self._overview = (self._cache[0] if self._cache else None, out)
+        self._overview = out
         return out
 
     # -- changing --------------------------------------------------------------------------------
     def _mutate(self, fn):
         with self.lock:
-            v = Vault.load(self.file)
-            out = fn(v)
-            v.save(self.file)
-            self._cache = self._overview = None  # the next reader sees the new file, never a stale copy
+            work = self._vault.clone()  # a change that fails halfway leaves the real memory untouched
+            out = fn(work)
+            self.store.write_changes(self._vault._records, work._records)
+            self._vault, self._overview = work, None
             return out
 
     @staticmethod
@@ -338,7 +318,7 @@ class MemoryService(SafetyNet):
         with self.lock:
             n = self._mutate(go)
             labels = self.labels()
-            self._save_labels({(target + k[len(source):] if under(k, source) else k): v for k, v in labels.items()})
+            self.store.replace_labels({(target + k[len(source):] if under(k, source) else k): v for k, v in labels.items()})
             if self.threads is not None:
                 with self.threads.lock:
                     for t in self.threads.threads.values():

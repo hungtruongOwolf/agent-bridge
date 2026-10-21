@@ -43,6 +43,13 @@ A step that reaches the web is *public*. It may not read memory, and it may not 
 Web results may flow into private steps (research, then analysis), never the other way. A runtime check
 also refuses a query that repeats text from a staged record.
 
+## How the console is built
+
+Browser: ES modules with a client-side router (`web/static/js/`: `lib/` shared code, `views/` one file per screen,
+`components/`, `pixel/`, `studio/`). Server: `web/api/` (router and transport with every safety rule), `web/routes/`
+(address to service), `web/services/` (running helpers, payments), `web/server.py` (wires the parts). Data: small SQLite
+databases in the state folder (`storage/`). Decisions and their reasons: `docs/adr/`.
+
 ## Certification and ranking
 
 The Certifier runs each pack on three quality tasks (several risks, one real risk among distractors, no

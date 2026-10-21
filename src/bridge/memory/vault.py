@@ -100,6 +100,12 @@ class Vault:
             raise ValueError(f"duplicate record id {record.id!r}")
         self._records[record.id] = record
 
+    def clone(self) -> "Vault":
+        """A copy to change on the side (records are immutable, so sharing them is safe)."""
+        v = Vault()
+        v._records = dict(self._records)
+        return v
+
     def get(self, record_id: str) -> Record | None:
         return self._records.get(record_id)
 

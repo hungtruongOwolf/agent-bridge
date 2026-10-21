@@ -207,8 +207,8 @@ def test_a_backup_round_trips_and_never_overwrites_what_is_there_now(svc, tmp_pa
     svc.set_label("work", "Everything about the job")
     backup = svc.export_backup()
     assert backup["format"] == "agent-bridge-memory" and backup["notes"] == 3 and backup["shelf_notes"] == {"work": "Everything about the job"}
+    Vault([Record("n1", "note", "low", "A different note that owns the id n1")]).save(tmp_path / "other.json")  # an older file is imported at start
     other = MemoryService(tmp_path / "other.json", Quarantine(clock=Clock()), clock=Clock())
-    Vault([Record("n1", "note", "low", "A different note that owns the id n1")]).save(tmp_path / "other.json")
     out = other.restore_backup(backup)
     assert out == {"added": 2, "skipped": 1}  # n1 was already taken, so it was left alone
     assert other.vault().get("n1").text.startswith("A different") and other.vault().parts(doc) and other.labels() == {"work": "Everything about the job"}

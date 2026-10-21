@@ -2,7 +2,7 @@
 Owns no money itself: the ledger does. This only reads it and words it plainly."""
 from __future__ import annotations
 
-from ...payments.ledger import TERMINAL, PendingError, StateError
+from ...payments.ledger import PendingError, StateError
 from ...payments.provider import ProviderError
 
 STATE_WORDS = {"AWAITING_APPROVAL": "Waiting for you to approve the hold", "AUTHORIZED": "Hold placed", "RUNNING": "The helper is working",
@@ -33,9 +33,7 @@ class PaymentsService:
             except (ProviderError, PendingError):
                 pass  # the provider is slow; show what we know and try again on the next refresh
             summary = self.ledger.summary()
-            on_hold = sum(max(0, r.price - r.captured() - sum(c["amount"] for c in r.captures if c["id"] in r.refunded))
-                          for r in self.ledger.rows.values() if r.state not in TERMINAL and r.state != "AWAITING_APPROVAL")
-            summary["on_hold"] = on_hold
+            summary["on_hold"] = self.ledger.on_hold()
         return {**summary, "test_money": True, "provider": self.mode, "holdback": "demo holdback 0 s; production would hold for days"}
 
     def receipts(self) -> dict:

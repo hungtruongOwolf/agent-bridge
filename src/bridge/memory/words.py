@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import re
 import unicodedata
+from functools import lru_cache
 
 STOPWORDS = frozenset("""a an and are as at be been but by can could did do does for from had has have how i if in into is it its
 me my of on or our please should so tell that the their them then there these they this to up us was we were what when where which who
@@ -28,10 +29,20 @@ def stem(w: str) -> str:
     return w
 
 
+@lru_cache(maxsize=300_000)
+def _surface(s: str) -> tuple[str, ...]:
+    return tuple(w for w in re.findall(r"[a-z0-9]+", fold(s)) if w not in STOPWORDS)
+
+
+@lru_cache(maxsize=300_000)
+def _tokens(s: str) -> frozenset[str]:
+    return frozenset(stem(w) for w in _surface(s))
+
+
 def surface(s: str) -> list[str]:
-    """The words of a text as written (lower case, no filler), in order."""
-    return [w for w in re.findall(r"[a-z0-9]+", fold(s)) if w not in STOPWORDS]
+    """The words of a text as written (lower case, no filler), in order. Texts do not change, so the work is done once per text."""
+    return list(_surface(s))
 
 
-def tokens(s: str) -> set[str]:
-    return {stem(w) for w in surface(s)}
+def tokens(s: str) -> frozenset[str]:
+    return _tokens(s)

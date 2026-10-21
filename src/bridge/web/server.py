@@ -60,14 +60,12 @@ class App:
         self.payments_mode = payments_mode
         self.payments_dashboard = payments_dashboard  # where to look at the money, when the provider has a page for it
 
-        # memory: the live vault is a copy in the state dir, so accepted memories survive restarts
-        self.vault_file = self.world.state / "vault.json"
-        if not self.vault_file.exists():
-            Vault.load(self.vault_path).save(self.vault_file)
+        # memory: kept in the state dir (seeded once from the starter vault), so accepted memories survive restarts
+        self.vault_file = self.world.state / "vault.json"  # the memory database sits beside it; an older JSON file of this name is imported once
         self.quarantine = Quarantine()
         self.threads = ThreadStore(self.world.state / "threads.json", clock=self.clock)
         self.memory = MemoryService(self.vault_file, self.quarantine, threads=self.threads,
-                                    registry=self.world.registry, clock=self.clock, lock=self.lock)
+                                    registry=self.world.registry, clock=self.clock, lock=self.lock, seed=self.vault_path)
 
         # money is TEST money: a fake provider now, the PayPal sandbox client when credentials exist
         self.ledger = ledger or Ledger(FakeProvider(path=self.world.state / "provider.json"),

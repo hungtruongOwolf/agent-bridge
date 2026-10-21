@@ -21,11 +21,11 @@ Amounts are integer cents. All fees here are proposals, not facts.
 from __future__ import annotations
 
 import json
-import os
 import threading
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
+from ..storage.db import Database
 from .provider import PaymentProvider, ProviderError
 
 TERMINAL = {"SETTLED", "SETTLED_REJECTED", "DISPUTE_UPHELD", "VOIDED"}
@@ -76,22 +76,43 @@ class Ledger:
         self.floor_pct, self.fee_pct, self.holdback_s, self.retries = floor_pct, fee_pct, holdback_s, retries
         self.rows: dict[str, Row] = {}
         self._lock = threading.RLock()
-        if self.path and self.path.exists():
-            for raw in json.loads(self.path.read_text(encoding="utf-8")):
+        self.docs = None
+        if self.path:  # rows live in a database beside the given name; an older JSON file of that name is imported once
+            self.docs = Database(self.path.with_suffix(".db")).collection("ledger")
+            if self.path.exists() and self.docs.count() == 0:
+                for raw in json.loads(self.path.read_text(encoding="utf-8")):
+                    self.docs.put(raw["run_id"], raw)
+            for _, raw in self.docs.items():
                 self.rows[raw["run_id"]] = Row(**raw)
+        self._dirty: set[str] = set()  # rows changed since they were last stored
+        self._active: set[str] = {i for i, r in self.rows.items() if self._needs_attention(r)}
+        self._summary: dict | None = None  # recomputed only after something changed
+        self._on_hold: int | None = None
 
     # -- persistence -----------------------------------------------------------------------------
+    @staticmethod
+    def _needs_attention(r: "Row") -> bool:
+        """Rows the clock or a payout can still change. Everything else is history and is never looked at again by the time-driven rules."""
+        return r.state not in TERMINAL or r.payout["status"] in ("pending", "failed") or bool(r.intent) or (r.state == "VOIDED" and not r.voided)
+
+    def _touch(self, row: "Row") -> None:
+        self._dirty.add(row.run_id)
+        self._summary = self._on_hold = None
+        (self._active.add if self._needs_attention(row) else self._active.discard)(row.run_id)
+
     def _save(self) -> None:
-        if self.path:
-            tmp = self.path.with_suffix(".tmp")
-            tmp.write_text(json.dumps([asdict(r) for r in self.rows.values()], indent=2), encoding="utf-8")
-            os.replace(tmp, self.path)
+        """Store the rows that changed (and only those)."""
+        dirty, self._dirty = self._dirty, set()
+        if self.docs is not None and dirty:
+            self.docs.write({i: asdict(self.rows[i]) for i in dirty if i in self.rows}, [i for i in dirty if i not in self.rows])
 
     def _row(self, run_id: str) -> Row:
         try:
-            return self.rows[run_id]
+            row = self.rows[run_id]
         except KeyError:
             raise StateError(f"unknown run {run_id!r}") from None
+        self._touch(row)  # whoever asks for a row to work on is about to change it
+        return row
 
     def _move(self, row: Row, allowed: set[str], new: str, now: float, reason: str) -> None:
         if row.state not in allowed:
@@ -102,7 +123,9 @@ class Ledger:
     # -- provider calls with retry and write-ahead intent ---------------------------------------
     def _do(self, row: Row, op: str, fn):
         row.intent = {"op": op}
+        self._touch(row)
         self._save()
+        self._touch(row)  # and again: the caller changes the row once the provider has answered
         last: Exception | None = None
         for _ in range(self.retries):
             try:
@@ -114,6 +137,7 @@ class Ledger:
                 if not e.retryable:
                     row.intent = None
                     raise
+        self._touch(row)
         self._save()
         raise PendingError(f"{op} for {row.run_id} is unconfirmed: {last}")
 
@@ -147,15 +171,19 @@ class Ledger:
             row = Row(run_id, pack_key, author, requester, price, price * self.floor_pct // 100,
                       hold=price, accept_window_s=accept_window_s)
             self.rows[run_id] = row
+            self._touch(row)
             try:
                 auth = self._do(row, "authorize", lambda: self.provider.authorize(price, f"{run_id}:authorize", run_id))
             except ProviderError:
                 del self.rows[run_id]
+                self._dirty.discard(run_id)
+                self._active.discard(run_id)
                 raise
             row.auth_id = auth.auth_id
             if auth.approve_url:  # the buyer must approve on the provider's page before any hold exists
                 row.state, row.approve_url, row.approval_by = "AWAITING_APPROVAL", auth.approve_url, now + APPROVAL_WINDOW_S
             row.events.append({"t": now, "from": None, "to": row.state, "why": "hire"})
+            self._touch(row)
             self._save()
             return row
 
@@ -292,7 +320,8 @@ class Ledger:
         """Apply deadlines. Returns (run_id, what happened)."""
         done = []
         with self._lock:
-            for row in list(self.rows.values()):
+            for row in [self.rows[i] for i in list(self._active) if i in self.rows]:
+                self._touch(row)
                 if row.state == "AWAITING_APPROVAL" and row.approval_by is not None and now >= row.approval_by:
                     self._move(row, {"AWAITING_APPROVAL"}, "VOIDED", now, "the buyer did not approve in time")
                     done.append((row.run_id, "approval expired"))
@@ -319,7 +348,8 @@ class Ledger:
     def release_payouts(self, now: float) -> int:
         paid = 0
         with self._lock:
-            for row in self.rows.values():
+            for row in [self.rows[i] for i in list(self._active) if i in self.rows]:
+                self._touch(row)
                 p = row.payout
                 if p["status"] == "pending" and now >= p["ready_at"]:
                     try:
@@ -337,7 +367,8 @@ class Ledger:
         """Finish operations that were in flight when the process died or the provider timed out."""
         fixed = []
         with self._lock:
-            for row in self.rows.values():
+            for row in [self.rows[i] for i in list(self._active) if i in self.rows]:
+                self._touch(row)
                 if not row.intent:
                     continue
                 op = row.intent["op"]
@@ -358,6 +389,18 @@ class Ledger:
 
     # -- reporting ----------------------------------------------------------------------------------
     def summary(self) -> dict:
+        if self._summary is None:
+            self._summary = self._totals()
+        return dict(self._summary)
+
+    def on_hold(self) -> int:
+        """What the buyer has put on hold and not yet paid or released."""
+        if self._on_hold is None:
+            self._on_hold = sum(max(0, r.price - r.captured() - sum(c["amount"] for c in r.captures if c["id"] in r.refunded))
+                                for r in self.rows.values() if r.state not in TERMINAL and r.state != "AWAITING_APPROVAL")
+        return self._on_hold
+
+    def _totals(self) -> dict:
         rows = list(self.rows.values())
         return {
             "captured": sum(r.captured() for r in rows),

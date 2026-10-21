@@ -6,12 +6,10 @@
   bulk      move, re-label or delete many notes in one step, all or nothing;
   backup    the whole memory as one file you can keep, and put back later.
 
-These live in small side files next to the vault, so the vault itself stays one plain list of records.
+These live in the same database as the notes, in their own tables, so a note's history never slows the notes down.
 """
 from __future__ import annotations
 
-import json
-import os
 from dataclasses import asdict
 
 from .chunking import join_document
@@ -27,50 +25,30 @@ MAX_BACKUP_RECORDS = 5000
 
 
 class SafetyNet:
-    """Mixed into MemoryService. Needs: self.file, self.clock, self.lock, self._mutate, self.vault, self.threads, self._path,
+    """Mixed into MemoryService. Needs: self.store, self.clock, self.lock, self._mutate, self.vault, self.threads, self._path,
     self._level and MemoryChangeError (passed as self.Error)."""
 
-    # -- side files ------------------------------------------------------------------------------
-    def _side(self, name: str):
-        return self.file.with_name(f"memory-{name}.json")
-
-    def _read_side(self, name: str, default):
-        try:
-            raw = json.loads(self._side(name).read_text(encoding="utf-8"))
-            return raw if isinstance(raw, type(default)) else default
-        except (OSError, ValueError):
-            return default
-
-    def _write_side(self, name: str, data) -> None:
-        path = self._side(name)
-        tmp = path.with_suffix(".tmp")
-        tmp.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
-        os.replace(tmp, path)
-
     # -- trash -----------------------------------------------------------------------------------
-    def _purge(self, entries: list, now: float) -> list:
-        return [e for e in entries if now - e.get("deleted_at", 0) < TRASH_DAYS * 86400][-MAX_TRASH:]
-
     def _to_trash(self, members: list[Record], now: float) -> None:
         first = members[0]
         text = join_document([m.text for m in sorted(members, key=lambda m: m.part)]) if first.doc else first.text
-        entries = self._purge(self._read_side("trash", []), now)
-        entries.append({"unit": first.unit, "title": first.title if first.doc else "", "preview": text[:160], "shelf": first.shelf,
-                        "level": "low" if first.sensitivity == "low" else "high", "long": bool(first.doc), "deleted_at": now,
-                        "records": [asdict(m) for m in members]})
-        self._write_side("trash", entries)
+        self.store.trash_purge(now - TRASH_DAYS * 86400)
+        self.store.trash_add({"unit": first.unit, "title": first.title if first.doc else "", "preview": text[:160], "shelf": first.shelf,
+                              "level": "low" if first.sensitivity == "low" else "high", "long": bool(first.doc), "deleted_at": now,
+                              "records": [asdict(m) for m in members]}, MAX_TRASH)
 
     def trash(self) -> list[dict]:
         now = self.clock()
-        entries = self._purge(self._read_side("trash", []), now)
+        self.store.trash_purge(now - TRASH_DAYS * 86400)
+        entries = self.store.trash_entries()
         return [{"unit": e["unit"], "title": e["title"], "preview": e["preview"], "shelf": e["shelf"], "shelf_name": pretty(e["shelf"]),
                  "level": e["level"], "long": e["long"], "deleted_at": e["deleted_at"],
                  "days_left": max(0, TRASH_DAYS - int((now - e["deleted_at"]) // 86400))} for e in reversed(entries)]
 
     def restore(self, unit: str) -> dict:
         now = self.clock()
-        entries = self._purge(self._read_side("trash", []), now)
-        entry = next((e for e in reversed(entries) if e["unit"] == unit), None)
+        self.store.trash_purge(now - TRASH_DAYS * 86400)
+        entry = next((e for e in reversed(self.store.trash_entries()) if e["unit"] == unit), None)
         if entry is None:
             raise self.Error("that note is no longer in the trash")
 
@@ -93,38 +71,27 @@ class SafetyNet:
                 v.add(r)
             return recs[0].unit
         new_unit = self._mutate(go)
-        self._write_side("trash", [e for e in entries if e is not entry])
+        self.store.trash_remove(entry)
         return {"id": new_unit}
 
     def empty_trash(self) -> dict:
-        n = len(self._read_side("trash", []))
-        self._write_side("trash", [])
-        return {"emptied": n}
+        return {"emptied": self.store.trash_clear()}
 
     # -- history ---------------------------------------------------------------------------------
     def _push_history(self, unit: str, text: str, title: str, now: float) -> None:
-        hist = self._read_side("history", {})
-        versions = hist.setdefault(unit, [])
-        if versions and versions[-1]["text"] == text:
-            return
-        versions.append({"text": text, "title": title, "at": now})
-        hist[unit] = versions[-MAX_VERSIONS:]
-        self._write_side("history", hist)
+        self.store.push_version(unit, {"text": text, "title": title, "at": now}, MAX_VERSIONS)
 
     def _move_history(self, old: str, new: str) -> None:
-        hist = self._read_side("history", {})
-        if old in hist and old != new:
-            hist[new] = hist.pop(old)
-            self._write_side("history", hist)
+        self.store.move_versions(old, new)
 
     def history(self, record_id: str) -> list[dict]:
         unit = self.vault().unit_of(record_id)
-        versions = self._read_side("history", {}).get(unit or "", [])
+        versions = self.store.versions(unit or "")
         return [{"index": i, "text": v["text"], "title": v.get("title", ""), "at": v["at"], "chars": len(v["text"])} for i, v in reversed(list(enumerate(versions)))]
 
     def restore_version(self, record_id: str, index) -> dict:
         unit = self.vault().unit_of(record_id)
-        versions = self._read_side("history", {}).get(unit or "", [])
+        versions = self.store.versions(unit or "")
         if not isinstance(index, int) or isinstance(index, bool) or not 0 <= index < len(versions):
             raise self.Error("that earlier version is not available any more")
         return self.update(unit, text=versions[index]["text"])
@@ -219,5 +186,5 @@ class SafetyNet:
                 continue
             if isinstance(text, str) and k and k not in labels:
                 labels[k] = text[:120]
-        self._save_labels(labels)
+        self.store.replace_labels(labels)
         return {"added": added, "skipped": skipped}

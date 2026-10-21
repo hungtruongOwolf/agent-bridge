@@ -406,13 +406,16 @@ def test_only_a_run_that_is_under_way_can_be_repriced():
 
 
 def test_old_ledger_rows_without_a_hold_still_settle(tmp_path):
+    from dataclasses import asdict
+    import json
     l, p = ledger(path=tmp_path / "l.json")
     ready(l)
-    import json
-    raw = json.loads((tmp_path / "l.json").read_text())
+    old = tmp_path / "old"
+    old.mkdir()
+    raw = [asdict(r) for r in l.rows.values()]  # what an older version of the file looked like: no "hold" field
     for r in raw:
         r.pop("hold")
-    (tmp_path / "l.json").write_text(json.dumps(raw))
-    l2 = Ledger(p, path=tmp_path / "l.json")
+    (old / "l.json").write_text(json.dumps(raw))
+    l2 = Ledger(p, path=old / "l.json")  # imported once from the old file
     l2.accept("run-1", 3)
     assert p.captured_total() == PRICE
