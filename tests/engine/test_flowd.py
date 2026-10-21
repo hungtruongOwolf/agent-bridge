@@ -434,3 +434,23 @@ def test_a_model_call_is_journaled_with_what_it_carried_out():
     call = next(e["data"] for e in eng.journal.entries if e["kind"] == "model_call")
     assert call["sent_records"] == ["n1"] and call["sent_records"] == broker.reads
     assert call["sent_chars"] > 0 and call["sent_parts"] == ["read"] and call["sent_to"] == "Some Provider"
+
+
+def test_the_model_never_reads_an_email_but_the_answer_shows_it():
+    from bridge.memory.vault import Record as R
+    vault = Vault([R("n1", "note", "low", "Sales pipeline: reach Dana at dana@acme.example about the renewal")])
+    broker = MemoryBroker(vault, Lens(types=frozenset({"note"})), run_seed="s")
+
+    class Echo(Scripted):
+        def complete(self, prompt, inputs):
+            self.seen.append(inputs)
+            return ModelReply({"summary": "Write to [EMAIL_1] first."}, tokens=3)
+
+    model = Echo()
+    eng = Engine(parse(WF), model=model, broker=broker, guard=ResultGuard(SCHEMA), journal=Journal(),
+                 checks={"has_summary": lambda i: bool(i["analyze"].get("summary"))})
+    r = eng.run()
+    assert "dana@acme.example" not in str(model.seen) and "[EMAIL_1]" in str(model.seen)
+    assert r.result == {"summary": "Write to dana@acme.example first."}
+    call = next(e["data"] for e in eng.journal.entries if e["kind"] == "model_call")
+    assert call["hidden"] == {"EMAIL": 1}

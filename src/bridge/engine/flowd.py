@@ -21,6 +21,7 @@ from ..guard.result_guard import ResultGuard, longest_shared_run
 from ..memory.broker import MemoryBroker, Verdict
 from ..pack.workflow import Step, Workflow
 from .journal import Journal
+from .mask import Masker
 from .limits import MAX_TASK_CHARS, clean_history
 
 
@@ -68,6 +69,7 @@ class Engine:
         web=None,
         task: str = "",
         history: list | None = None,
+        mask: bool = True,
     ):
         self.wf = workflow
         self.model = model
@@ -82,6 +84,7 @@ class Engine:
             raise ValueError(f"the message is longer than {MAX_TASK_CHARS} characters")
         self.task = (task or "").strip()  # what the user asked this turn
         self.history = clean_history(history)  # earlier turns of the same conversation
+        self.masker = Masker() if mask else None  # contact details are hidden from the model service and restored in its reply
         self.tokens = 0
         self.usd = 0.0
         self.violations: list[dict] = []  # sandbox probes seen inside Cells: {kind, detail}
@@ -146,17 +149,19 @@ class Engine:
 
     # -- step kinds ---------------------------------------------------------------------------
     def _llm(self, step: Step, inputs: dict[str, Any]) -> Any:
+        sent = self.masker.mask(inputs) if self.masker else inputs
+        hidden = dict(self.masker.last) if self.masker else {}
         try:
-            reply = self.model.complete(step.prompt or "", inputs)
+            reply = self.model.complete(step.prompt or "", sent)
         except Exception as e:  # any model/network failure is infrastructure, never the pack's fault
             self.journal.append("model_error", {"step": step.id, "type": type(e).__name__})
             raise _InfraError(f"model call failed: {type(e).__name__}") from e
         self.tokens += reply.tokens
         self.usd += reply.usd
-        self.journal.append("model_call", {"step": step.id, "tokens": reply.tokens, "usd": reply.usd, **self._sent(inputs)})
-        return reply.content
+        self.journal.append("model_call", {"step": step.id, "tokens": reply.tokens, "usd": reply.usd, **self._sent(inputs, sent), "hidden": hidden})
+        return self.masker.unmask(reply.content) if self.masker else reply.content
 
-    def _sent(self, inputs: dict[str, Any]) -> dict:
+    def _sent(self, inputs: dict[str, Any], sent: Any) -> dict:
         """What this model call carried out of the machine: which of the user's records, how much text, and to whom."""
         ids: list[str] = []
 
@@ -171,7 +176,7 @@ class Engine:
                     walk(x)
 
         walk(inputs)
-        return {"sent_records": ids, "sent_chars": len(json.dumps(inputs, ensure_ascii=False)), "sent_parts": sorted(inputs),
+        return {"sent_records": ids, "sent_chars": len(json.dumps(sent, ensure_ascii=False)), "sent_parts": sorted(inputs),
                 "sent_to": getattr(self.model, "provider", "the thinking service")}
 
     def _code(self, step: Step, inputs: dict[str, Any]) -> Any:
