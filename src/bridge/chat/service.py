@@ -25,6 +25,7 @@ class ChatService:
     def __init__(self, app):
         self.app = app
         self.store = app.threads
+        self.running: dict[str, bool] = {}  # chats with an answer being written right now (this process)
 
     # ---- helpers --------------------------------------------------------------------------------
     def run_lens(self, t) -> RunLens:
@@ -90,6 +91,12 @@ class ChatService:
         return self.view(t.id)
 
     def settings(self, body: dict) -> dict:
+        if body.get("reset_busy"):  # a restart-proof escape hatch: only when no approval is waiting for this chat
+            tid = str(body.get("id", ""))
+            with self.app.lock:
+                waiting = any(p.get("thread_id") == tid for p in self.app.pending.values())
+            if not waiting and not self.running.get(tid):
+                self.store.end(tid)
         keys = ("title", "types", "max_sensitivity", "include", "exclude", "history_turns", "budget_cents")
         self.store.settings(str(body.get("id", "")), **{k: body[k] for k in keys if k in body})
         return self.view(str(body["id"]))
@@ -173,7 +180,11 @@ class ChatService:
             t = self.store.get(tid)
             self._accept_previous(t, run_id)
             self.store.add(tid, "user", params["task"])
-            out = self.app.job(run_id, params)
+            self.running[tid] = True
+            try:
+                out = self.app.job(run_id, params)
+            finally:
+                self.running.pop(tid, None)
             self._record_answer(t, run_id, out, params["rec"])
             view = self.view(tid)
             return {"thread": view, "report": out}
@@ -229,12 +240,14 @@ class ChatService:
         run_id = str(body.get("run_id", ""))
         with self.app.lock:
             params = self.app.pending.pop(run_id, None)
-        if params is None or not params.get("thread_id"):
+        if params is None:
             raise ThreadError("nothing is waiting for approval under that id")
         with self.app.lock:
             try:
                 self.app.ledger.fail_infra(run_id, self.app.clock(), "you did not approve the hold")
             except StateError:
                 pass
+        if not params.get("thread_id"):
+            return {"cancelled": run_id}
         self.store.end(params["thread_id"])
         return self.view(params["thread_id"])

@@ -22,10 +22,18 @@
   const cents = (c) => c + "¢";
   const priceOf = (m) => Math.round(m.price_usd * 100);
 
+  const KNOWN = /spending limit|still working|write a message|characters|full|exist|no longer|drawer|type|text|private|name|hold is not approved|payment could not|not helpful|already|limit|remember|choose|file/i;
+  function friendly(msg, status) {
+    if (msg && KNOWN.test(msg) && !/digest|registered|revoked|run_id|under that id|Error/.test(msg)) return msg;
+    if (status === 403) return "This page lost its permission to talk to the console. Reload the page.";
+    if (status === 503) return "The payment service has not answered yet. Try again in a moment.";
+    return "Something went wrong. Please try again.";
+  }
+
   async function api(path, body) {
     const r = await fetch(path, body ? { method: "POST", headers: { "X-Bridge-Token": TOKEN, "Content-Type": "application/json" }, body: JSON.stringify(body) } : {});
     const j = await r.json();
-    if (!r.ok) throw new Error(j.error || "Something went wrong (" + r.status + ").");
+    if (!r.ok) throw new Error(friendly(j.error, r.status));
     return j;
   }
 
@@ -88,7 +96,7 @@
   }
   function drawHire() {
     const ul = $("hire"); ul.replaceChildren();
-    if (!S.market.length) { ul.append(el("li", "empty", "Nobody is for hire yet. Run \"bridge seed\" to add the demo helpers.")); return; }
+    if (!S.market.length) { ul.append(el("li", "empty", "Nobody is for hire yet. Ask whoever set this up to add some helpers.")); return; }
     S.market.forEach((m) => {
       const li = el("li"); li.setAttribute("aria-current", String(selected === m.key));
       const b = el("button", "hirebtn"); b.type = "button";
@@ -109,7 +117,8 @@
       li.append(b);
       const fan = el("button", "fan", "♥ " + m.stars + " fans"); fan.type = "button"; fan.setAttribute("aria-label", "Become a fan of " + window.niceName(m.id));
       fan.onclick = async () => { try { const r = await api("/api/star", { key: m.key, user: "you" }); m.stars = r.stars; drawHire(); } catch (e) { say(e.message); } };
-      li.append(fan); ul.append(li);
+      const meet = el("button", "fan", "Meet " + window.niceName(m.id)); meet.type = "button"; meet.onclick = () => window.ChatUI && window.ChatUI.profile(m.key);
+      li.append(meet, fan); ul.append(li);
     });
   }
   function agentInfo(m) { return m ? { id: m.id, name: window.niceName(m.id), status: m.status } : null; }
@@ -173,7 +182,7 @@
     if (p.refunded > 0) row("Given back to you", cents(p.refunded));
     const note = el("p", "small"); note.style.marginTop = "8px";
     if (p.state === "RESULT_READY") {
-      note.textContent = "The deposit is paid. Say the report is good to pay the rest, or say it is not what you wanted to pay only the deposit. If you do nothing it counts as good on " + new Date(p.accept_by * 1000).toLocaleDateString() + ".";
+      note.textContent = "The deposit is paid. Say the report is good to pay the rest, or say it is not what you wanted to pay only the deposit. If you do nothing it counts as good on " + (p.accept_by ? new Date(p.accept_by * 1000).toLocaleDateString() : "the deadline") + ".";
       box.append(note);
       const a = el("div", "acts"), ok = el("button", "btn", "Good: pay in full"), no = el("button", "btn warn", "Not what I wanted"); ok.type = no.type = "button";
       const decide = async (action) => { ok.disabled = no.disabled = true; try { rep.payment = await api("/api/settle", { run_id: rep.run_id, action }); showCoins(rep); await office.settle(rep.payment, true, story); await refresh(); } catch (e) { note.textContent = e.message + " Reload the page if this keeps happening."; ok.disabled = no.disabled = false; } };
@@ -226,18 +235,20 @@
     $("coinlabel").textContent = w.provider === "paypal-sandbox" ? "PayPal test coins" : "Test coins";
   }
 
-  async function refresh() { S = await api("/api/state"); drawCoins(); drawLens(true); drawHire(); drawNotes(); drawHistory(); }
+  async function refresh() { S = await api("/api/state"); drawCoins(); drawLens(true); drawHire(); drawNotes(); drawHistory(); if (window.ChatUI) window.ChatUI.redraw(); }
 
   /* ---------- running a job ---------- */
   function waitForApproval(pending) {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       const box = $("coinsbox"); box.replaceChildren();
       box.append(el("p", null, "Before the helper starts, approve a hold of " + cents(pending.price) + " on the payment page. Nothing is charged until there is a report."));
       const acts = el("div", "acts");
       if (/^https:\/\//.test(pending.approve_url)) { const a = document.createElement("a"); a.href = pending.approve_url; a.target = "_blank"; a.rel = "noopener noreferrer"; a.className = "btn"; a.textContent = "Open the approval page"; acts.append(a); }
       const go = el("button", "btn", "I approved, continue"); go.type = "button"; const msg = el("p", "muted small");
       go.onclick = async () => { go.disabled = true; msg.textContent = "Checking with the payment provider."; try { resolve(await api("/api/run/continue", { run_id: pending.run_id })); } catch (e) { msg.textContent = e.message + " Approve the hold on the payment page, then try again."; go.disabled = false; } };
-      acts.append(go); box.append(acts, msg);
+      const no = el("button", "btn warn", "Cancel"); no.type = "button";
+      no.onclick = async () => { try { await api("/api/thread/cancel", { run_id: pending.run_id }); } catch (e) { /* already gone */ } reject(new Error("You cancelled. Nothing was held or charged.")); };
+      acts.append(go, no); box.append(acts, msg);
     });
   }
 
@@ -247,7 +258,7 @@
     $("story").replaceChildren(); $("report").replaceChildren(); $("coinsbox").replaceChildren(); $("replay").textContent = "";
     setStatus("thinking", "The helper is on the job"); caption("Hiring... one moment.");
     try {
-      let rep = await api("/api/run", { key: selected, types: types(), max_sensitivity: level(), model: $("theft").checked ? "leak" : "nebius" });
+      let rep = await api("/api/run", { key: selected, types: types(), max_sensitivity: level(), task: $("task").value, model: $("theft").checked ? "leak" : "nebius" });
       if (rep.needs_approval) rep = await waitForApproval(rep);
       lastRep = rep; $("replay").textContent = "The picture replays what really happened, taken from the job's tamper-proof record.";
       await office.play(rep, { animate: true, records: records(), log: story, caption });
@@ -294,10 +305,12 @@
       document.querySelectorAll("#privacy input").forEach((i) => (i.onchange = lensChanged));
       $("askform").onsubmit = (e) => { e.preventDefault(); voiceOn = false; ask($("ask").value, false); $("ask").select(); };
       setupVoice();
+      window.Bridge = { api, el, state: () => S, refresh, typeLabel, cents, niceName: window.niceName, blocked: S.blocked_phrases };
+      window.ChatUI.mount(window.Bridge);
       const logo = $("logo"); const c = logo.getContext("2d"); c.imageSmoothingEnabled = false; c.fillStyle = "#FFF8E7"; c.fillRect(0, 0, 20, 14);
       window.OfficeArt.person(c, 10, 14, { pose: "idle", facing: "f", shirt: "#5CA97A", hat: "cap", skin: "#E0AC82", hair: "#1A1320" }, 0);
     } catch (e) {
-      $("hire").replaceChildren(el("li", "empty", "The console could not load: " + e.message + " Make sure \"bridge serve\" is still running, then reload this page."));
+      $("hire").replaceChildren(el("li", "empty", "The console could not load: " + e.message + " Reload this page in a moment."));
     }
   }
   init();

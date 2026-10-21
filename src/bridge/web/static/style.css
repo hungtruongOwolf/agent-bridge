@@ -125,3 +125,83 @@ canvas#floor{display:block;image-rendering:pixelated;max-width:100%;margin:0 aut
 .arow{display:grid;grid-template-columns:28px 1fr;gap:6px;padding:3px 0;border-top:1px dashed var(--ink-100);font-size:12px;overflow-wrap:anywhere}
 .tiny{font:8px/14px var(--display);color:var(--ink-500)}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* tabs */
+.tabs{display:flex;gap:6px;padding:10px 16px 0;max-width:1700px;margin:0 auto}
+.tabs button{background:var(--cream-200);border:2px solid var(--ink-900);border-bottom:0;padding:8px 18px;font-weight:600}
+.tabs button[aria-selected="true"]{background:var(--cream-100);box-shadow:0 2px 0 var(--cream-100)}
+[hidden]{display:none!important}
+
+/* chats */
+.chatview{display:grid;grid-template-columns:290px minmax(0,1fr) 340px;gap:16px;padding:16px;max-width:1700px;margin:0 auto;align-items:start}
+.chatview:has(#sidepanel[hidden]){grid-template-columns:290px minmax(0,1fr)}
+.btn.go2{background:var(--mint);font-weight:600}
+.btn.go2:hover:not(:disabled){background:#6bbb8a}
+.threads{list-style:none;margin:10px 0 0;padding:0}
+.threads li{border-top:2px dashed var(--ink-100)}
+.threadbtn{display:block;width:100%;text-align:left;background:none;border:2px solid transparent;padding:8px 6px}
+.threadbtn:hover{background:var(--cream-50)}
+.threads li[aria-current="true"] .threadbtn{background:var(--lemon-light);border-color:var(--ink-900)}
+.threadbtn .name{display:block;font-weight:600}
+.threadbtn .blurb{display:block;font-size:13px;color:var(--ink-700);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.picker{margin-top:10px;display:grid;gap:10px}
+.pick{border:2px solid var(--ink-900);background:var(--cream-50);padding:10px}
+.pick .name{font-weight:600;display:block}
+.pick .blurb{display:block;font-size:13px;color:var(--ink-700);margin-top:2px}
+.pick .skills{color:var(--ink-500)}
+.chatmid{display:flex;flex-direction:column;min-height:560px}
+.convohead{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:10px 14px;border-bottom:2px solid var(--ink-900);background:linear-gradient(var(--cream-100),var(--cream-200))}
+.convohead .h{font-weight:700;font-size:16px}
+.convo{flex:1;overflow:auto;padding:14px;max-height:62vh;display:flex;flex-direction:column;gap:10px}
+.empty.big{font-size:16px;padding:24px 8px}
+.msg{max-width:84%;padding:10px 12px;border:2px solid var(--ink-900);box-shadow:var(--shadow);line-height:1.45;overflow-wrap:anywhere}
+.msg.user{align-self:flex-end;background:var(--sky-light)}
+.msg.helper{align-self:flex-start;background:var(--cream-50)}
+.msg.system{align-self:center;background:var(--coral-light);max-width:92%}
+.msg.thinking{opacity:.7}
+.msg .meta{margin-top:6px}
+.msg .based{font-size:13px;margin-top:6px}
+.linkbtn{background:none;border:0;padding:0;color:#2f7f8f;text-decoration:underline;font-size:13px}
+.linkbtn:hover{color:var(--ink-900)}
+.budget,.warnline{padding:0 14px;margin:4px 0}
+.warnline{color:#9a3a33;min-height:18px}
+.composer{padding:10px 14px 14px;border-top:2px solid var(--ink-900)}
+.composer textarea,.memform textarea,.mem textarea{width:100%;padding:8px 10px;background:var(--cream-50);border:2px solid var(--ink-900);resize:vertical}
+.composerrow{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-top:8px;flex-wrap:wrap}
+.chatright .sub,.memview .sub,.profile .sub{font:10px/16px var(--display);margin:14px 0 6px}
+.chatright fieldset{border:0;padding:0;margin:10px 0 0;display:grid;gap:4px}
+.chatright legend{padding:0 0 4px}
+.chatright fieldset label{display:flex;gap:8px;align-items:center;padding:4px 6px;border:2px solid transparent}
+.chatright fieldset label:has(input:checked){background:var(--mint-light);border-color:var(--ink-900)}
+.filelist{list-style:none;margin:0;padding:0;font-size:13px}
+.filelist li{display:flex;gap:8px;align-items:flex-start;padding:5px 0;border-top:1px dashed var(--ink-100)}
+.filelist li input{margin-top:3px}
+.filelist.locked{color:var(--ink-500)}
+.setrow{margin-top:12px}
+.setrow input[type=number]{width:70px;padding:3px 6px;background:var(--cream-50);border:2px solid var(--ink-900)}
+.taskrow{display:block;margin-top:8px}
+.taskrow input{width:100%;padding:8px 10px;margin-top:4px;background:var(--cream-50);border:2px solid var(--ink-900)}
+
+/* memory */
+.memview{max-width:880px;margin:0 auto;padding:16px}
+.memform{margin:14px 0}
+.memform select,.mem select{padding:5px 8px;background:var(--cream-50);border:2px solid var(--ink-900)}
+.memform input[type=text]{padding:4px 6px;background:var(--cream-50);border:2px solid var(--ink-900)}
+.mem{border:2px solid var(--ink-900);background:var(--cream-50);padding:10px 12px;margin-top:8px}
+.memtext{font-size:15px;overflow-wrap:anywhere}
+
+/* profile */
+dialog.profile{max-width:640px;width:calc(100% - 32px);max-height:88vh;overflow:auto;background:var(--cream-100);border:2px solid var(--ink-900);box-shadow:6px 6px 0 rgba(26,19,32,.3);padding:18px;color:var(--ink-900)}
+dialog.profile::backdrop{background:rgba(26,19,32,.5)}
+dialog.profile h2{font:14px/22px var(--display);margin-bottom:8px}
+.skill{border:2px solid var(--ink-900);background:var(--cream-50);padding:8px 10px;margin-top:8px}
+.skill .name{font-weight:700}
+.skillrow{display:flex;justify-content:space-between;gap:10px;padding:3px 0;border-top:1px dashed var(--ink-100)}
+@media (max-width:1180px){
+  .chatview,.chatview:has(#sidepanel[hidden]){grid-template-columns:minmax(0,1fr)}
+  .msg{max-width:96%}
+}
+
+.msg .text,.memtext{white-space:pre-wrap}
+.tabs{flex-wrap:wrap}
+@media (max-width:480px){.startbar .btn.go{min-width:0;width:100%}.tabs button{padding:8px 12px}}
