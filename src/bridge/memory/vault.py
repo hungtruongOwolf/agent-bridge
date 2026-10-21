@@ -15,7 +15,7 @@ from pathlib import Path
 
 SENSITIVITY = {"low": 0, "medium": 1, "high": 2}
 TYPE_RE = re.compile(r"^[a-z][a-z0-9-]{1,19}$")
-SEGMENT_RE = re.compile(r"^[a-z0-9][a-z0-9 _-]{0,29}$")
+SEGMENT_RE = re.compile(r"^[^\W_][\w -]{0,29}$")  # letters of any language (accents included), digits, spaces, dashes
 MAX_TEXT = 2000
 MAX_DEPTH = 6
 DOC_RE = re.compile(r"^doc[0-9]{1,6}$")

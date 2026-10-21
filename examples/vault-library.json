@@ -4,238 +4,210 @@
     "type": "note",
     "sensitivity": "low",
     "text": "Sales pipeline review: three large accounts (Acme, Globex, Initech) are at risk because their renewal budgets were cut this quarter.",
-    "path": "work/accounts"
+    "path": "work/accounts",
+    "created": 1791244800.0,
+    "updated": 1791244800.0,
+    "edited": false
   },
   {
-    "id": "a1",
+    "id": "m101",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Accounts scorecard, end of September: Acme amber, Globex red, Initech amber, Hooli green, Umbrella green, Wayne Corp green. Revenue at risk: about 410k.",
+    "path": "work/accounts",
+    "created": 1790726400.0,
+    "updated": 1790726400.0,
+    "edited": false
+  },
+  {
+    "id": "m102",
     "type": "note",
     "sensitivity": "low",
     "text": "Acme: renewal call is booked for November 12. Maria wants to talk about a discount before signing.",
-    "path": "work/accounts/acme"
+    "path": "work/accounts/acme",
+    "created": 1791676800.0,
+    "updated": 1791676800.0,
+    "edited": false
   },
   {
-    "id": "a2",
+    "id": "m103",
     "type": "note",
     "sensitivity": "low",
     "text": "Acme pays in euros and wants invoices sent on the first of the month.",
-    "path": "work/accounts/acme"
+    "path": "work/accounts/acme",
+    "created": 1782086400.0,
+    "updated": 1782086400.0,
+    "edited": false
   },
   {
-    "id": "a3",
+    "id": "m104",
     "type": "note",
     "sensitivity": "low",
     "text": "Acme expanded to a second office in Lisbon, which could mean more seats next year.",
-    "path": "work/accounts/acme"
+    "path": "work/accounts/acme",
+    "created": 1785974400.0,
+    "updated": 1785974400.0,
+    "edited": false
   },
   {
-    "id": "g1",
+    "id": "m105",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Acme security questionnaire for this year is due on October 31. Last year it took nine days to answer; Sam owns it.",
+    "path": "work/accounts/acme",
+    "created": 1791936000.0,
+    "updated": 1791936000.0,
+    "edited": false
+  },
+  {
+    "id": "m106",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Acme usage by team: support 61 percent, sales 22 percent, finance 9 percent, everyone else 8 percent. Support grew the most this year.",
+    "path": "work/accounts/acme",
+    "created": 1788998400.0,
+    "updated": 1788998400.0,
+    "edited": false
+  },
+  {
+    "id": "m107",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Acme's old contact for billing was Tom Reyes (tom.reyes@acme.example). He left in August; send invoices to Maria Lopez now.",
+    "path": "work/accounts/acme",
+    "created": 1787443200.0,
+    "updated": 1787702400.0,
+    "edited": true
+  },
+  {
+    "id": "m108",
     "type": "note",
     "sensitivity": "low",
     "text": "Globex froze hiring and cut its tools budget by thirty percent, so the renewal is at risk.",
-    "path": "work/accounts/globex"
+    "path": "work/accounts/globex",
+    "created": 1791417600.0,
+    "updated": 1791417600.0,
+    "edited": false
   },
   {
-    "id": "g2",
+    "id": "m109",
     "type": "note",
     "sensitivity": "low",
     "text": "Globex champion Dana Whitfield left in September; nobody new owns the relationship yet.",
-    "path": "work/accounts/globex"
+    "path": "work/accounts/globex",
+    "created": 1789430400.0,
+    "updated": 1789430400.0,
+    "edited": false
   },
   {
-    "id": "i1",
+    "id": "m110",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Globex asked whether we can offer a monthly plan instead of annual. Finance would say yes only if there is no minimum seat count.",
+    "path": "work/accounts/globex",
+    "created": 1790553600.0,
+    "updated": 1790553600.0,
+    "edited": false
+  },
+  {
+    "id": "m111",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Globex renewal date is December 15. They have not answered the last two emails.",
+    "path": "work/accounts/globex",
+    "created": 1792108800.0,
+    "updated": 1792108800.0,
+    "edited": false
+  },
+  {
+    "id": "m112",
     "type": "note",
     "sensitivity": "low",
     "text": "Initech asked for a security questionnaire before they will renew. Due at the end of the month.",
-    "path": "work/accounts/initech"
+    "path": "work/accounts/initech",
+    "created": 1791072000.0,
+    "updated": 1791072000.0,
+    "edited": false
   },
   {
-    "id": "i2",
+    "id": "m113",
     "type": "note",
     "sensitivity": "low",
     "text": "Initech support tickets dropped by half after the onboarding fix, which is good news for the renewal.",
-    "path": "work/accounts/initech"
+    "path": "work/accounts/initech",
+    "created": 1790208000.0,
+    "updated": 1790208000.0,
+    "edited": false
   },
   {
-    "id": "h1",
+    "id": "m114",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Initech's new CTO, Bill Lumbergh, wants one invoice for all four of their subsidiaries instead of four separate ones.",
+    "path": "work/accounts/initech",
+    "created": 1791504000.0,
+    "updated": 1791504000.0,
+    "edited": false
+  },
+  {
+    "id": "m115",
     "type": "note",
     "sensitivity": "low",
     "text": "Hooli renewed early for two years and asked for a case study.",
-    "path": "work/accounts/hooli"
+    "path": "work/accounts/hooli",
+    "created": 1789603200.0,
+    "updated": 1789603200.0,
+    "edited": false
   },
   {
-    "id": "n2",
+    "id": "m116",
     "type": "note",
     "sensitivity": "low",
-    "text": "Team offsite planned for November. Sales and support will travel together.",
-    "path": "work/team"
+    "text": "Hooli case study: they are happy to be named, but legal must approve the quotes first. Priya is drafting it.",
+    "path": "work/accounts/hooli",
+    "created": 1790899200.0,
+    "updated": 1790899200.0,
+    "edited": false
   },
   {
-    "id": "t1",
+    "id": "m117",
     "type": "note",
     "sensitivity": "low",
-    "text": "Offsite budget approved: 14,000 for twenty people, flights not included.",
-    "path": "work/team"
+    "text": "Umbrella is a healthcare customer, so any data export needs a signed addendum first. Renewal in March.",
+    "path": "work/accounts/umbrella",
+    "created": 1788134400.0,
+    "updated": 1788134400.0,
+    "edited": false
   },
   {
-    "id": "t2",
+    "id": "m118",
     "type": "note",
     "sensitivity": "low",
-    "text": "Support lead Sam is on leave from the 3rd to the 17th; Lee covers the queue.",
-    "path": "work/team"
+    "text": "Umbrella asked for single sign-on. It is on the roadmap for Q1; do not promise a date.",
+    "path": "work/accounts/umbrella",
+    "created": 1790035200.0,
+    "updated": 1790035200.0,
+    "edited": false
   },
   {
-    "id": "n4",
+    "id": "m119",
     "type": "note",
     "sensitivity": "low",
-    "text": "Meeting notes, Monday: Priya will book the November offsite venue by Friday. Sam will send the renewal deck to Acme. Everyone reviews the Q4 plan before Thursday.",
-    "path": "work/meetings"
+    "text": "Wayne Corp is our largest account. Their procurement team requires a new vendor review every year in November.",
+    "path": "work/accounts/wayne-corp",
+    "created": 1788566400.0,
+    "updated": 1788566400.0,
+    "edited": false
   },
   {
-    "id": "n5",
+    "id": "m120",
     "type": "note",
     "sensitivity": "low",
-    "text": "Meeting notes, Wednesday: Lee agreed to fix the onboarding checklist this week. Maria will call Globex about their budget.",
-    "path": "work/meetings"
-  },
-  {
-    "id": "m1",
-    "type": "note",
-    "sensitivity": "low",
-    "text": "Meeting notes, Friday: Planning moved to next week. Sam owns the security questionnaire for Initech.",
-    "path": "work/meetings"
-  },
-  {
-    "id": "m2",
-    "type": "note",
-    "sensitivity": "low",
-    "text": "Meeting notes, last Tuesday: We decided not to discount Acme before the call. Priya will prepare two options.",
-    "path": "work/meetings"
-  },
-  {
-    "id": "n3",
-    "type": "note",
-    "sensitivity": "high",
-    "text": "Salary table for every employee. Strictly confidential.",
-    "path": "work/hr"
-  },
-  {
-    "id": "hr2",
-    "type": "note",
-    "sensitivity": "high",
-    "text": "Performance review drafts for the support team. Do not share.",
-    "path": "work/hr"
-  },
-  {
-    "id": "c1",
-    "type": "contact",
-    "sensitivity": "low",
-    "text": "Maria Lopez, head of sales at Acme, prefers email on Mondays.",
-    "path": "people/customers"
-  },
-  {
-    "id": "c2",
-    "type": "contact",
-    "sensitivity": "low",
-    "text": "Dana Whitfield, former product owner at Globex, now at a competitor; still friendly.",
-    "path": "people/customers"
-  },
-  {
-    "id": "c3",
-    "type": "contact",
-    "sensitivity": "low",
-    "text": "Priya Nair, head of sales at Hooli, prefers calls on Fridays.",
-    "path": "people/customers"
-  },
-  {
-    "id": "c4",
-    "type": "contact",
-    "sensitivity": "low",
-    "text": "Tomás from university, lives in Lisbon, loves hiking and bad puns.",
-    "path": "people/friends"
-  },
-  {
-    "id": "c5",
-    "type": "contact",
-    "sensitivity": "low",
-    "text": "Mum's birthday is on March 3rd; she likes tulips and anything from the bakery on Elm Street.",
-    "path": "people/family"
-  },
-  {
-    "id": "p1",
-    "type": "note",
-    "sensitivity": "low",
-    "text": "Dentist appointment on Tuesday at 9:30. Bring the insurance card.",
-    "path": "personal/health"
-  },
-  {
-    "id": "p2",
-    "type": "note",
-    "sensitivity": "low",
-    "text": "Doctor said to walk thirty minutes a day and cut down on coffee after lunch.",
-    "path": "personal/health"
-  },
-  {
-    "id": "p3",
-    "type": "note",
-    "sensitivity": "low",
-    "text": "Flight to Lisbon on November 20, seat 14C, returning the 27th. Hotel near Alfama is booked.",
-    "path": "personal/travel"
-  },
-  {
-    "id": "p4",
-    "type": "note",
-    "sensitivity": "low",
-    "text": "Packing list for Lisbon: adapter, rain jacket, the good walking shoes.",
-    "path": "personal/travel"
-  },
-  {
-    "id": "p5",
-    "type": "note",
-    "sensitivity": "low",
-    "text": "The landlord will fix the boiler on Thursday between 10 and 12.",
-    "path": "personal/home"
-  },
-  {
-    "id": "s1",
-    "type": "note",
-    "sensitivity": "high",
-    "text": "Passport number and the locker code for the safe deposit box.",
-    "path": "personal/documents"
-  },
-  {
-    "id": "d1",
-    "type": "note",
-    "sensitivity": "low",
-    "text": "Idea: let customers see a one-page health score for their own account.",
-    "path": "ideas/product"
-  },
-  {
-    "id": "d2",
-    "type": "note",
-    "sensitivity": "low",
-    "text": "Idea: a weekly digest that lists accounts whose usage dropped more than twenty percent.",
-    "path": "ideas/product"
-  },
-  {
-    "id": "d3",
-    "type": "note",
-    "sensitivity": "low",
-    "text": "Blog post idea: what we learned from cutting onboarding from three weeks to four days.",
-    "path": "ideas/writing"
-  },
-  {
-    "id": "f1",
-    "type": "finance",
-    "sensitivity": "high",
-    "text": "Bank account 000111222, balance 91000 USD, routing 021000021.",
-    "path": "money"
-  },
-  {
-    "id": "f2",
-    "type": "finance",
-    "sensitivity": "high",
-    "text": "Monthly budget: rent 1800, food 600, travel 300, savings 700.",
-    "path": "money"
+    "text": "Wayne Corp's budget is cut but they say analytics is protected. Lee Chen asked for a price hold for one more year.",
+    "path": "work/accounts/wayne-corp",
+    "created": 1791331200.0,
+    "updated": 1791331200.0,
+    "edited": false
   },
   {
     "id": "doc1.1",
@@ -243,6 +215,9 @@
     "sensitivity": "low",
     "text": "# Acme account plan, Q4\n\n## Where we stand\nAcme has been a customer for three years and is our second largest account. Usage grew 18 percent last year, mostly from the support team. The renewal is due on December 1 and the budget owner, Maria Lopez, told us in October that finance cut every tools budget by about a third.",
     "path": "work/accounts/acme",
+    "created": 1791763200.0,
+    "updated": 1791763200.0,
+    "edited": false,
     "doc": "doc1",
     "title": "Acme account plan, Q4",
     "part": 1
@@ -253,6 +228,9 @@
     "sensitivity": "low",
     "text": "## What Maria cares about\nMaria cares about two things: predictable cost and fewer tools to manage. She prefers email on Mondays and does not like surprise invoices. Last year a billing mistake delayed the renewal by six weeks, so any change in price needs to be explained in writing before it reaches her inbox.",
     "path": "work/accounts/acme",
+    "created": 1791763200.0,
+    "updated": 1791763200.0,
+    "edited": false,
     "doc": "doc1",
     "title": "Acme account plan, Q4",
     "part": 2
@@ -263,6 +241,9 @@
     "sensitivity": "low",
     "text": "## Risks\nThe main risk is the budget cut. A second risk is the champion on the product side, who is moving to another team in January. If the new owner has not met us before the renewal call, we should expect a slower decision. The third risk is the security questionnaire Acme's compliance team sends every year; last year it took us nine days to answer.",
     "path": "work/accounts/acme",
+    "created": 1791763200.0,
+    "updated": 1791763200.0,
+    "edited": false,
     "doc": "doc1",
     "title": "Acme account plan, Q4",
     "part": 3
@@ -273,6 +254,9 @@
     "sensitivity": "low",
     "text": "## Options we discussed\nOption one is a two-year deal at a ten percent discount with annual billing. Option two is a smaller plan with fewer seats, which keeps the price flat but removes the analytics add-on. Priya prefers option one because it locks the account in; Sam prefers option two because it keeps the margin healthy. We agreed to prepare both and let Maria choose.",
     "path": "work/accounts/acme",
+    "created": 1791763200.0,
+    "updated": 1791763200.0,
+    "edited": false,
     "doc": "doc1",
     "title": "Acme account plan, Q4",
     "part": 4
@@ -283,6 +267,9 @@
     "sensitivity": "low",
     "text": "## Next steps\nPriya prepares both quotes by Friday. Sam answers the security questionnaire early, before the renewal call. Lee books an introduction between the new product owner and our team in the first week of December. Everyone reviews the plan on Thursday.",
     "path": "work/accounts/acme",
+    "created": 1791763200.0,
+    "updated": 1791763200.0,
+    "edited": false,
     "doc": "doc1",
     "title": "Acme account plan, Q4",
     "part": 5
@@ -291,20 +278,1322 @@
     "id": "doc2.1",
     "type": "note",
     "sensitivity": "low",
-    "text": "# Lisbon trip notes\n\nFlight lands at 9:40 on November 20. Take the metro red line to Alameda, then the green line to Baixa. The hotel is a ten minute walk from there, on a steep street, so pack light.\n\n## Food\nTomás recommends the small place near Alfama for grilled fish, and a bakery on the way to the castle for pastel de nata in the morning. Reserve dinner for Friday, the restaurants fill up fast.",
-    "path": "personal/travel",
+    "text": "# Globex renewal risk memo\n\nGlobex is red. Three things happened in the last two months. First, they froze hiring and cut the tools budget by thirty percent. Second, our champion, Dana Whitfield, left in September and nobody replaced her. Third, they have stopped answering email; the last two went unanswered for ten days.",
+    "path": "work/accounts/globex",
+    "created": 1791158400.0,
+    "updated": 1791158400.0,
+    "edited": false,
     "doc": "doc2",
-    "title": "Lisbon trip notes",
+    "title": "Globex renewal risk memo",
     "part": 1
   },
   {
     "id": "doc2.2",
     "type": "note",
     "sensitivity": "low",
+    "text": "## What we know about the budget\nTheir finance team publishes a quarterly review. The next one is on November 3. Until then we cannot know whether our line survives. Dana told us in July that analytics was safe because it feeds the board report, but that was before the cut.\n\n## What we could offer\nA monthly plan with no minimum seats would cost us margin but keep the logo. A pause of three months at no charge would keep the contract alive. A smaller read-only plan would keep dashboards on for the executives who read the board report.",
+    "path": "work/accounts/globex",
+    "created": 1791158400.0,
+    "updated": 1791158400.0,
+    "edited": false,
+    "doc": "doc2",
+    "title": "Globex renewal risk memo",
+    "part": 2
+  },
+  {
+    "id": "doc2.3",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "## What I would do\nAsk Priya to call the new head of operations directly, not through email. Offer the read-only plan first. Do not discount the full plan; it teaches them to ask again next year. Decide by November 5 so there is time before the December 15 renewal.",
+    "path": "work/accounts/globex",
+    "created": 1791158400.0,
+    "updated": 1791158400.0,
+    "edited": false,
+    "doc": "doc2",
+    "title": "Globex renewal risk memo",
+    "part": 3
+  },
+  {
+    "id": "doc3.1",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "# Wayne Corp vendor review, November\n\nWayne Corp runs a vendor review every November, and passing it is required to renew. The review has four parts: security, financial health, support quality, and data handling.\n\n## Security\nThey want the latest penetration test summary, our SOC 2 report, and the list of subprocessors. The test summary is from March and is still valid; the SOC 2 report is valid until January. Sam has both.",
+    "path": "work/accounts/wayne-corp",
+    "created": 1790380800.0,
+    "updated": 1790380800.0,
+    "edited": false,
+    "doc": "doc3",
+    "title": "Wayne Corp vendor review, November",
+    "part": 1
+  },
+  {
+    "id": "doc3.2",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "## Financial health\nThey ask for two years of revenue and a statement that we are not in default on any loan. Linh signs this. The accountant, Dr. Nguyen, prepares the numbers; send her the request by November 1.\n\n## Support quality\nThey will read our support ticket statistics: first response time, resolution time, satisfaction. This year first response is 43 minutes, down from 71. Lee should prepare a one-page summary.",
+    "path": "work/accounts/wayne-corp",
+    "created": 1790380800.0,
+    "updated": 1790380800.0,
+    "edited": false,
+    "doc": "doc3",
+    "title": "Wayne Corp vendor review, November",
+    "part": 2
+  },
+  {
+    "id": "doc3.3",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "## Data handling\nThey ask where data lives and who can access it. All production data is in one region. Two engineers have production access, protected by hardware keys. Wayne's legal team also wants the retention policy in writing; it is ninety days after contract end.",
+    "path": "work/accounts/wayne-corp",
+    "created": 1790380800.0,
+    "updated": 1790380800.0,
+    "edited": false,
+    "doc": "doc3",
+    "title": "Wayne Corp vendor review, November",
+    "part": 3
+  },
+  {
+    "id": "n4",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Meeting notes, Monday: Priya will book the November offsite venue by Friday. Sam will send the renewal deck to Acme. Everyone reviews the Q4 plan before Thursday.",
+    "path": "work/meetings",
+    "created": 1791849600.0,
+    "updated": 1791849600.0,
+    "edited": false
+  },
+  {
+    "id": "n5",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Meeting notes, Wednesday: Lee agreed to fix the onboarding checklist this week. Maria will call Globex about their budget.",
+    "path": "work/meetings",
+    "created": 1792022400.0,
+    "updated": 1792022400.0,
+    "edited": false
+  },
+  {
+    "id": "m121",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Meeting notes, Friday: Planning moved to next week. Sam owns the security questionnaire for Initech.",
+    "path": "work/meetings",
+    "created": 1792195200.0,
+    "updated": 1792195200.0,
+    "edited": false
+  },
+  {
+    "id": "m122",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Meeting notes, last Tuesday: We decided not to discount Acme before the call. Priya will prepare two options.",
+    "path": "work/meetings",
+    "created": 1791244800.0,
+    "updated": 1791244800.0,
+    "edited": false
+  },
+  {
+    "id": "m123",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Product sync, October 8: the export feature slips to November. Dev will ship the bug fixes first. Nobody objected. Lee will tell Umbrella.",
+    "path": "work/meetings",
+    "created": 1791417600.0,
+    "updated": 1791417600.0,
+    "edited": false
+  },
+  {
+    "id": "m124",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Board prep, October 1: Linh presents revenue and churn. Churn is 2.1 percent monthly, higher than the 1.5 percent target. Action: Priya to list the three accounts most likely to churn.",
+    "path": "work/meetings",
+    "created": 1790812800.0,
+    "updated": 1790812800.0,
+    "edited": false
+  },
+  {
+    "id": "m125",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "One-on-one with Sam, September 28: Sam feels overloaded by questionnaires. We agreed to write answer templates so each questionnaire takes two days, not nine.",
+    "path": "work/meetings",
+    "created": 1790553600.0,
+    "updated": 1790553600.0,
+    "edited": false
+  },
+  {
+    "id": "m126",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Customer call with Hooli, September 25: they want a case study and a referral discount. I said we would think about the discount. Priya will follow up.",
+    "path": "work/meetings",
+    "created": 1790294400.0,
+    "updated": 1790294400.0,
+    "edited": false
+  },
+  {
+    "id": "m127",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "All-hands, September 15: offsite is in Santa Fe on November 14 to 16. Everyone books flights by October 25. Dietary needs go to Lee.",
+    "path": "work/meetings",
+    "created": 1789430400.0,
+    "updated": 1789430400.0,
+    "edited": false
+  },
+  {
+    "id": "m128",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Retro, September 10: what went well was the onboarding fix. What did not was the late security questionnaire. Action: Sam creates the template library by October 15.",
+    "path": "work/meetings",
+    "created": 1788998400.0,
+    "updated": 1788998400.0,
+    "edited": false
+  },
+  {
+    "id": "doc4.1",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "# Weekly log, week of October 12\n\n## Monday\nStandup. Dev reports the export bug is fixed in staging. Support has 14 open tickets, none urgent. Linh asks Priya for the Acme options by Thursday. Sam says the Initech questionnaire is half done.\n\n## Tuesday\nCustomer call with Wayne Corp. Lee Chen asks for a price hold and a vendor review in November. Linh says yes to the review and will think about the price hold. Action: Linh to decide on the price hold by October 20. Dev asks for a code freeze on Friday; agreed.",
+    "path": "work/meetings",
+    "created": 1792281600.0,
+    "updated": 1792281600.0,
+    "edited": false,
+    "doc": "doc4",
+    "title": "Weekly log, week of October 12",
+    "part": 1
+  },
+  {
+    "id": "doc4.2",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "## Wednesday\nPlanning for the offsite. Budget 14,000 for twenty people, flights not included. Priya proposes Santa Fe; Lee prefers Austin to save travel. Vote: Santa Fe wins 4 to 2. Action: Priya books the venue by Friday.\n\n## Thursday\nAcme options reviewed. Priya prefers the two-year deal; Sam prefers the smaller plan. Linh decides to offer both and let Maria choose. Action: Priya to send both quotes by Friday.",
+    "path": "work/meetings",
+    "created": 1792281600.0,
+    "updated": 1792281600.0,
+    "edited": false,
+    "doc": "doc4",
+    "title": "Weekly log, week of October 12",
+    "part": 2
+  },
+  {
+    "id": "doc4.3",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "## Friday\nCode freeze for the weekend. Support handoff to Lee, who covers while Sam is on leave. Reminder: Sam is on leave from the 3rd to the 17th of next month.",
+    "path": "work/meetings",
+    "created": 1792281600.0,
+    "updated": 1792281600.0,
+    "edited": false,
+    "doc": "doc4",
+    "title": "Weekly log, week of October 12",
+    "part": 3
+  },
+  {
+    "id": "n2",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Team offsite planned for November. Sales and support will travel together.",
+    "path": "work/team",
+    "created": 1789862400.0,
+    "updated": 1789862400.0,
+    "edited": false
+  },
+  {
+    "id": "m129",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Offsite budget approved: 14,000 for twenty people, flights not included.",
+    "path": "work/team",
+    "created": 1790121600.0,
+    "updated": 1790121600.0,
+    "edited": false
+  },
+  {
+    "id": "m130",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Support lead Sam is on leave from the 3rd to the 17th; Lee covers the queue.",
+    "path": "work/team",
+    "created": 1791590400.0,
+    "updated": 1791590400.0,
+    "edited": false
+  },
+  {
+    "id": "m131",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Support handoff checklist: open tickets, customers waiting on us, anything promised for the week. Written by Lee, reviewed by Sam.",
+    "path": "work/team",
+    "created": 1787270400.0,
+    "updated": 1787270400.0,
+    "edited": false
+  },
+  {
+    "id": "m132",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Working hours: core hours are 10 to 3 Central. Meetings only inside core hours. Dev may ship after 3 on Tuesdays and Thursdays.",
+    "path": "work/team",
+    "created": 1775174400.0,
+    "updated": 1775174400.0,
+    "edited": false
+  },
+  {
+    "id": "m133",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Team birthdays: Priya in January, Sam in April, Lee in July, Dev in November. Bring cake, not a card.",
+    "path": "work/team",
+    "created": 1779494400.0,
+    "updated": 1779494400.0,
+    "edited": false
+  },
+  {
+    "id": "m134",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Release process: tag on main, run the smoke test, deploy to staging, wait one hour, deploy to production. Never deploy on Fridays.",
+    "path": "work/process",
+    "created": 1784678400.0,
+    "updated": 1784678400.0,
+    "edited": false
+  },
+  {
+    "id": "m135",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Incident process: whoever sees it says so in the incidents channel, Lee is incident lead by default, write the timeline while it happens.",
+    "path": "work/process",
+    "created": 1784246400.0,
+    "updated": 1784246400.0,
+    "edited": false
+  },
+  {
+    "id": "m136",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Customer discount policy: up to 10 percent for two-year deals, up to 5 percent for annual prepay. Anything else needs Linh.",
+    "path": "work/process",
+    "created": 1786406400.0,
+    "updated": 1786406400.0,
+    "edited": false
+  },
+  {
+    "id": "m137",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Refund policy: full refund within 30 days, prorated after that. Healthcare customers follow their own contract.",
+    "path": "work/process",
+    "created": 1784851200.0,
+    "updated": 1784851200.0,
+    "edited": false
+  },
+  {
+    "id": "doc5.1",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "# Product roadmap, Q4 and Q1\n\n## Q4: stabilise\nFix the export bug, ship the onboarding checklist, and cut the dashboard load time from six seconds to under two. These are the three things customers complain about most, and each one is tied to a renewal at risk. Export is needed by Umbrella. The onboarding checklist is what Initech asked for. Dashboard speed was Acme's complaint in the last review.",
+    "path": "work/product/roadmap",
+    "created": 1790640000.0,
+    "updated": 1790640000.0,
+    "edited": false,
+    "doc": "doc5",
+    "title": "Product roadmap, Q4 and Q1",
+    "part": 1
+  },
+  {
+    "id": "doc5.2",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "## Q1: grow\nSingle sign-on, a weekly digest email that lists accounts whose usage dropped more than twenty percent, and a read-only plan for executives. Single sign-on is requested by Umbrella and Wayne Corp. The digest email is an idea from Linh and has never been tested with customers. The read-only plan would have kept Globex.",
+    "path": "work/product/roadmap",
+    "created": 1790640000.0,
+    "updated": 1790640000.0,
+    "edited": false,
+    "doc": "doc5",
+    "title": "Product roadmap, Q4 and Q1",
+    "part": 2
+  },
+  {
+    "id": "doc5.3",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "## Not now\nA mobile app, an API for partners, and a marketplace of templates. All three are interesting and all three would pull the team away from the renewals. Revisit in the summer.\n\n## Risks\nDev is two people. If one is out, the plan slips by a quarter. The export fix depends on a database migration that nobody has done before.",
+    "path": "work/product/roadmap",
+    "created": 1790640000.0,
+    "updated": 1790640000.0,
+    "edited": false,
+    "doc": "doc5",
+    "title": "Product roadmap, Q4 and Q1",
+    "part": 3
+  },
+  {
+    "id": "m138",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Feature request from Umbrella: export all data as CSV for audits. Needs the signed addendum first.",
+    "path": "work/product/requests",
+    "created": 1789862400.0,
+    "updated": 1789862400.0,
+    "edited": false
+  },
+  {
+    "id": "m139",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Feature request from Wayne Corp: single sign-on with their identity provider, required for the vendor review next year.",
+    "path": "work/product/requests",
+    "created": 1788566400.0,
+    "updated": 1788566400.0,
+    "edited": false
+  },
+  {
+    "id": "m140",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Feature request from Initech: one consolidated invoice for four subsidiaries.",
+    "path": "work/product/requests",
+    "created": 1791504000.0,
+    "updated": 1791504000.0,
+    "edited": false
+  },
+  {
+    "id": "m141",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Bug: the export button times out for accounts with more than 50,000 rows. Workaround: ask support to run it overnight.",
+    "path": "work/product/bugs",
+    "created": 1790812800.0,
+    "updated": 1790812800.0,
+    "edited": false
+  },
+  {
+    "id": "m142",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Bug: dashboards show the previous day's numbers until noon on Mondays. Cause: a timezone mismatch in the nightly job.",
+    "path": "work/product/bugs",
+    "created": 1789603200.0,
+    "updated": 1789603200.0,
+    "edited": false
+  },
+  {
+    "id": "m143",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Bug fixed last week: duplicate emails on password reset. Released in version 4.12.",
+    "path": "work/product/bugs",
+    "created": 1791763200.0,
+    "updated": 1791763200.0,
+    "edited": false
+  },
+  {
+    "id": "m144",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Blog post idea: what we learned from cutting onboarding from three weeks to four days.",
+    "path": "work/marketing",
+    "created": 1788998400.0,
+    "updated": 1788998400.0,
+    "edited": false
+  },
+  {
+    "id": "m145",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Webinar in November: churn early warning signs, with a guest from Hooli if legal approves the case study.",
+    "path": "work/marketing",
+    "created": 1791158400.0,
+    "updated": 1791158400.0,
+    "edited": false
+  },
+  {
+    "id": "m146",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "LinkedIn post that did well: a screenshot of the weekly digest idea with the line 'which accounts quietly stopped using your product?'. 41 reactions.",
+    "path": "work/marketing",
+    "created": 1790208000.0,
+    "updated": 1790208000.0,
+    "edited": false
+  },
+  {
+    "id": "m147",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "NDA with Hooli signed on September 2, valid for three years. Copy is in the legal folder.",
+    "path": "work/legal",
+    "created": 1788307200.0,
+    "updated": 1788307200.0,
+    "edited": false
+  },
+  {
+    "id": "m148",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "The Umbrella addendum is still unsigned. Their lawyer asked to change clause 7 about subprocessors. Linh is reviewing.",
+    "path": "work/legal",
+    "created": 1790985600.0,
+    "updated": 1790985600.0,
+    "edited": false
+  },
+  {
+    "id": "doc6.1",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "# Contract summary: Wayne Corp master agreement\n\nThe agreement runs for three years from January 2025 with automatic one-year renewals. Either side may end it with ninety days' notice before a renewal date.\n\n## Price\nFixed per seat for the first two years. In year three the price may rise by at most five percent. Wayne has asked for a price hold for a fourth year.",
+    "path": "work/legal",
+    "created": 1787270400.0,
+    "updated": 1787270400.0,
+    "edited": false,
+    "doc": "doc6",
+    "title": "Contract summary: Wayne Corp master agreement",
+    "part": 1
+  },
+  {
+    "id": "doc6.2",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "## Service levels\nNinety-nine point five percent monthly availability. If we miss it, Wayne gets a credit of ten percent of the monthly fee per half point missed, capped at thirty percent.\n\n## Data\nWayne owns its data. We delete it ninety days after the contract ends and certify the deletion in writing on request. Subprocessors must be listed and any change needs thirty days' notice.",
+    "path": "work/legal",
+    "created": 1787270400.0,
+    "updated": 1787270400.0,
+    "edited": false,
+    "doc": "doc6",
+    "title": "Contract summary: Wayne Corp master agreement",
+    "part": 2
+  },
+  {
+    "id": "doc6.3",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "## Liability\nCapped at twelve months of fees, except for data breaches caused by gross negligence, which are uncapped. This clause was negotiated hard by both sides and should not be reopened lightly.",
+    "path": "work/legal",
+    "created": 1787270400.0,
+    "updated": 1787270400.0,
+    "edited": false,
+    "doc": "doc6",
+    "title": "Contract summary: Wayne Corp master agreement",
+    "part": 3
+  },
+  {
+    "id": "m149",
+    "type": "note",
+    "sensitivity": "high",
+    "text": "Candidate: Rin Okada, backend engineer, strong on databases, wants a remote contract. Interview on Thursday with Dev.",
+    "path": "work/hiring",
+    "created": 1791590400.0,
+    "updated": 1791590400.0,
+    "edited": false
+  },
+  {
+    "id": "m150",
+    "type": "note",
+    "sensitivity": "high",
+    "text": "Candidate: Marcus Webb, support specialist, good references from a bank. Salary expectation above our band.",
+    "path": "work/hiring",
+    "created": 1790553600.0,
+    "updated": 1790553600.0,
+    "edited": false
+  },
+  {
+    "id": "m151",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Hiring plan: one engineer in Q1, one support person in Q2, only if two renewals close.",
+    "path": "work/hiring",
+    "created": 1788998400.0,
+    "updated": 1788998400.0,
+    "edited": false
+  },
+  {
+    "id": "n3",
+    "type": "note",
+    "sensitivity": "high",
+    "text": "Salary table for every employee. Strictly confidential.",
+    "path": "work/hr",
+    "created": 1783814400.0,
+    "updated": 1783814400.0,
+    "edited": false
+  },
+  {
+    "id": "m152",
+    "type": "note",
+    "sensitivity": "high",
+    "text": "Performance review drafts for the support team. Do not share.",
+    "path": "work/hr",
+    "created": 1786406400.0,
+    "updated": 1786406400.0,
+    "edited": false
+  },
+  {
+    "id": "m153",
+    "type": "note",
+    "sensitivity": "high",
+    "text": "Priya asked for a raise; compare with the salary table before the budget meeting.",
+    "path": "work/hr",
+    "created": 1791676800.0,
+    "updated": 1791676800.0,
+    "edited": false
+  },
+  {
+    "id": "c1",
+    "type": "contact",
+    "sensitivity": "low",
+    "text": "Maria Lopez, head of sales at Acme, prefers email on Mondays.",
+    "path": "people/customers",
+    "created": 1783814400.0,
+    "updated": 1783814400.0,
+    "edited": false
+  },
+  {
+    "id": "c101",
+    "type": "contact",
+    "sensitivity": "low",
+    "text": "Dana Whitfield, former product owner at Globex, now at a competitor; still friendly.",
+    "path": "people/customers",
+    "created": 1789516800.0,
+    "updated": 1789516800.0,
+    "edited": false
+  },
+  {
+    "id": "c102",
+    "type": "contact",
+    "sensitivity": "low",
+    "text": "Priya Nair, head of sales at Hooli, prefers calls on Fridays.",
+    "path": "people/customers",
+    "created": 1785542400.0,
+    "updated": 1785542400.0,
+    "edited": false
+  },
+  {
+    "id": "c103",
+    "type": "contact",
+    "sensitivity": "low",
+    "text": "Lee Chen, procurement lead at Wayne Corp. Formal, wants everything in writing; replies within a day.",
+    "path": "people/customers",
+    "created": 1788566400.0,
+    "updated": 1788566400.0,
+    "edited": false
+  },
+  {
+    "id": "c104",
+    "type": "contact",
+    "sensitivity": "low",
+    "text": "Bill Lumbergh, new CTO at Initech since September. Wants one invoice for all subsidiaries.",
+    "path": "people/customers",
+    "created": 1791504000.0,
+    "updated": 1791504000.0,
+    "edited": false
+  },
+  {
+    "id": "c105",
+    "type": "contact",
+    "sensitivity": "low",
+    "text": "Dr. Alma Reyes, data protection officer at Umbrella. The person who must sign the addendum.",
+    "path": "people/customers",
+    "created": 1789862400.0,
+    "updated": 1789862400.0,
+    "edited": false
+  },
+  {
+    "id": "c106",
+    "type": "contact",
+    "sensitivity": "low",
+    "text": "Priya Shah, our head of customer success. Not the same person as Priya Nair at Hooli. Birthday in January.",
+    "path": "people/team",
+    "created": 1779494400.0,
+    "updated": 1779494400.0,
+    "edited": false
+  },
+  {
+    "id": "c107",
+    "type": "contact",
+    "sensitivity": "low",
+    "text": "Sam Ortiz, support lead. Best at writing answers to security questionnaires.",
+    "path": "people/team",
+    "created": 1779494400.0,
+    "updated": 1779494400.0,
+    "edited": false
+  },
+  {
+    "id": "c108",
+    "type": "contact",
+    "sensitivity": "low",
+    "text": "Lee Park, support and operations. Not related to Lee Chen at Wayne Corp. Covers the queue when Sam is out.",
+    "path": "people/team",
+    "created": 1779494400.0,
+    "updated": 1779494400.0,
+    "edited": false
+  },
+  {
+    "id": "c109",
+    "type": "contact",
+    "sensitivity": "low",
+    "text": "Dev Kapoor, one of the two engineers. Prefers written requests over meetings.",
+    "path": "people/team",
+    "created": 1779494400.0,
+    "updated": 1779494400.0,
+    "edited": false
+  },
+  {
+    "id": "c110",
+    "type": "contact",
+    "sensitivity": "low",
+    "text": "Dr. Nguyen, our accountant. Prepares the revenue statements for vendor reviews. Needs a week's notice.",
+    "path": "people/advisors",
+    "created": 1782086400.0,
+    "updated": 1782086400.0,
+    "edited": false
+  },
+  {
+    "id": "c111",
+    "type": "contact",
+    "sensitivity": "low",
+    "text": "Jordan Blake, lawyer for contracts. Bills in six-minute units; email first, call only for emergencies.",
+    "path": "people/advisors",
+    "created": 1782086400.0,
+    "updated": 1782086400.0,
+    "edited": false
+  },
+  {
+    "id": "c112",
+    "type": "contact",
+    "sensitivity": "low",
+    "text": "Tomás from university, lives in Lisbon, loves hiking and bad puns.",
+    "path": "people/friends",
+    "created": 1766534400.0,
+    "updated": 1766534400.0,
+    "edited": false
+  },
+  {
+    "id": "c113",
+    "type": "contact",
+    "sensitivity": "low",
+    "text": "Hana, runs a ceramics studio in East Austin; wants help with her shop's bookkeeping spreadsheet.",
+    "path": "people/friends",
+    "created": 1787270400.0,
+    "updated": 1787270400.0,
+    "edited": false
+  },
+  {
+    "id": "c114",
+    "type": "contact",
+    "sensitivity": "low",
+    "text": "Marcus from the running club. Training for the Austin half marathon in February.",
+    "path": "people/friends",
+    "created": 1788566400.0,
+    "updated": 1788566400.0,
+    "edited": false
+  },
+  {
+    "id": "c115",
+    "type": "contact",
+    "sensitivity": "low",
+    "text": "Mum's birthday is on March 3rd; she likes tulips and anything from the bakery on Elm Street.",
+    "path": "people/family",
+    "created": 1775174400.0,
+    "updated": 1775174400.0,
+    "edited": false
+  },
+  {
+    "id": "c116",
+    "type": "contact",
+    "sensitivity": "low",
+    "text": "My brother Khoa lives in San Jose. His daughter is called Mai and she starts school next year.",
+    "path": "people/family",
+    "created": 1776902400.0,
+    "updated": 1776902400.0,
+    "edited": false
+  },
+  {
+    "id": "c117",
+    "type": "contact",
+    "sensitivity": "low",
+    "text": "Bà ngoại (grandma) lives in Đà Nẵng; call on Sunday mornings, it is evening there.",
+    "path": "people/family",
+    "created": 1784678400.0,
+    "updated": 1784678400.0,
+    "edited": false
+  },
+  {
+    "id": "m154",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Mẹ thích hoa tulip và bánh ở tiệm trên đường Elm. Sinh nhật mẹ là ngày 3 tháng 3.",
+    "path": "gia đình/mẹ",
+    "created": 1776038400.0,
+    "updated": 1776038400.0,
+    "edited": false
+  },
+  {
+    "id": "m155",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Mẹ bị đau đầu gối khi đi bộ xa; đừng rủ mẹ đi dạo quá một giờ.",
+    "path": "gia đình/mẹ",
+    "created": 1785974400.0,
+    "updated": 1785974400.0,
+    "edited": false
+  },
+  {
+    "id": "m156",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Mẹ muốn học cách dùng video call để nói chuyện với bà ngoại mỗi tuần.",
+    "path": "gia đình/mẹ",
+    "created": 1788998400.0,
+    "updated": 1788998400.0,
+    "edited": false
+  },
+  {
+    "id": "m157",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Bà ngoại ở Đà Nẵng, gọi vào sáng chủ nhật vì bên đó là buổi tối. Bà thích nghe chuyện về công việc của con.",
+    "path": "gia đình/bà ngoại",
+    "created": 1784851200.0,
+    "updated": 1784851200.0,
+    "edited": false
+  },
+  {
+    "id": "m158",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Món bà nấu ngon nhất: bún chả cá. Công thức cần ghi lại trước khi bà quên.",
+    "path": "gia đình/bà ngoại",
+    "created": 1770854400.0,
+    "updated": 1770854400.0,
+    "edited": false
+  },
+  {
+    "id": "m159",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Dự định về Việt Nam tháng 2: vé khứ hồi khoảng 1.450 đô, ở lại hai tuần. Cần làm hộ chiếu mới trước tháng 12.",
+    "path": "gia đình/chuyến về nước",
+    "created": 1791072000.0,
+    "updated": 1791072000.0,
+    "edited": false
+  },
+  {
+    "id": "doc7.1",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "# Kế hoạch về Việt Nam tháng 2\n\n## Ngày đi và về\nBay từ Austin sang Seoul rồi vào Đà Nẵng, khởi hành ngày 8 tháng 2 và về ngày 22 tháng 2. Hai tuần đủ để thăm bà ngoại, đi Hội An một ngày và gặp bạn cũ ở Sài Gòn.\n\n## Việc cần làm trước chuyến đi\nLàm hộ chiếu mới trước tháng 12 vì hộ chiếu cũ sắp hết hạn. Đổi một ít tiền mặt. Mua quà cho bà ngoại: thuốc bổ khớp và một cái áo ấm. Báo trước cho khách hàng rằng tuần cuối của chuyến đi sẽ làm việc từ xa.",
+    "path": "gia đình/chuyến về nước",
+    "created": 1791244800.0,
+    "updated": 1791244800.0,
+    "edited": false,
+    "doc": "doc7",
+    "title": "Kế hoạch về Việt Nam tháng 2",
+    "part": 1
+  },
+  {
+    "id": "doc7.2",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "## Công việc trong lúc đi\nSam và Lee giữ hàng đợi hỗ trợ. Priya lo các cuộc gọi khách hàng. Mình chỉ nhận email vào buổi sáng giờ Việt Nam. Bất cứ sự cố lớn nào gọi số điện thoại Việt Nam.",
+    "path": "gia đình/chuyến về nước",
+    "created": 1791244800.0,
+    "updated": 1791244800.0,
+    "edited": false,
+    "doc": "doc7",
+    "title": "Kế hoạch về Việt Nam tháng 2",
+    "part": 2
+  },
+  {
+    "id": "m160",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Từ mới tuần này: 'gia hạn' (to renew), 'ngân sách' (budget), 'khách hàng' (customer). Dùng trong cuộc họp với Priya cho vui.",
+    "path": "gia đình/học tiếng",
+    "created": 1791936000.0,
+    "updated": 1791936000.0,
+    "edited": false
+  },
+  {
+    "id": "m161",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Dentist appointment on Tuesday at 9:30. Bring the insurance card.",
+    "path": "personal/health",
+    "created": 1792022400.0,
+    "updated": 1792022400.0,
+    "edited": false
+  },
+  {
+    "id": "m162",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Doctor said to walk thirty minutes a day and cut down on coffee after lunch.",
+    "path": "personal/health",
+    "created": 1788566400.0,
+    "updated": 1788566400.0,
+    "edited": false
+  },
+  {
+    "id": "m163",
+    "type": "note",
+    "sensitivity": "high",
+    "text": "Blood test in January showed vitamin D slightly low. Take 2000 IU a day through winter.",
+    "path": "personal/health",
+    "created": 1768262400.0,
+    "updated": 1768262400.0,
+    "edited": false
+  },
+  {
+    "id": "m164",
+    "type": "note",
+    "sensitivity": "high",
+    "text": "Therapy on Thursday evenings at 6, every two weeks. Do not schedule meetings then.",
+    "path": "personal/health",
+    "created": 1787270400.0,
+    "updated": 1787270400.0,
+    "edited": false
+  },
+  {
+    "id": "m165",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Half marathon training plan: three runs a week, long run on Sunday, add one mile every week until ten miles.",
+    "path": "personal/health",
+    "created": 1790726400.0,
+    "updated": 1790726400.0,
+    "edited": false
+  },
+  {
+    "id": "doc8.1",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "# Lisbon trip notes\n\nFlight lands at 9:40 on November 20. Take the metro red line to Alameda, then the green line to Baixa. The hotel is a ten minute walk from there, on a steep street, so pack light.\n\n## Food\nTomás recommends the small place near Alfama for grilled fish, and a bakery on the way to the castle for pastel de nata in the morning. Reserve dinner for Friday, the restaurants fill up fast.",
+    "path": "personal/travel",
+    "created": 1791417600.0,
+    "updated": 1791417600.0,
+    "edited": false,
+    "doc": "doc8",
+    "title": "Lisbon trip notes",
+    "part": 1
+  },
+  {
+    "id": "doc8.2",
+    "type": "note",
+    "sensitivity": "low",
     "text": "## Things to remember\nBring the adapter and a rain jacket. The tram 28 is crowded, walk instead. Buy the transport card at the airport, it works on trams and the metro. Call the dentist before leaving to move the appointment to the week after the trip.",
     "path": "personal/travel",
-    "doc": "doc2",
+    "created": 1791417600.0,
+    "updated": 1791417600.0,
+    "edited": false,
+    "doc": "doc8",
     "title": "Lisbon trip notes",
     "part": 2
+  },
+  {
+    "id": "m166",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Flight to Lisbon on November 20, seat 14C, returning the 27th. Hotel near Alfama is booked.",
+    "path": "personal/travel",
+    "created": 1791417600.0,
+    "updated": 1791417600.0,
+    "edited": false
+  },
+  {
+    "id": "m167",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Santa Fe offsite, November 14 to 16: drive with Priya and Sam, leave Austin at 7am, hotel booked by the company.",
+    "path": "personal/travel",
+    "created": 1790985600.0,
+    "updated": 1790985600.0,
+    "edited": false
+  },
+  {
+    "id": "m168",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Packing list for Lisbon: adapter, rain jacket, the good walking shoes.",
+    "path": "personal/travel",
+    "created": 1791504000.0,
+    "updated": 1791504000.0,
+    "edited": false
+  },
+  {
+    "id": "m169",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "The landlord will fix the boiler on Thursday between 10 and 12.",
+    "path": "personal/home",
+    "created": 1792108800.0,
+    "updated": 1792108800.0,
+    "edited": false
+  },
+  {
+    "id": "m170",
+    "type": "note",
+    "sensitivity": "high",
+    "text": "Wi-Fi router replaced in August; the admin password is on the sticker, but change it. Internet plan renews in March.",
+    "path": "personal/home",
+    "created": 1787270400.0,
+    "updated": 1787270400.0,
+    "edited": false
+  },
+  {
+    "id": "m171",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Lease ends in July. Landlord said rent goes up about four percent. Decide by April whether to renew.",
+    "path": "personal/home",
+    "created": 1783814400.0,
+    "updated": 1783814400.0,
+    "edited": false
+  },
+  {
+    "id": "m172",
+    "type": "note",
+    "sensitivity": "high",
+    "text": "Passport number and the locker code for the safe deposit box.",
+    "path": "personal/documents",
+    "created": 1770854400.0,
+    "updated": 1770854400.0,
+    "edited": false
+  },
+  {
+    "id": "m173",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Passport expires in March; renewal takes eight weeks, so apply before December.",
+    "path": "personal/documents",
+    "created": 1789862400.0,
+    "updated": 1789862400.0,
+    "edited": false
+  },
+  {
+    "id": "m174",
+    "type": "note",
+    "sensitivity": "high",
+    "text": "Driver's licence renewal due in August. Social security number is in the safe, not in this app.",
+    "path": "personal/documents",
+    "created": 1781222400.0,
+    "updated": 1781222400.0,
+    "edited": false
+  },
+  {
+    "id": "doc9.1",
+    "type": "note",
+    "sensitivity": "high",
+    "text": "# Journal, October 14\n\nToday I realised that most of what stresses me is not the work, it is the waiting. Waiting for Globex to answer, waiting for the lawyer, waiting for the vitamin D to do anything. When I wrote the three open loops down they looked small.\n\nI was short with Sam this morning about the questionnaire and apologised at lunch. He said he feels like the only person who can write them, which is exactly the problem I should fix, not him. Templates are the answer. I will block Friday afternoon for it.\n\nIn the evening I called Mum. She asked when I am coming home. I said February. She was quiet for a while and then asked whether I would bring Khoa's daughter a book. I want to find a good Vietnamese picture book in Austin, if there is one.\n\nPrivate thought, not for anyone: I am worried that the company is too dependent on two or three renewals, and I do not know how to say it to the team without sounding afraid. Maybe I should say it exactly like that.",
+    "path": "personal/journal",
+    "created": 1791936000.0,
+    "updated": 1791936000.0,
+    "edited": false,
+    "doc": "doc9",
+    "title": "Journal, October 14",
+    "part": 1
+  },
+  {
+    "id": "m175",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Learning Spanish for the Lisbon trip? No: Portuguese. Duolingo streak is 23 days; goal is to order dinner without English.",
+    "path": "personal/learning",
+    "created": 1790812800.0,
+    "updated": 1790812800.0,
+    "edited": false
+  },
+  {
+    "id": "m176",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Reading list for winter: finish the book about pricing, start the one about negotiating. One chapter a day.",
+    "path": "personal/learning",
+    "created": 1789862400.0,
+    "updated": 1789862400.0,
+    "edited": false
+  },
+  {
+    "id": "f1",
+    "type": "finance",
+    "sensitivity": "high",
+    "text": "Bank account 000111222, balance 91000 USD, routing 021000021.",
+    "path": "money",
+    "created": 1792195200.0,
+    "updated": 1792195200.0,
+    "edited": false
+  },
+  {
+    "id": "m177",
+    "type": "finance",
+    "sensitivity": "high",
+    "text": "Monthly budget: rent 1800, food 600, travel 300, savings 700.",
+    "path": "money",
+    "created": 1786406400.0,
+    "updated": 1786406400.0,
+    "edited": false
+  },
+  {
+    "id": "m178",
+    "type": "finance",
+    "sensitivity": "high",
+    "text": "Quarterly tax estimate is due on January 15. Dr. Nguyen says set aside 28 percent of net.",
+    "path": "money",
+    "created": 1790294400.0,
+    "updated": 1790294400.0,
+    "edited": false
+  },
+  {
+    "id": "m179",
+    "type": "finance",
+    "sensitivity": "high",
+    "text": "Credit card ends 4417, limit 15000. Pay in full on the 27th.",
+    "path": "money",
+    "created": 1784678400.0,
+    "updated": 1784678400.0,
+    "edited": false
+  },
+  {
+    "id": "m180",
+    "type": "finance",
+    "sensitivity": "high",
+    "text": "Index fund balance about 62000. Contribute 500 a month on the first. Do not sell during a downturn.",
+    "path": "money/investments",
+    "created": 1788998400.0,
+    "updated": 1788998400.0,
+    "edited": false
+  },
+  {
+    "id": "m181",
+    "type": "finance",
+    "sensitivity": "low",
+    "text": "Coffee budget is 40 a month; I spent 63 last month, mostly on client meetings.",
+    "path": "money/receipts",
+    "created": 1791244800.0,
+    "updated": 1791244800.0,
+    "edited": false
+  },
+  {
+    "id": "m182",
+    "type": "finance",
+    "sensitivity": "low",
+    "text": "Software subscriptions total 312 a month: analytics, design tool, password manager, two chat apps.",
+    "path": "money/receipts",
+    "created": 1789603200.0,
+    "updated": 1789603200.0,
+    "edited": false
+  },
+  {
+    "id": "m183",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Nebius x NVIDIA hackathon: submission deadline October 30, 10:00 Pacific. Submit by October 29 to be safe.",
+    "path": "projects/hackathon",
+    "created": 1792195200.0,
+    "updated": 1792195200.0,
+    "edited": false
+  },
+  {
+    "id": "m184",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "PayPal AI hackathon: deadline November 12 at noon Pacific. Submit by November 11. Needs a three minute demo video.",
+    "path": "projects/hackathon",
+    "created": 1792195200.0,
+    "updated": 1792195200.0,
+    "edited": false
+  },
+  {
+    "id": "m185",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Decision: helpers run on the buyer's machine (pull mode). The helper sees only the shelves the buyer opens; secret files never leave.",
+    "path": "projects/hackathon",
+    "created": 1791676800.0,
+    "updated": 1791676800.0,
+    "edited": false
+  },
+  {
+    "id": "m186",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Decision: payments are test money first, PayPal sandbox second. Never imply real money in the demo.",
+    "path": "projects/hackathon",
+    "created": 1791763200.0,
+    "updated": 1791763200.0,
+    "edited": false
+  },
+  {
+    "id": "m187",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Open question: which model do we use for the live demo? Nemotron on Nebius is the plan; keep the thinking mode off for speed.",
+    "path": "projects/hackathon",
+    "created": 1791849600.0,
+    "updated": 1791849600.0,
+    "edited": false
+  },
+  {
+    "id": "doc10.1",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "# Architecture notes, pull mode\n\n## The idea\nA helper is a short workflow: read some of the buyer's notes, think, check, hand over. In pull mode the workflow runs on the buyer's computer, not the author's. The author never sees the buyer's data. The buyer sees exactly what the helper was given.\n\n## The guard\nEvery answer passes a guard before it reaches the buyer. The guard checks the shape of the answer, its size, whether it copies a decoy file, and whether it repeats a long run of a private note word for word. A helper that fails any of these is stopped, nothing is delivered, and the buyer is not charged.",
+    "path": "projects/hackathon",
+    "created": 1792022400.0,
+    "updated": 1792022400.0,
+    "edited": false,
+    "doc": "doc10",
+    "title": "Architecture notes, pull mode",
+    "part": 1
+  },
+  {
+    "id": "doc10.2",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "## Memory\nThe buyer's notes live on shelves. A chat opens some shelves and the helper can only search inside those. Secret notes never leave, even if the buyer ticks them. Long notes are stored as passages so the helper reads only the part that matters.\n\n## Money\nThe buyer places a hold when hiring. After an answer, a floor fee is captured. The rest is captured when the buyer keeps chatting or accepts the answer, and refunded if the answer was marked not helpful. A helper caught cheating earns nothing and the hold is released.",
+    "path": "projects/hackathon",
+    "created": 1792022400.0,
+    "updated": 1792022400.0,
+    "edited": false,
+    "doc": "doc10",
+    "title": "Architecture notes, pull mode",
+    "part": 2
+  },
+  {
+    "id": "doc11.1",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "# Notes on the pricing book\n\nThe main claim is that price is the strongest lever a small software company has, and that most founders set it once and never look again. A one percent improvement in price gives more profit than a one percent improvement in volume or cost.\n\n## Three ideas to try\nFirst, offer three plans, not one, and make the middle one the obvious choice. Second, tie the price to something the customer values, like the number of accounts monitored, not to seats. Third, raise prices on new customers before existing ones, and watch what happens to the close rate.",
+    "path": "reading/books",
+    "created": 1788134400.0,
+    "updated": 1788134400.0,
+    "edited": false,
+    "doc": "doc11",
+    "title": "Notes on the pricing book",
+    "part": 1
+  },
+  {
+    "id": "doc11.2",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "## What I disagree with\nThe book assumes customers compare prices. Ours compare us with doing it in a spreadsheet, and the spreadsheet is free. The right comparison is the cost of a missed churn warning, not the price of other tools.",
+    "path": "reading/books",
+    "created": 1788134400.0,
+    "updated": 1788134400.0,
+    "edited": false,
+    "doc": "doc11",
+    "title": "Notes on the pricing book",
+    "part": 2
+  },
+  {
+    "id": "m188",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Article: why customer success should own renewals, not sales. Key line: the person who answers the support tickets knows who is unhappy first.",
+    "path": "reading/articles",
+    "created": 1789430400.0,
+    "updated": 1789430400.0,
+    "edited": false
+  },
+  {
+    "id": "m189",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Article about monthly churn benchmarks for B2B software: under 1 percent is excellent, 2 percent is common, above 3 percent is a warning.",
+    "path": "reading/articles",
+    "created": 1790035200.0,
+    "updated": 1790035200.0,
+    "edited": false
+  },
+  {
+    "id": "m190",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Bún chả: grill pork patties and belly with fish sauce, sugar, garlic, shallots; serve with rice noodles, herbs, and a dipping sauce of fish sauce, lime, sugar, chili.",
+    "path": "recipes",
+    "created": 1780358400.0,
+    "updated": 1780358400.0,
+    "edited": false
+  },
+  {
+    "id": "m191",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Phở bò broth: char onion and ginger, simmer beef bones for six hours with star anise, cinnamon, cloves, coriander seed. Skim often.",
+    "path": "recipes",
+    "created": 1778630400.0,
+    "updated": 1778630400.0,
+    "edited": false
+  },
+  {
+    "id": "m192",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Weeknight dinner: lemongrass chicken, rice, a bag of salad. Twenty minutes, one pan.",
+    "path": "recipes",
+    "created": 1790640000.0,
+    "updated": 1790640000.0,
+    "edited": false
+  },
+  {
+    "id": "m193",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Cách làm nước chấm: 3 muỗng nước mắm, 2 muỗng đường, 1 muỗng chanh, tỏi ớt băm, nửa chén nước ấm.",
+    "path": "recipes",
+    "created": 1783814400.0,
+    "updated": 1783814400.0,
+    "edited": false
+  },
+  {
+    "id": "m194",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Idea: let customers see a one-page health score for their own account.",
+    "path": "ideas/product",
+    "created": 1788998400.0,
+    "updated": 1788998400.0,
+    "edited": false
+  },
+  {
+    "id": "m195",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Idea: a weekly digest that lists accounts whose usage dropped more than twenty percent.",
+    "path": "ideas/product",
+    "created": 1790208000.0,
+    "updated": 1790208000.0,
+    "edited": false
+  },
+  {
+    "id": "m196",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Idea: show a renewal countdown on every account page, with the three open risks next to it.",
+    "path": "ideas/product",
+    "created": 1791676800.0,
+    "updated": 1791676800.0,
+    "edited": false
+  },
+  {
+    "id": "m197",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Blog post idea: what we learned from cutting onboarding from three weeks to four days.",
+    "path": "ideas/writing",
+    "created": 1788998400.0,
+    "updated": 1788998400.0,
+    "edited": false
+  },
+  {
+    "id": "m198",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Short book idea: 'The renewal calendar', one chapter per month of the year, for founders of small software companies.",
+    "path": "ideas/writing",
+    "created": 1777766400.0,
+    "updated": 1777766400.0,
+    "edited": false
   }
 ]

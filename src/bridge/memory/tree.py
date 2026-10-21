@@ -45,16 +45,23 @@ class MemoryTree:
         self.records: dict[str, Record] = {}
         self.nodes: dict[str, Shelf] = {"": Shelf("")}
         self._tok: dict[str, set] = {}
+        self._tf: dict[str, Counter] = {}  # how often each word stem occurs in each record (title and kind count double)
+        self._len: dict[str, int] = {}
         self._types: set = set()  # word stems of the kinds of file, which say nothing about a shelf's subject
         self._shown: dict[str, str] = {}  # stem -> a readable form of it, for the keyword lists
         for r in records:
             self.records[r.id] = r
-            toks = set()
+            toks, tf = set(), Counter()
             for w in surface(r.text):
                 st = stem(w)
                 toks.add(st)
+                tf[st] += 1
                 self._shown.setdefault(st, w)
+            self._len[r.id] = max(1, sum(tf.values()))
+            for st in tokens(r.type) | tokens(r.title):
+                tf[st] += 2
             toks |= tokens(r.type) | tokens(r.title)
+            self._tf[r.id] = tf
             self._types |= tokens(r.type)
             self._tok[r.id] = toks
             self._node(r.shelf).own.append(r.id)
@@ -117,15 +124,19 @@ class MemoryTree:
         if not q:
             return [], []
         frontier, opened, found = [""], [], {}
+        n_docs, avg = max(1, len(self.records)), (sum(self._len.values()) / max(1, len(self._len)))
+        root_df = self.nodes[""].df
         while frontier:
             nxt = []
             for path in frontier:
                 node = self.nodes[path]
                 opened.append(path)
                 for rid in node.own:
-                    hit = len(q & self._tok[rid])
-                    if hit:
-                        found[rid] = hit
+                    common = q & self._tok[rid]
+                    if common:  # BM25: rare words count more, and a short note that says it plainly beats a long one that mentions it
+                        tf, dl = self._tf[rid], self._len[rid]
+                        found[rid] = sum(log(1 + (n_docs - root_df[w] + 0.5) / (root_df[w] + 0.5)) * tf[w] * 2.2 / (tf[w] + 1.2 * (0.25 + 0.75 * dl / avg))
+                                         for w in common)
                 scored = sorted(((self._score(self.nodes[c], q), c) for c in node.children), key=lambda t: (-t[0], t[1]))
                 nxt.extend(c for sc, c in scored[:BEAM] if sc > 0)
             frontier = nxt[:MAX_FRONTIER]
