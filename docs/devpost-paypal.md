@@ -54,7 +54,7 @@ Outages and crashes release the hold with no charge.
 
 ## Accomplishments
 
-- A race-safe, restart-safe, retry-safe money state machine with 40+ tests, including mutation checks that fail when idempotency or the state guard is removed.
+- A race-safe, restart-safe, retry-safe money state machine with about 50 payment tests. We checked by hand that removing idempotency or the state guard makes them fail.
 - Money that follows evidence: an honest result pays, a caught thief is refunded, an outage costs nothing.
 
 ## What's next

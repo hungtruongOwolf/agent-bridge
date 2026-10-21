@@ -1,6 +1,6 @@
 # agent-bridge: build spec (hackathon slice)
 
-Status: active. Written 2026-10-20. Design background: `architecture-v2.1.md` (full vision, 27 phases). This file is the part we build and ship.
+Status: active. Written 2026-10-20. Progress 2026-10-20: M1 and M2 built, M3 built on test money (PayPal sandbox unverified), M4 docs written; see CLAUDE.md hand-off log. Design background: `architecture-v2.1.md` (full vision, 27 phases). This file is the part we build and ship.
 
 ## Product in one paragraph
 
