@@ -81,70 +81,126 @@
     window.addEventListener("resize", () => { if (!$("view-memory").hidden) fit(); });
   }
 
+  /* A soft mind map: the memory sits in the middle, shelves grow outwards as bubbles (bigger bubble = more files),
+     branches are smooth curves, and each main branch has its own colour. */
+  const BRANCH = [["#F6D7A7", "#D9A441"], ["#CDE8D6", "#5CA97A"], ["#CFE5F0", "#4F9FAF"], ["#E3DCF5", "#9482D3"], ["#F7D4CF", "#D96A62"], ["#F5E6B8", "#C9A227"]];
+  const bubbleR = (count) => Math.min(62, 30 + 6 * Math.sqrt(Math.max(count, 1)));
+
   function drawTree() {
     const svg = $("memmap"); svg.replaceChildren();
     const m = B.state().memory;
     if (!m.total) { svg.append(sv("text", { x: 16, y: 44, "font-size": 14, fill: "#6B5878" }, "Your memory is empty. Add something below, or say yes to a helper's suggestion.")); return; }
+    const defs = sv("defs");
+    defs.append(sv("filter", { id: "soft", x: "-30%", y: "-30%", width: "160%", height: "160%" }));
+    defs.lastChild.append(sv("feDropShadow", { dx: 0, dy: 3, stdDeviation: 4, "flood-color": "#3D2E4A", "flood-opacity": 0.22 }));
+    svg.append(defs);
     const vp = sv("g", { id: "vp" }); svg.append(vp);
-    const list = [];
-    shelves().filter(visible).forEach((s) => {
-      list.push({ t: "shelf", s, depth: s.depth, key: s.path });
+    const inner = sv("g"); vp.append(inner);
+    const edges = sv("g"), nodes = sv("g"); inner.append(edges, nodes);
+
+    // 1. the visible tree: shelves, plus the files of the open shelf
+    const vis = shelves().filter(visible), byParent = {};
+    vis.forEach((s) => { (byParent[s.parent] = byParent[s.parent] || []).push(s); });
+    const mk = (s, depth, branch) => {
+      const n = { kind: "shelf", s, depth, branch, kids: [] };
+      (byParent[s.path] || []).forEach((c) => n.kids.push(mk(c, depth + 1, branch)));
       if (s.path === sel) {
-        leaf.slice(0, MAX_LEAVES).forEach((f) => list.push({ t: "file", f, depth: s.depth + 1, parent: s.path, key: "f:" + f.id }));
-        if (leaf.length > MAX_LEAVES) list.push({ t: "more", n: leaf.length - MAX_LEAVES, depth: s.depth + 1, parent: s.path, key: "more" });
+        leaf.slice(0, MAX_LEAVES).forEach((f) => n.kids.push({ kind: "file", f, depth: depth + 1, branch, kids: [], w: 0.6 }));
+        if (leaf.length > MAX_LEAVES) n.kids.push({ kind: "more", n: leaf.length - MAX_LEAVES, depth: depth + 1, branch, kids: [], w: 0.6 });
       }
+      return n;
+    };
+    const top = (byParent[""] || []).map((s, i) => mk(s, 1, i % BRANCH.length));
+    const weight = (n) => (n.kids.length ? n.kids.reduce((a, k) => a + weight(k), 0) : n.w || 1);
+    const perDepth = {}; const count = (n) => { perDepth[n.depth] = (perDepth[n.depth] || 0) + 1; n.kids.forEach(count); }; top.forEach(count);
+    const R = { 0: 0 }; Object.keys(perDepth).map(Number).sort((a, b) => a - b).forEach((d) => { R[d] = Math.max((R[d - 1] || 0) + (d === 1 ? 210 : 170), perDepth[d] * 96 / (2 * Math.PI)); });
+    const place = (list, a0, a1) => {
+      const total = list.reduce((a, n) => a + weight(n), 0) || 1; let a = a0;
+      list.forEach((n) => { const span = (a1 - a0) * weight(n) / total, mid = a + span / 2; n.x = Math.cos(mid) * R[n.depth]; n.y = Math.sin(mid) * R[n.depth]; n.ang = mid; place(n.kids, a, a + span); a += span; });
+    };
+    place(top, -Math.PI / 2, Math.PI * 1.5);
+    const all = []; const flat = (n, parent) => { n.parent = parent; all.push(n); n.kids.forEach((k) => flat(k, n)); }; const rootNode = { kind: "root", x: 0, y: 0, kids: top, depth: 0 }; flat(rootNode, null);
+    visiblePaths = new Set(all.filter((n) => n.kind === "shelf").map((n) => n.s.path));
+    const posOf = {}; all.forEach((n) => { if (n.kind === "shelf") posOf[n.s.path] = n; });
+
+    // 2. the edges: smooth curves, thicker where there is more
+    all.forEach((n) => {
+      if (!n.parent) return;
+      const a = n.parent, col = BRANCH[n.branch % BRANCH.length][1], w = n.kind === "shelf" ? Math.min(9, 2.5 + Math.sqrt(n.s.count)) : 2;
+      const mx = (a.x + n.x) / 2, my = (a.y + n.y) / 2, k = 0.18;
+      edges.append(sv("path", { d: "M" + a.x + "," + a.y + " Q" + (mx - (n.y - a.y) * k) + "," + (my + (n.x - a.x) * k) + " " + n.x + "," + n.y, fill: "none", stroke: col, "stroke-width": w, "stroke-linecap": "round", opacity: 0.55 }));
     });
-    const row = {}; list.forEach((it, i) => { row[it.key] = i; });
-    visiblePaths = new Set(list.filter((it) => it.t === "shelf").map((it) => it.s.path));
-    const maxDepth = Math.max(0, ...list.map((it) => it.depth)), chatX = 48 + (maxDepth + 1) * (NW + GX) + 20;
-    size = { w: chatX + 190, h: Math.max(list.length * (NH + GY) + 70, stalls.length * 58 + 80, 200) };
-    const edges = sv("g"), nodes = sv("g"); vp.append(edges, nodes);
-    const y = (key) => 56 + row[key] * (NH + GY), xOf = (d) => 48 + d * (NW + GX);
-    const root = sv("g", { class: "mnode" + (sel === "" ? " sel" : ""), tabindex: 0, role: "button", "aria-label": "Everything, " + m.total + " files" });
-    root.append(sv("rect", { x: 20, y: 6, width: NW, height: 36, rx: 8, fill: "#FFF8E7", stroke: "#1A1320", "stroke-width": sel === "" ? 4 : 2 }), sv("text", { x: 32, y: 29, "font-size": 14, "font-weight": 700 }, "All my memory · " + m.total));
-    root.onclick = () => select(""); root.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); select(""); } };
-    nodes.append(root);
-    const conn = (x1, y1, x2, y2, col, w, dash) => edges.append(sv("path", { d: "M" + x1 + "," + y1 + " C" + (x1 + 30) + "," + y1 + " " + (x2 - 30) + "," + y2 + " " + x2 + "," + y2, fill: "none", stroke: col, "stroke-width": w, "stroke-dasharray": dash || "" }));
-    list.forEach((it) => {
-      const x = xOf(it.depth), yy = y(it.key);
-      const spine = it.depth === 0 ? 34 : xOf(it.depth - 1) + 14, top = it.depth === 0 ? 42 : (row[it.parent] !== undefined ? y(it.parent) + NH : 42);  // an elbow from the shelf above, like a folder tree
-      edges.append(sv("path", { d: "M" + spine + "," + top + " V" + (yy + NH / 2) + " H" + x, fill: "none", stroke: it.t === "shelf" ? "#A899B5" : "#5CA97A", "stroke-width": 2 }));
-      if (it.t === "more") { nodes.append(sv("text", { x: x + 8, y: yy + NH / 2 + 4, "font-size": 12, fill: "#6B5878" }, "…and " + it.n + " more in the list on the right")); return; }
-      if (it.t === "file") {
-        const f = it.f, on = selFile === f.id, g = sv("g", { class: "mfile", tabindex: 0, role: "button", "aria-label": "File: " + snip(f.text, 60) });
-        g.append(sv("title", {}, f.text));
-        g.append(sv("rect", { x, y: yy + 4, width: NW, height: NH - 8, rx: 14, fill: f.sensitivity === "low" ? "#D2E7DA" : "#F3D3CD", stroke: "#1A1320", "stroke-width": on ? 4 : 2 }));
-        g.append(sv("text", { x: x + 12, y: yy + 28, "font-size": 11 }, (f.sensitivity === "low" ? "" : "🔒 ") + snip(f.text, f.sensitivity === "low" ? 28 : 25)));
+
+    // 3. the bubbles
+    const label = (g, text, x, y, size, weight, anchor) => {
+      const t = sv("text", { x, y, "text-anchor": anchor || "middle", "font-size": size, "font-weight": weight || 600, class: "mlabel" }, text); g.append(t); return t;
+    };
+    const rootG = sv("g", { class: "mnode bub" + (sel === "" ? " sel" : ""), tabindex: 0, role: "button", "aria-label": "Everything, " + m.total + " files" });
+    const ri = sv("g", { class: "bubi" });
+    ri.append(sv("circle", { r: 62, fill: "url(#g-root)", stroke: "#1A1320", "stroke-width": sel === "" ? 4 : 2.5, filter: "url(#soft)" }));
+    label(ri, "My memory", 0, -2, 14, 700); label(ri, m.total + " files", 0, 17, 12, 500);
+    rootG.append(ri); rootG.setAttribute("transform", "translate(0 0)");
+    rootG.onclick = () => select(""); rootG.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); select(""); } };
+    BRANCH.forEach(([a, b], i) => { const gr = sv("radialGradient", { id: "g-" + i, cx: "35%", cy: "30%", r: "80%" }); gr.append(sv("stop", { offset: "0%", "stop-color": "#FFFFFF" }), sv("stop", { offset: "100%", "stop-color": a })); defs.append(gr); });
+    { const gr = sv("radialGradient", { id: "g-root", cx: "35%", cy: "30%", r: "80%" }); gr.append(sv("stop", { offset: "0%", "stop-color": "#FFFDF5" }), sv("stop", { offset: "100%", "stop-color": "#F3E4BC" })); defs.append(gr); }
+    nodes.append(rootG);
+    all.forEach((n) => {
+      if (n.kind === "root") return;
+      const col = BRANCH[n.branch % BRANCH.length];
+      if (n.kind === "more") { const t = sv("text", { x: n.x, y: n.y + 4, "text-anchor": "middle", "font-size": 12, fill: "#6B5878" }, "…and " + n.n + " more (see the list)"); nodes.append(t); return; }
+      if (n.kind === "file") {
+        const f = n.f, on = selFile === f.id, g = sv("g", { class: "mfile bub pop", tabindex: 0, role: "button", "aria-label": "File: " + snip(f.text, 60) });
+        g.setAttribute("transform", "translate(" + n.x + " " + n.y + ")"); g.append(sv("title", {}, f.text));
+        const gi = sv("g", { class: "bubi" }), txt = (f.sensitivity === "low" ? "" : "🔒 ") + snip(f.text, 26), w = Math.max(70, txt.length * 6.2 + 20);
+        gi.append(sv("rect", { x: -w / 2, y: -15, width: w, height: 30, rx: 15, fill: f.sensitivity === "low" ? "#E6F3EA" : "#F9DDD9", stroke: on ? "#1A1320" : col[1], "stroke-width": on ? 3.5 : 2, filter: "url(#soft)" }));
+        label(gi, txt, 0, 4, 11, 500); g.append(gi);
         g.onclick = () => { selFile = f.id; drawTree(); drawFiles(true); }; g.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); g.onclick(); } };
         nodes.append(g); return;
       }
-      const s = it.s, isSel = sel === s.path;
-      const g = sv("g", { class: "mnode" + (isSel ? " sel" : ""), tabindex: 0, role: "button", "aria-label": s.name + ", " + s.count + " files" + (s.secret ? ", " + s.secret + " secret" : "") });
-      g.append(sv("title", {}, s.label || s.name));
-      g.append(sv("rect", { x, y: yy, width: NW, height: NH, rx: 8, fill: "#FFFDF5", stroke: "#1A1320", "stroke-width": isSel ? 4 : 2 }));
-      g.append(sv("text", { x: x + 12, y: yy + 19, "font-size": 13, "font-weight": 700 }, snip(s.name, 18)));
-      g.append(sv("text", { x: x + NW - 12, y: yy + 19, "font-size": 12, "text-anchor": "end", fill: "#3D2E4A" }, s.count + (s.has_children ? (expanded.has(s.path) ? "  ▾" : "  ▸") : "")));
-      const bw = NW - 24, total = Math.max(m.total, 1), full = Math.max(8, Math.round(bw * Math.min(1, s.count / total * 3))), sec = Math.round(full * (s.secret / Math.max(s.count, 1)));
-      g.append(sv("rect", { x: x + 12, y: yy + 28, width: full - sec, height: 8, fill: "#5CA97A", stroke: "#1A1320", "stroke-width": 1 }));
-      if (sec) g.append(sv("rect", { x: x + 12 + full - sec, y: yy + 28, width: sec, height: 8, fill: "#D96A62", stroke: "#1A1320", "stroke-width": 1 }));
-      if (s.label) g.append(sv("text", { x: x + 24 + full, y: yy + 36, "font-size": 10, fill: "#6B5878" }, snip(s.label, 16)));
+      const s = n.s, r = bubbleR(s.count), isSel = sel === s.path;
+      const g = sv("g", { class: "mnode bub" + (isSel ? " sel" : ""), tabindex: 0, role: "button", "aria-label": s.name + ", " + s.count + " files" + (s.secret ? ", " + s.secret + " secret" : "") });
+      g.setAttribute("transform", "translate(" + n.x + " " + n.y + ")"); g.append(sv("title", {}, s.label || s.name));
+      const gi = sv("g", { class: "bubi" });
+      gi.append(sv("circle", { r, fill: "url(#g-" + (n.branch % BRANCH.length) + ")", stroke: isSel ? "#1A1320" : col[1], "stroke-width": isSel ? 4 : 2.5, filter: "url(#soft)" }));
+      if (s.secret) {  // the red ring shows how much of this shelf is secret
+        const c = 2 * Math.PI * (r + 5), part = c * (s.secret / Math.max(s.count, 1));
+        gi.append(sv("circle", { r: r + 5, fill: "none", stroke: "#D96A62", "stroke-width": 4, "stroke-linecap": "round", "stroke-dasharray": part + " " + c, transform: "rotate(-90)" }));
+      }
+      label(gi, String(s.count), 0, 6, 17, 700);
+      if (s.has_children) label(gi, expanded.has(s.path) ? "▾" : "▸", 0, -r * 0.45, 11, 500);
+      const nm = label(gi, snip(s.name, 16), 0, r + 22, 15, 700);
+      g.append(gi);
+      if (s.label) { const t = label(gi, snip(s.label, 22), 0, r + 35, 10.5, 400); t.setAttribute("fill", "#6B5878"); }
       g.onclick = () => { if (s.has_children) { expanded.has(s.path) ? (isSel ? expanded.delete(s.path) : 0) : expanded.add(s.path); } select(s.path); };
       g.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); g.onclick(); } };
       nodes.append(g);
     });
+
+    // 4. the chats, on the right, joined to the shelves they may look at
+    let minX = 0, maxX = 0, minY = 0, maxY = 0;
+    all.forEach((n) => { const pad = n.kind === "shelf" ? bubbleR(n.s.count) + 50 : n.kind === "file" ? 130 : 60; minX = Math.min(minX, n.x - pad); maxX = Math.max(maxX, n.x + pad); minY = Math.min(minY, n.y - pad); maxY = Math.max(maxY, n.y + pad); });
+    const chatX = maxX + 70;
     stalls.forEach((c, i) => {
-      const cy = 56 + i * 58, col = CHAT_COLORS[i % CHAT_COLORS.length];
-      const g = sv("g", { class: "mchat", tabindex: 0, role: "button", "aria-label": "Chat: " + c.title });
-      g.append(sv("rect", { x: chatX, y: cy, width: 170, height: 44, rx: 22, fill: col, stroke: "#1A1320", "stroke-width": 2 }));
-      g.append(sv("text", { x: chatX + 85, y: cy + 19, "text-anchor": "middle", "font-size": 12, "font-weight": 700 }, snip(c.title, 20)));
-      g.append(sv("text", { x: chatX + 85, y: cy + 34, "text-anchor": "middle", "font-size": 10, fill: "#3D2E4A" }, c.agent.name));
+      const cy = minY + 60 + i * 76, col = CHAT_COLORS[i % CHAT_COLORS.length];
+      const g = sv("g", { class: "mchat bub", tabindex: 0, role: "button", "aria-label": "Chat: " + c.title }); g.setAttribute("transform", "translate(" + chatX + " " + cy + ")");
+      const gi = sv("g", { class: "bubi" });
+      gi.append(sv("rect", { x: 0, y: -26, width: 176, height: 52, rx: 26, fill: col, stroke: "#4F9FAF", "stroke-width": 2.5, filter: "url(#soft)" }));
+      label(gi, snip(c.title, 20), 88, -2, 12.5, 700); label(gi, c.agent.name, 88, 14, 10.5, 400); g.append(gi);
       g.onclick = () => window.ChatUI.open(c.id); g.onkeydown = (e) => { if (e.key === "Enter") window.ChatUI.open(c.id); };
       nodes.append(g);
-      (c.paths || []).forEach((p) => { const v = nearestVisible(p); if (v !== "" && row[v] !== undefined) conn(xOf(list[row[v]].depth) + NW, y(v) + NH / 2, chatX, cy + 22, "#4F9FAF", 3, "7 4"); });
+      (c.paths || []).forEach((p) => {
+        const v = nearestVisible(p), n = v === "" ? null : posOf[v]; if (!n) return;
+        const r = bubbleR(n.s.count), x1 = n.x + r, y1 = n.y, x2 = chatX, y2 = cy, dx = Math.max(60, (x2 - x1) / 2);
+        edges.append(sv("path", { d: "M" + x1 + "," + y1 + " C" + (x1 + dx) + "," + y1 + " " + (x2 - dx) + "," + y2 + " " + x2 + "," + y2, fill: "none", stroke: "#4F9FAF", "stroke-width": 3, "stroke-dasharray": "2 9", "stroke-linecap": "round" }));
+      });
     });
-    if (stalls.length) nodes.append(sv("text", { x: chatX, y: 34, "font-size": 12, fill: "#6B5878" }, "Chats that may look"));
+    if (stalls.length) { const t = sv("text", { x: chatX, y: minY + 22, "font-size": 12, fill: "#6B5878" }, "Chats that may look here"); nodes.append(t); maxX = chatX + 190; }
     const dl = $("shelfnames"); dl.replaceChildren();
     shelves().forEach((s) => { const o = document.createElement("option"); o.value = s.path; dl.append(o); });
+
+    // 5. frame it: shift so the top-left is at the origin, remember the size for "Fit"
+    inner.setAttribute("transform", "translate(" + (-minX + 20) + " " + (-minY + 20) + ")");
+    size = { w: maxX - minX + 40, h: Math.max(maxY - minY, stalls.length * 76 + 80) + 40 };
     if (fitNext) { fitNext = false; fit(); } else applyView();
   }
   async function loadChats() { try { stalls = (await B.api("/api/office")).stalls; } catch (e) { stalls = []; } drawTree(); }

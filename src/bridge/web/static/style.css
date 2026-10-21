@@ -355,7 +355,19 @@ details.more>summary{color:var(--ink-700);font-size:14px;margin:0 0 6px;cursor:p
 .memtop{display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:16px;margin-top:16px;align-items:start}
 .memtop .mapwrap{margin-top:0}
 .memtop .inspector{max-height:calc(100vh - 140px);overflow:auto;position:sticky;top:8px}
-.mapview{overflow:hidden!important;max-height:none!important;height:600px}
+.mapview{overflow:hidden!important;max-height:none!important;height:680px}
 #memmap{width:100%;height:100%;cursor:grab;touch-action:none}
 .mem.picked{border-width:4px;background:var(--lemon-light)}
 @media (max-width:1100px){.memtop{grid-template-columns:minmax(0,1fr)}.memtop .inspector{position:static;max-height:none}.mapview{height:460px}}
+
+/* ===== soft mind map ===== */
+.mapview{background:radial-gradient(circle at 50% 45%,#FFFDF5 0%,#FBF1D6 70%,#F4E4B8 100%)!important;border-radius:14px}
+#memmap .mlabel{paint-order:stroke;stroke:#FFFDF5;stroke-width:4px;stroke-linejoin:round;fill:#1A1320;font-family:var(--ui);pointer-events:none}
+#memmap .bub{cursor:pointer}
+#memmap .bubi{transition:transform .18s ease;transform-box:fill-box;transform-origin:center}
+#memmap .bub:hover .bubi{transform:scale(1.07)}
+#memmap .bub:focus-visible{outline:none}
+#memmap .bub:focus-visible .bubi{transform:scale(1.07)}
+#memmap .pop{animation:pop .35s ease both}
+@keyframes pop{from{opacity:0}to{opacity:1}}
+#memmap .mnode.sel circle:first-of-type{filter:drop-shadow(0 0 8px rgba(220,171,60,.9))}
