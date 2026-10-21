@@ -423,3 +423,14 @@ steps:
     eng2.task = "Sales pipeline: three big accounts at risk"  # the user pasted a private note into the question
     r = eng2.run()
     assert eng2.web.queries == [] and [v["kind"] for v in eng2.violations] == ["WEB_QUERY_LEAK"]
+
+
+def test_a_model_call_is_journaled_with_what_it_carried_out():
+    class Named(Scripted):
+        provider = "Some Provider"
+
+    eng, broker = build(Named(ModelReply({"summary": "ok"}, tokens=5)))
+    eng.run()
+    call = next(e["data"] for e in eng.journal.entries if e["kind"] == "model_call")
+    assert call["sent_records"] == ["n1"] and call["sent_records"] == broker.reads
+    assert call["sent_chars"] > 0 and call["sent_parts"] == ["read"] and call["sent_to"] == "Some Provider"

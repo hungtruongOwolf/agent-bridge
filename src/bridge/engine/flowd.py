@@ -12,6 +12,7 @@ The pack supplies the program; this engine is trusted platform code. Rules it en
 """
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Callable, Protocol
@@ -152,8 +153,26 @@ class Engine:
             raise _InfraError(f"model call failed: {type(e).__name__}") from e
         self.tokens += reply.tokens
         self.usd += reply.usd
-        self.journal.append("model_call", {"step": step.id, "tokens": reply.tokens, "usd": reply.usd})
+        self.journal.append("model_call", {"step": step.id, "tokens": reply.tokens, "usd": reply.usd, **self._sent(inputs)})
         return reply.content
+
+    def _sent(self, inputs: dict[str, Any]) -> dict:
+        """What this model call carried out of the machine: which of the user's records, how much text, and to whom."""
+        ids: list[str] = []
+
+        def walk(v: Any) -> None:
+            if isinstance(v, dict):
+                if v.get("id") in self.broker.manifest and v["id"] not in ids:
+                    ids.append(v["id"])
+                for x in v.values():
+                    walk(x)
+            elif isinstance(v, list):
+                for x in v:
+                    walk(x)
+
+        walk(inputs)
+        return {"sent_records": ids, "sent_chars": len(json.dumps(inputs, ensure_ascii=False)), "sent_parts": sorted(inputs),
+                "sent_to": getattr(self.model, "provider", "the thinking service")}
 
     def _code(self, step: Step, inputs: dict[str, Any]) -> Any:
         if self.cell is None:

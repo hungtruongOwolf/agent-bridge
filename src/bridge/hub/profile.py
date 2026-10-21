@@ -25,12 +25,13 @@ def _works_with(rec: PackRecord) -> list[dict]:
         kinds = ", ".join(rec.needs) if rec.needs else "any kind"
         out.append({"kind": "files", "text": f"Reads the files you choose to share ({kinds}). It cannot see the rest."})
     if c.get("web"):
-        out.append({"kind": "web", "text": "Looks things up on the public web. Your files and your question are not sent there."})
+        out.append({"kind": "web", "text": "Looks things up on the public web. Your files are never sent there"
+                    + ("; the words of your question may be." if c.get("web_uses_task") else ", and neither is your question.")})
     if c.get("code"):
         out.append({"kind": "program", "text": "Runs its own small program inside a sealed glass room with no internet."})
     if c.get("propose_memory"):
         out.append({"kind": "memory", "text": "May suggest things for you to remember. Nothing is saved unless you say yes."})
-    out.append({"kind": "thinking", "text": "Thinks with the Nemotron model, through your own assistant. The helper never holds your keys."})
+    out.append({"kind": "thinking", "text": "Thinks with the Nemotron model on Nebius, through your own assistant. The text it reads goes to that service. The helper never holds your keys."})
     return out
 
 

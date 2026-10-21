@@ -62,6 +62,8 @@ def _http_post(url: str, headers: dict, body: dict) -> dict:
 
 
 class NebiusModel:
+    provider = "Nebius Token Factory"  # who reads the prompt; shown to the user after every answer
+
     def __init__(self, api_key: str, model: str = DEFAULT_MODEL, *, post: Callable[..., dict] = _http_post,
                  max_tokens: int = 1500, attempts: int = 3, thinking: bool = False):
         self._key, self.model, self._post, self._max = api_key, model, post, max_tokens

@@ -202,6 +202,20 @@ def _scope_problems(steps: dict[str, Step]) -> list[str]:
     return problems
 
 
+def web_uses_task(steps: dict[str, Step]) -> bool:
+    """True when something the user typed can reach a web search (their question is then sent to the search service)."""
+    typed = {sid for sid, s in steps.items() if "task" in s.reads}
+    changed = True
+    while changed:
+        changed = False
+        for sid, s in steps.items():
+            if sid not in typed and any(r in typed for r in s.reads):
+                typed.add(sid)
+                changed = True
+    return any(s.kind == "tool" and s.tool == "web_search" and ("{task}" in (s.prompt or "") or any(r in typed for r in s.reads))
+               for s in steps.values())
+
+
 def _edges(s: Step) -> list[str]:
     return [t for t in (s.next, s.on_fail) if t]
 

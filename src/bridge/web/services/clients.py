@@ -24,6 +24,10 @@ class LazyModel:
             self._model = self._factory()
         return self._model.complete(prompt, inputs)
 
+    @property
+    def provider(self):
+        return getattr(self._model, "provider", "the thinking service")
+
 
 class LazySearch:
     """Builds the Tavily client on first use, so packs that never search need no Tavily key."""

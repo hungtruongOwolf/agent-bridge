@@ -7,6 +7,8 @@ the profile page shows them next to what the Certifier actually measured.
 """
 from __future__ import annotations
 
+from ..guard.result_guard import unbounded
+
 REQUIRED = ("id", "version", "author", "summary", "skills", "result_schema")
 MAX_SKILLS = 5
 LIMITS = {"name": (3, 60), "does": (10, 240), "ask": (3, 120), "limit": (3, 140), "summary": (10, 200), "speciality": (2, 60)}
@@ -53,6 +55,10 @@ def validate(manifest) -> list[str]:
         v = manifest.get(key)
         if v is not None and (not isinstance(v, list) or len(v) > 5 or not all(isinstance(x, str) and 1 <= len(x) <= 140 for x in v)):
             problems.append(f"{key} must be a list of at most 5 short strings")
+    if isinstance(manifest.get("result_schema"), dict):
+        loose = unbounded(manifest["result_schema"])
+        if loose:  # a listed helper may only say what fits in a stated amount of room
+            problems.append("result_schema leaves room for unlimited text at: " + ", ".join(loose[:4]) + " (add maxLength / maxItems, and additionalProperties: false)")
     return problems
 
 

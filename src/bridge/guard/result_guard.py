@@ -53,6 +53,27 @@ def longest_shared_run(haystack: str, needle: str, cap: int = 200) -> int:
     return best
 
 
+def unbounded(schema: dict, path: str = "result") -> list[str]:
+    """Places in an output schema where the answer could be any length: a string with no maxLength, a list with no
+    maxItems, or an object that allows extra fields. Free room in the answer is room to carry something out."""
+    out: list[str] = []
+    kind = schema.get("type")
+    if kind == "string" and "maxLength" not in schema and "enum" not in schema and "const" not in schema:
+        out.append(path)
+    elif kind == "array":
+        if "maxItems" not in schema:
+            out.append(path + "[]")
+        out += unbounded(schema.get("items") or {}, path + "[]")
+    elif kind == "object":
+        if schema.get("additionalProperties") not in (False, None) or "additionalProperties" not in schema:
+            out.append(path + " (extra fields allowed)")
+        for k, v in (schema.get("properties") or {}).items():
+            out += unbounded(v, f"{path}.{k}")
+    elif kind is None and not any(k in schema for k in ("enum", "const")):
+        out.append(path + " (no type)")
+    return out
+
+
 class ResultGuard:
     def __init__(self, schema: dict, *, max_bytes: int = 8192, max_overlap: int = 60):
         Draft202012Validator.check_schema(schema)

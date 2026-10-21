@@ -64,3 +64,13 @@ def test_the_listing_keeps_only_the_vetted_fields():
 def test_non_mapping_manifests_do_not_crash():
     for bad in (None, [], "text", 5):
         assert validate(bad) == ["pack.yaml must be a mapping"]
+
+
+def test_a_listed_helper_must_bound_what_its_answer_can_hold():
+    from bridge.guard.result_guard import unbounded
+    tight = {"type": "object", "additionalProperties": False, "required": ["s"],
+             "properties": {"s": {"type": "string", "maxLength": 300}, "l": {"type": "array", "maxItems": 5, "items": {"type": "string", "maxLength": 80}},
+                            "risk": {"enum": ["low", "high"]}}}
+    assert unbounded(tight) == []
+    loose = {"type": "object", "properties": {"s": {"type": "string"}, "l": {"type": "array", "items": {"type": "string"}}}}
+    assert {"result (extra fields allowed)", "result.s", "result.l[]"} <= set(unbounded(loose))

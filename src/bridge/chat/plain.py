@@ -70,7 +70,9 @@ def how_made(steps: list[dict], vault_texts: dict[str, str] | None = None) -> li
             if e.get("blocked"):
                 out.append("It also " + blocked_phrase(e["blocked"]) + ", which the guard refused.")
         elif ev == "model_call":
-            out.append("Asked the thinking service to write or check something.")
+            n, to = len(e.get("sent_records") or []), e.get("sent_to") or "the thinking service"
+            out.append(f"Sent {n} of your files to {to} to write the answer." if n else f"Asked {to} to write or check something; none of your files went with it."
+                       if "sent_records" in e else "Asked the thinking service to write or check something.")
         elif ev == "web_search":
             out.append(f"Looked something up on the public web (“{e.get('query', '')}”). Your files were not part of that search.")
         elif ev == "cell_run":
