@@ -6,7 +6,10 @@ without double-charging (PayPal's `PayPal-Request-Id` header plays this role for
 """
 from __future__ import annotations
 
+import json
+import os
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Protocol
 
 
@@ -47,7 +50,28 @@ class FakeProvider:
     calls: list[tuple[str, str]] = field(default_factory=list)
     lose_response_once: set[str] = field(default_factory=set)  # ops whose reply is lost after the effect happens
     decline_capture: bool = False
+    path: Path | None = None  # when set, state is saved after every call and reloaded on start
     _n: int = 0
+
+    def __post_init__(self):
+        if self.path and Path(self.path).exists():
+            raw = json.loads(Path(self.path).read_text(encoding="utf-8"))
+            self.auths, self.captures, self.payouts = raw["auths"], raw["captures"], raw["payouts"]
+            self._n = raw["n"]
+            from_json = raw["seen"]
+            for k, v in from_json.items():  # results are stored as plain dicts; rebuild the typed values
+                self.seen[k] = Auth(**v) if k.startswith("authorize:") else Capture(**v) if k.startswith("capture:") else v
+
+    def _persist(self):
+        if not self.path:
+            return
+        def plain(v):
+            return v.__dict__ if hasattr(v, "__dict__") else v
+        data = {"auths": self.auths, "captures": self.captures, "payouts": self.payouts, "n": self._n,
+                "seen": {k: plain(v) for k, v in self.seen.items()}}
+        tmp = Path(self.path).with_suffix(".tmp")
+        tmp.write_text(json.dumps(data), encoding="utf-8")
+        os.replace(tmp, self.path)
 
     def _idem(self, op: str, request_id: str, make):
         self.calls.append((op, request_id))
@@ -56,6 +80,7 @@ class FakeProvider:
             return self.seen[key]
         result = make()
         self.seen[key] = result
+        self._persist()
         if op in self.lose_response_once:
             self.lose_response_once.discard(op)
             raise ProviderError("timeout after the provider acted", retryable=True)

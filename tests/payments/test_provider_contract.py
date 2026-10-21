@@ -65,3 +65,17 @@ def test_a_lost_response_can_be_retried_without_charging_twice():
     assert e.value.retryable
     c = p.capture(a.auth_id, 25, "c1")  # same request id after the lost reply
     assert c.amount == 25 and p.captured_total() == 25
+
+
+def test_fake_provider_state_survives_a_restart(tmp_path):
+    path = tmp_path / "provider.json"
+    p1 = FakeProvider(path=path)
+    a = p1.authorize(100, "a", "run")
+    c = p1.capture(a.auth_id, 25, "c1")
+    p1.payout("author", 20, "p1")
+    p2 = FakeProvider(path=path)
+    assert p2.captured_total() == 25 and p2.paid_total() == 20
+    assert p2.capture(a.auth_id, 25, "c1") == c and p2.captured_total() == 25  # same request id, same result
+    assert p2.authorize(100, "a", "run") == a
+    new = p2.authorize(50, "b", "run2")
+    assert new.auth_id not in (a.auth_id,)  # ids keep counting where they left off
