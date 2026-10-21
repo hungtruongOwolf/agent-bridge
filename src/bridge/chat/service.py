@@ -12,7 +12,7 @@ from __future__ import annotations
 from ..engine.limits import clean_history
 from ..memory.broker import Lens as RunLens
 from ..memory.broker import MemoryBroker
-from ..memory.tree import pretty
+from ..memory.tree import MemoryTree, pretty
 from ..memory.vault import under
 from ..payments.ledger import TERMINAL, PendingError, StateError
 from ..payments.provider import ProviderError
@@ -160,8 +160,16 @@ class ChatService:
         res = broker.search(draft, fallback=True) if draft.strip() else None
         likely = [x["id"] for x in res.records] if res else []
         walk = broker.walks[-1]["opened"][1:] if res and broker.walks else []
+        suggest = []
+        if draft.strip():  # closed shelves whose files fit the message, so one tick can open exactly what is needed
+            hits, _ = MemoryTree(r for r in vault.all() if r.sensitivity == "low" and r.id not in lens.exclude).route(draft, 8)
+            seen: dict[str, int] = {}
+            for r in hits:
+                if not any(under(r.shelf, o) for o in open_paths):
+                    seen[r.shelf] = seen.get(r.shelf, 0) + 1
+            suggest = [{"path": p, "name": pretty(p), "matches": n} for p, n in sorted(seen.items(), key=lambda kv: (-kv[1], kv[0]))[:3]]
         hist = self.history(t)
-        return {"thread": t.id, "helper": self._agent(t), "shelves": shelves, "total": everything["total"],
+        return {"thread": t.id, "helper": self._agent(t), "shelves": shelves, "suggest": suggest, "total": everything["total"],
                 "secret": everything["secret"], "shared_count": len(shared), "shared": shared[:40], "shared_more": max(0, len(shared) - 40),
                 "held_back": held_back, "likely": likely, "walk": [pretty(p) for p in walk],
                 "history": hist, "history_turns": t.history_turns, "budget": self.money(t),

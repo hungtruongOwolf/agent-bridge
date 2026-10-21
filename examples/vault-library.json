@@ -1,0 +1,240 @@
+[
+  {
+    "id": "n1",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Sales pipeline review: three large accounts (Acme, Globex, Initech) are at risk because their renewal budgets were cut this quarter.",
+    "path": "work/accounts"
+  },
+  {
+    "id": "a1",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Acme: renewal call is booked for November 12. Maria wants to talk about a discount before signing.",
+    "path": "work/accounts/acme"
+  },
+  {
+    "id": "a2",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Acme pays in euros and wants invoices sent on the first of the month.",
+    "path": "work/accounts/acme"
+  },
+  {
+    "id": "a3",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Acme expanded to a second office in Lisbon, which could mean more seats next year.",
+    "path": "work/accounts/acme"
+  },
+  {
+    "id": "g1",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Globex froze hiring and cut its tools budget by thirty percent, so the renewal is at risk.",
+    "path": "work/accounts/globex"
+  },
+  {
+    "id": "g2",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Globex champion Dana Whitfield left in September; nobody new owns the relationship yet.",
+    "path": "work/accounts/globex"
+  },
+  {
+    "id": "i1",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Initech asked for a security questionnaire before they will renew. Due at the end of the month.",
+    "path": "work/accounts/initech"
+  },
+  {
+    "id": "i2",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Initech support tickets dropped by half after the onboarding fix, which is good news for the renewal.",
+    "path": "work/accounts/initech"
+  },
+  {
+    "id": "h1",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Hooli renewed early for two years and asked for a case study.",
+    "path": "work/accounts/hooli"
+  },
+  {
+    "id": "n2",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Team offsite planned for November. Sales and support will travel together.",
+    "path": "work/team"
+  },
+  {
+    "id": "t1",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Offsite budget approved: 14,000 for twenty people, flights not included.",
+    "path": "work/team"
+  },
+  {
+    "id": "t2",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Support lead Sam is on leave from the 3rd to the 17th; Lee covers the queue.",
+    "path": "work/team"
+  },
+  {
+    "id": "n4",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Meeting notes, Monday: Priya will book the November offsite venue by Friday. Sam will send the renewal deck to Acme. Everyone reviews the Q4 plan before Thursday.",
+    "path": "work/meetings"
+  },
+  {
+    "id": "n5",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Meeting notes, Wednesday: Lee agreed to fix the onboarding checklist this week. Maria will call Globex about their budget.",
+    "path": "work/meetings"
+  },
+  {
+    "id": "m1",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Meeting notes, Friday: Planning moved to next week. Sam owns the security questionnaire for Initech.",
+    "path": "work/meetings"
+  },
+  {
+    "id": "m2",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Meeting notes, last Tuesday: We decided not to discount Acme before the call. Priya will prepare two options.",
+    "path": "work/meetings"
+  },
+  {
+    "id": "n3",
+    "type": "note",
+    "sensitivity": "high",
+    "text": "Salary table for every employee. Strictly confidential.",
+    "path": "work/hr"
+  },
+  {
+    "id": "hr2",
+    "type": "note",
+    "sensitivity": "high",
+    "text": "Performance review drafts for the support team. Do not share.",
+    "path": "work/hr"
+  },
+  {
+    "id": "c1",
+    "type": "contact",
+    "sensitivity": "low",
+    "text": "Maria Lopez, head of sales at Acme, prefers email on Mondays.",
+    "path": "people/customers"
+  },
+  {
+    "id": "c2",
+    "type": "contact",
+    "sensitivity": "low",
+    "text": "Dana Whitfield, former product owner at Globex, now at a competitor; still friendly.",
+    "path": "people/customers"
+  },
+  {
+    "id": "c3",
+    "type": "contact",
+    "sensitivity": "low",
+    "text": "Priya Nair, head of sales at Hooli, prefers calls on Fridays.",
+    "path": "people/customers"
+  },
+  {
+    "id": "c4",
+    "type": "contact",
+    "sensitivity": "low",
+    "text": "Tomás from university, lives in Lisbon, loves hiking and bad puns.",
+    "path": "people/friends"
+  },
+  {
+    "id": "c5",
+    "type": "contact",
+    "sensitivity": "low",
+    "text": "Mum's birthday is on March 3rd; she likes tulips and anything from the bakery on Elm Street.",
+    "path": "people/family"
+  },
+  {
+    "id": "p1",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Dentist appointment on Tuesday at 9:30. Bring the insurance card.",
+    "path": "personal/health"
+  },
+  {
+    "id": "p2",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Doctor said to walk thirty minutes a day and cut down on coffee after lunch.",
+    "path": "personal/health"
+  },
+  {
+    "id": "p3",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Flight to Lisbon on November 20, seat 14C, returning the 27th. Hotel near Alfama is booked.",
+    "path": "personal/travel"
+  },
+  {
+    "id": "p4",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Packing list for Lisbon: adapter, rain jacket, the good walking shoes.",
+    "path": "personal/travel"
+  },
+  {
+    "id": "p5",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "The landlord will fix the boiler on Thursday between 10 and 12.",
+    "path": "personal/home"
+  },
+  {
+    "id": "s1",
+    "type": "note",
+    "sensitivity": "high",
+    "text": "Passport number and the locker code for the safe deposit box.",
+    "path": "personal/documents"
+  },
+  {
+    "id": "d1",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Idea: let customers see a one-page health score for their own account.",
+    "path": "ideas/product"
+  },
+  {
+    "id": "d2",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Idea: a weekly digest that lists accounts whose usage dropped more than twenty percent.",
+    "path": "ideas/product"
+  },
+  {
+    "id": "d3",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Blog post idea: what we learned from cutting onboarding from three weeks to four days.",
+    "path": "ideas/writing"
+  },
+  {
+    "id": "f1",
+    "type": "finance",
+    "sensitivity": "high",
+    "text": "Bank account 000111222, balance 91000 USD, routing 021000021.",
+    "path": "money"
+  },
+  {
+    "id": "f2",
+    "type": "finance",
+    "sensitivity": "high",
+    "text": "Monthly budget: rent 1800, food 600, travel 300, savings 700.",
+    "path": "money"
+  }
+]

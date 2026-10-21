@@ -215,3 +215,68 @@ dialog.profile h2{font:14px/22px var(--display);margin-bottom:8px}
 .rec .who .blurb{display:block;font-size:13px;color:var(--ink-700)}
 @media (max-width:720px){.rec{grid-template-columns:1fr}}
 @media (max-width:720px){.assistant{flex-basis:100%;flex-wrap:wrap}.assistant input{flex-basis:100%}.coins{width:100%}}
+
+/* ===== the market floor: one stall per chat ===== */
+.floorview{max-width:1500px;margin:0 auto;padding:16px}
+.floorview .panel+.panel{margin-top:16px}
+.marketbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.marketbar .btn{margin-left:auto}
+.chip{display:inline-block;font-size:12px;padding:3px 8px;border:2px solid var(--ink-900);background:var(--cream-50)}
+.chip.busy{background:var(--lemon-light)} .chip.alarm{background:var(--coral-light)} .chip.calm{background:var(--mint-light)}
+.stalls{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:18px;margin-top:14px}
+.stall{position:relative;display:flex;flex-direction:column;text-align:left;background:var(--cream-50);border:2px solid var(--ink-900);box-shadow:var(--shadow);padding:0 0 10px;overflow:hidden;min-height:260px}
+.stall:hover{background:var(--cream-100);transform:translateY(-2px)}
+.stall .awning{height:22px;background:repeating-linear-gradient(90deg,var(--awn) 0 18px,var(--cream-50) 18px 36px);border-bottom:2px solid var(--ink-900);flex:none}
+.stall canvas{image-rendering:pixelated;width:100%;aspect-ratio:56/40;height:auto;display:block;border-bottom:2px solid var(--ink-900);flex:none}
+.stall .stop{display:flex;align-items:center;gap:8px;padding:8px 10px 0;font:9px/14px var(--display)}
+.stall .lamp{width:12px;height:12px;border:2px solid var(--ink-900);background:var(--mint);display:inline-block}
+.stall.state-working .lamp{background:var(--lemon);animation:blink 1s steps(2) infinite}
+.stall.state-waiting .lamp{background:var(--sky);animation:blink 1.4s steps(2) infinite}
+.stall.state-stopped .lamp{background:var(--coral);animation:blink .7s steps(2) infinite}
+.stall.state-stopped{border-color:#9a3a33}
+.stall .sname{padding:6px 10px 0;font-weight:700;font-size:15px;overflow-wrap:anywhere}
+.stall .shelper{padding:0 10px;font-size:12px;color:var(--ink-500)}
+.stall .sline{padding:6px 10px 0;font-size:13px;color:var(--ink-700);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+.stall .sbadges{padding:8px 10px 0;display:flex;gap:6px;flex-wrap:wrap;margin-top:auto}
+.stall.newstall{align-items:center;justify-content:center;text-align:center;background:var(--cream-200);border-style:dashed;min-height:200px}
+.stall.newstall .plus{font:28px/32px var(--display);color:var(--ink-500)}
+.stall.newstall .sline{-webkit-line-clamp:none}
+.pick{display:grid;grid-template-columns:44px 1fr auto;gap:12px;align-items:start}
+.pick canvas{image-rendering:pixelated;background:var(--cream-200);border:2px solid var(--ink-900)}
+.pick .acts{flex-direction:column;align-items:stretch;margin-top:0}
+@media (max-width:720px){.pick{grid-template-columns:44px 1fr}.pick .acts{grid-column:1 / -1;flex-direction:row}}
+
+/* ===== one chat = one small office ===== */
+.chatview{grid-template-columns:380px minmax(0,1fr)!important}
+.chatleft{display:grid;gap:14px;align-content:start;min-width:0}
+.chatleft .panel+.panel{margin-top:0}
+.chatleft .caption{min-height:0;margin-top:8px;font-size:13px}
+@media (max-width:1000px){.chatview{grid-template-columns:minmax(0,1fr)!important}}
+.hint{margin-bottom:8px;display:grid;gap:6px}
+.suggestion{display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:var(--lemon-light);border:2px dashed var(--ink-900);padding:6px 10px}
+
+/* ===== memory tree ===== */
+ul.shelves{list-style:none;margin:8px 0 0;padding:0}
+ul.shelves li{padding:2px 0}
+.twist{display:inline-block;width:22px;background:none;border:0;padding:0;font-size:13px;text-align:center;color:var(--ink-500)}
+button.twist:hover{color:var(--ink-900)}
+.shelfrow{display:inline-flex;gap:8px;align-items:center;background:none;border:2px solid transparent;padding:4px 8px;text-align:left;max-width:calc(100% - 26px)}
+.shelfrow:hover{background:var(--cream-50)}
+.shelfrow.on{background:var(--lemon-light);border-color:var(--ink-900)}
+.shelfrow .cnt,.shelfpick .cnt{font-size:12px;color:var(--ink-500)}
+ul.shelves .shelfnote{padding:0 0 4px 30px}
+.shelfpick{display:inline-flex;gap:8px;align-items:center;padding:3px 8px;border:2px solid transparent;max-width:calc(100% - 26px)}
+.shelfpick.on{background:var(--mint-light);border-color:var(--ink-900)}
+.shelfpick.part{background:var(--lemon-light);border-color:var(--ink-900)}
+.shelfpick input{accent-color:var(--mint);width:16px;height:16px}
+.walk{background:var(--sky-light);border:2px solid var(--ink-900);padding:4px 8px;margin:6px 0}
+.memview{max-width:1500px!important}
+.memgrid{display:grid;grid-template-columns:minmax(240px,320px) minmax(0,1fr) minmax(260px,360px);gap:16px;margin-top:16px;align-items:start}
+.memgrid .panel+.panel{margin-top:0}
+@media (max-width:1100px){.memgrid{grid-template-columns:minmax(0,1fr)}}
+.memsearch input{width:100%;padding:8px 10px;background:var(--cream-50);border:2px solid var(--ink-900)}
+.shelfform{display:flex;gap:8px;align-items:center;flex-wrap:wrap;width:100%}
+.shelfform input{flex:1;min-width:140px;padding:4px 6px;background:var(--cream-50);border:2px solid var(--ink-900)}
+.fieldrow{display:flex;gap:8px;align-items:center;margin-top:8px}
+.fieldrow input,.mem input[type=text]{flex:1;padding:4px 6px;background:var(--cream-50);border:2px solid var(--ink-900)}
+#memmore{margin-top:10px}

@@ -44,6 +44,7 @@ class MemoryTree:
         self.records: dict[str, Record] = {}
         self.nodes: dict[str, Shelf] = {"": Shelf("")}
         self._tok: dict[str, set] = {}
+        self._types: set = set()  # word stems of the kinds of file, which say nothing about a shelf's subject
         self._shown: dict[str, str] = {}  # stem -> a readable form of it, for the keyword lists
         for r in records:
             self.records[r.id] = r
@@ -53,6 +54,7 @@ class MemoryTree:
                 toks.add(st)
                 self._shown.setdefault(st, w)
             toks |= tokens(r.type)
+            self._types |= tokens(r.type)
             self._tok[r.id] = toks
             self._node(r.shelf).own.append(r.id)
         for path in sorted(self.nodes, key=lambda p: -(p.count("/") + 1) if p else 0):  # deepest first: children before parents
@@ -79,7 +81,7 @@ class MemoryTree:
         if node is None:
             return []
         name_stems = {stem(w) for w in surface(path.replace("/", " "))}
-        ranked = sorted(((c, st) for st, c in node.df.items() if st not in name_stems and len(st) > 2), key=lambda t: (-t[0], t[1]))
+        ranked = sorted(((c, st) for st, c in node.df.items() if st not in name_stems and st not in self._types and len(st) > 2), key=lambda t: (-t[0], t[1]))
         return [self._shown.get(st, st) for _, st in ranked[:n]]
 
     def outline(self, path: str = "") -> list[dict]:

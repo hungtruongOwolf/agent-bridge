@@ -418,14 +418,14 @@ def test_the_page_speaks_plain_language_with_no_developer_words(srv):
     visible = re.sub(r"<script.*?</script>|<style.*?</style>", "", html, flags=re.S)
     for word in JARGON:
         assert word not in visible, word
-    for needle in ("who do you want to hire", "what may they look at", "start the job", "remember this", "test coins"):
+    for needle in ("your market floor", "open a new stall", "what the helper sees", "my memory", "test coins"):
         assert needle in visible
 
 
 def test_money_decisions_and_the_approval_step_are_wired_in_the_script(srv):
     app, url = srv
-    js = static_text(url, "app.js")
-    for needle in ("/api/settle", "/api/run/continue", "Good: pay in full", "I approved, continue", "^https:", "Test coins"):
+    js = static_text(url, "chat.js") + static_text(url, "app.js")
+    for needle in ("/api/thread/reject", "/api/run/continue", "Not helpful", "I approved, continue", "^https:", "Test coins"):
         assert needle in js
     assert "http://" not in js  # nothing in the script points outside this machine
 
@@ -435,7 +435,7 @@ def test_the_floor_replays_the_run_record_and_says_so(srv):
     story = static_text(url, "story.js")
     for needle in ("step_started", "step_committed", "cell_run", "incident", "run_finished", "model_call"):
         assert needle in story
-    assert "replays what really happened" in static_text(url, "app.js")
+    assert "real record" in static_text(url, "chat.js")
 
 
 

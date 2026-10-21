@@ -13,14 +13,15 @@ Nebius Token Factory**, web lookups use **Tavily**.
 
 ## See it in two minutes
 
-The console is a small pixel-art office. You are the boss. Your private files are in a **safe with labelled drawers**.
-A hired helper works in a **glass room**; a **guard** inspects whatever leaves it, and your **assistant** carries letters to the
-Brain (the model), the Web library and the Bank.
+The console is a **market floor**. Every chat you have open is a small stall with its own helper, all on one picture, so you can see who is
+working, who is waiting for you and who was stopped by the guard. Click a stall to walk into that chat's **small office**: a safe with
+your shelves, a glass room where the helper works, a guard, and your assistant, acting out the real record of each answer.
 
-1. **Pick who to hire** from a ranked list, or tell the assistant ("hire the best one", by typing or with your voice).
-2. **Choose what they may look at** by ticking or clicking drawers. Locked files are never handed over.
-3. **Press Start.** Watch the helper walk in, get only the files you opened, think, and hand the report to the guard.
-   You say whether the report is good before the rest of the (test) money is paid.
+1. **Pick who to talk with** from a ranked list, or tell the assistant what you need (typed or spoken) and it suggests helpers by their own skills.
+2. **Open shelves.** My memory is a library: shelves inside shelves, each with a count and the words it is about, so a very large memory is
+   searched by walking down the tree (only the shelves that fit your question are opened, and the walk is shown). A new chat shares
+   **nothing** until you open a shelf. **Secret** files can never be shared, even if you tick them. There is no privacy dial: one rule.
+3. **Chat.** The helper gets only the opened shelves and the last few messages. Each answer says which files it came from and how it was made.
 
 Two of the helpers are malicious on purpose. One reaches for the secret drawer. The other ships real code that tries to send a
 message out of the room, open another program and write outside its notebook. The glass stops all of it, the guard sounds the alarm,

@@ -424,3 +424,15 @@ def test_a_stopped_helper_shows_as_stopped_and_counts_on_the_guard(srv):
     off = call(url + "/api/office")[1]
     st = next(s for s in off["stalls"] if s["id"] == t["id"])
     assert st["state"] == "stopped" and "guard stopped" in st["line"] and off["guard"]["stopped"] == 1 and off["guard"]["last"]
+
+
+def test_the_preview_suggests_the_closed_shelf_that_fits_the_message(srv):
+    app, url, _ = srv
+    mid = call(url + "/api/memory", {"action": "add", "type": "note", "text": "Dentist appointment on Tuesday morning", "sensitivity": "low", "shelf": "personal/health"}, app.token)[1]["id"]
+    t = new_chat(app, url, shelves=["note"])
+    ctx = call(url + "/api/thread/context?id=" + t["id"] + "&draft=when+is+my+dentist+appointment")[1]
+    assert [s["path"] for s in ctx["suggest"]] == ["personal/health"] and ctx["suggest"][0]["name"] == "Personal › Health"
+    call(url + "/api/thread/settings", {"id": t["id"], "shelves": ["note", "personal"]}, app.token)
+    assert call(url + "/api/thread/context?id=" + t["id"] + "&draft=when+is+my+dentist+appointment")[1]["suggest"] == []
+    secret = call(url + "/api/memory", {"action": "add", "type": "note", "text": "Passport locker code 4471", "sensitivity": "high", "shelf": "vault"}, app.token)[1]["id"]
+    assert call(url + "/api/thread/context?id=" + t["id"] + "&draft=passport+locker+code")[1]["suggest"] == []  # secrets are never suggested

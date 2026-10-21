@@ -1,83 +1,93 @@
-/* Chats, "what the helper sees", "my memory" and the helper profile. Plain language only; every string from the server is
-   inserted with textContent, never as markup. */
+/* One chat = one small office. This file runs the three screens (market floor, chat office, memory), the conversation,
+   "what the helper sees" (the memory tree with tick boxes) and the helper profile. Plain language only; every string from
+   the server is inserted with textContent, never as markup. */
 (function () {
   "use strict";
   let B = null;          // shared helpers from app.js
   let cur = null;        // the open chat (as the server describes it)
   let ctx = null;        // the latest "what the helper will see" preview
-  let pendingText = "", progressLines = [], progressTimer = null, ctxKey = "", sending = false, sendingId = null, draftTimer = null, pendingApproval = null;
+  let office = null;     // the pixel office of the open chat
+  let view = "office", pendingText = "", progressLines = [], progressTimer = null, ctxKey = "", sending = false, sendingId = null, draftTimer = null, pendingApproval = null;
+  const sideOpen = new Set();
   const $ = (id) => document.getElementById(id);
   const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; };
   const btn = (text, cls, fn) => { const b = el("button", cls || "btn", text); b.type = "button"; if (fn) b.onclick = fn; return b; };
-  const when = (t) => (t ? new Date(t * 1000).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "");
-  const LEVEL_NAME = { low: "everyday", medium: "personal", high: "secret" };
   const say = (t) => { const n = $("chatnote"); if (n) n.textContent = t || ""; };
+  const caption = (t) => { $("caption").textContent = t; $("floor").setAttribute("aria-label", t); };
 
-  /* ---------- tabs ---------- */
+  /* ---------- screens ---------- */
   function showView(name) {
-    ["chat", "memory", "office"].forEach((v) => {
-      const on = v === name; $("view-" + v).hidden = !on;
-      const t = $("tab-" + v); t.setAttribute("aria-selected", String(on)); t.tabIndex = on ? 0 : -1;
+    view = name;
+    ["office", "chat", "memory"].forEach((v) => { $("view-" + v).hidden = v !== name; });
+    ["office", "memory"].forEach((v) => {
+      const on = v === name || (v === "office" && name === "chat"), t = $("tab-" + v);
+      t.setAttribute("aria-selected", String(on)); t.tabIndex = on ? 0 : -1;
     });
-    try { sessionStorage.setItem("ab-view", name); } catch (e) { /* remembering the tab is optional */ }
-    if (name === "memory") drawMemory();
-    if (name === "chat") drawThreads();
-    if (name === "office" && window.dispatchEvent) window.dispatchEvent(new Event("resize"));
+    try { sessionStorage.setItem("ab-view", name === "chat" ? "office" : name); } catch (e) { /* remembering the tab is optional */ }
+    if (name === "office") { window.Market.start(); window.MemoryUI.redraw(); } else window.Market.stop();
+    if (name === "memory") window.MemoryUI.show();
+    if (name === "chat" && office) window.dispatchEvent(new Event("resize"));
   }
 
-  /* ---------- chat list and new chat ---------- */
-  function drawThreads() {
-    const S = B.state(), ul = $("threads"); ul.replaceChildren();
-    if (!S.threads.length) ul.append(el("li", "empty", "No chats yet. Start one with a helper you like."));
-    S.threads.forEach((t) => {
-      const li = el("li"); li.setAttribute("aria-current", String(!!(cur && cur.id === t.id)));
-      const b = el("button", "threadbtn"); b.type = "button";
-      const m = S.market.find((x) => x.key === t.agent_key);
-      b.append(el("span", "name", t.title), el("span", "blurb", (m ? B.niceName(m.id) + ": " : "") + (t.last || "No messages yet")));
-      b.onclick = () => openThread(t.id);
-      li.append(b); ul.append(li);
-    });
+  /* ---------- opening and starting chats ---------- */
+  async function open(id) {
+    showView("chat"); ensureOffice();
+    try { cur = await B.api("/api/thread?id=" + encodeURIComponent(id)); } catch (e) { say(e.message); cur = null; showView("office"); return; }
+    ctxKey = ""; ctx = null; pendingApproval = pendingApproval && pendingApproval.threadId === cur.id ? pendingApproval : null;
+    drawConversation(); setOffice(); await loadContext(); $("draft").focus();
   }
 
-  function drawPicker() {
-    const S = B.state(), box = $("picker"); box.replaceChildren();
-    box.append(el("p", "small muted", "Pick who you want to talk with. Press “Meet” first if you want to know what they can do."));
-    const hireable = S.market.filter((m) => m.status !== "flagged");
-    if (!hireable.length) box.append(el("p", "empty", "Nobody is available yet."));
-    hireable.forEach((m) => {
-      const row = el("div", "pick");
-      const who = el("div", "who"); who.append(el("span", "name", B.niceName(m.id)), el("span", "blurb", m.summary));
-      const skills = (m.skills || []).join(" · ");
-      if (skills) who.append(el("span", "blurb skills", skills));
-      const acts = el("div", "acts");
-      acts.append(btn("Meet", "btn", () => profile(m.key)), btn("Chat, " + B.cents(Math.round(m.price_usd * 100)) + " per answer", "btn go2", () => newThread(m.key)));
-      row.append(who, acts); box.append(row);
-    });
-    const flagged = S.market.filter((m) => m.status === "flagged");
-    if (flagged.length) box.append(el("p", "small muted", flagged.length + " helper(s) were caught cheating and cannot be chatted with. You can watch the guard stop them in the Office tab."));
+  async function startNew(key) {
+    try { const t = await B.api("/api/threads", { agent_key: key }); await B.refresh(); await open(t.id); }
+    catch (e) { say(e.message); }
   }
+  async function startWith(key, text) { await startNew(key); if (cur) { $("draft").value = text; $("draft").focus(); loadContext(); } }
 
-  async function newThread(key) {
-    try { const t = await B.api("/api/threads", { agent_key: key }); await B.refresh(); await openThread(t.id); $("picker").hidden = true; } catch (e) { say(e.message); }
+  function back() { cur = null; clearInterval(progressTimer); showView("office"); }
+
+  /* ---------- the small office ---------- */
+  function ensureOffice() {
+    if (office) return;
+    office = new window.Office($("floor"), { onDrawer: (path) => toggleShelf(path) });
+    office.pace = 1.6;
+  }
+  function agentInfo() { return cur && cur.agent && cur.agent.available ? { id: cur.agent.id, name: cur.agent.name, status: cur.agent.status } : null; }
+  function setOffice() {
+    if (!office || !cur) return;
+    office.showIdle(agentInfo()); drawDrawers();
+    $("officetitle").textContent = cur.agent.available ? cur.agent.name + "'s office" : "This chat's office";
+    caption(cur.messages.length ? "Everything the helper does for you is acted out here, from the real record of each answer." : "Say what you need. The helper only gets the shelves you open.");
+  }
+  function drawDrawers() {
+    if (!office) return;
+    const top = (ctx ? ctx.shelves : []).filter((s) => s.depth === 0).slice(0, 4);
+    office.setDrawers(top.map((s) => ({ type: s.path, label: s.name, count: s.count, open: s.state !== "closed", locked: s.secret > 0 })));
+  }
+  const topShelf = (p) => (p && p.includes("/") ? p.slice(0, p.indexOf("/")) : p);
+  async function replay(report) {
+    if (!office || !cur || !report || !report.journal) return;
+    let recs = new Map();
+    try {
+      if (report.records_handed && report.records_handed.length) {
+        (await B.api("/api/memory?limit=100&ids=" + report.records_handed.slice(0, 50).map(encodeURIComponent).join(","))).items.forEach((r) => recs.set(r.id, { type: topShelf(r.shelf), sensitivity: r.sensitivity }));
+      }
+    } catch (e) { /* the picture still plays without file positions */ }
+    const mine = cur.id;
+    try { await office.play(report, { animate: true, records: recs, log: () => {}, caption: (t) => { if (cur && cur.id === mine) caption(t); } }); } catch (e) { /* the answer is already on screen */ }
   }
 
   /* ---------- the open chat ---------- */
-  async function openThread(id) {
-    try { cur = await B.api("/api/thread?id=" + encodeURIComponent(id)); } catch (e) { say(e.message); cur = null; }
-    drawThreads(); drawConversation(); await loadContext();
-  }
-
   function drawConversation() {
     const box = $("convo"); box.replaceChildren();
     $("composer").hidden = !cur; $("sidepanel").hidden = !cur;
-    if (!cur) { $("budgetline").textContent = ""; say(""); $("convohead").replaceChildren(); box.append(el("p", "empty big", "Choose a chat on the left, or start a new one. A chat is a conversation that keeps going, and you decide what the helper can see.")); return; }
+    if (!cur) { $("budgetline").textContent = ""; say(""); $("convohead").replaceChildren(); return; }
     const head = $("convohead"); head.replaceChildren();
     const a = cur.agent;
     const title = el("div"); title.append(el("div", "h", cur.title), el("div", "muted small", a.available ? "with " + a.name + " · " + B.cents(a.price_cents) + " per answer" : "This helper is no longer available."));
     const acts = el("div", "acts");
     if (a.available) acts.append(btn("Meet " + a.name, "btn", () => profile(a.key)));
     head.append(title, acts);
-    if (!cur.messages.length) box.append(el("p", "empty", "Say what you need. For example: “Which of my accounts need attention this week?”"));
+    if (!cur.messages.length) box.append(el("p", "empty", "Say what you need. For example: “Which of my accounts need attention this week?” Open a shelf on the left first if the helper should look at your files."));
     cur.messages.forEach((m) => box.append(bubble(m)));
     if (pendingApproval && pendingApproval.threadId === cur.id) box.append(approvalCard());
     if (sending && sendingId === cur.id) {
@@ -93,14 +103,20 @@
   }
 
   function bubble(m) {
-    const d = el("div", "msg " + m.role); const S = B.state();
+    const d = el("div", "msg " + m.role);
     d.append(el("div", "text", m.text));
     const meta = el("div", "meta small muted");
     if (m.role === "helper") {
-      if (m.risk) { const t = el("span", "tag " + (m.risk === "high" ? "bad" : m.risk === "medium" ? "wait" : "good"), "worry level: " + m.risk); meta.append(t, " "); }
+      if (m.risk) meta.append(el("span", "tag " + (m.risk === "high" ? "bad" : m.risk === "medium" ? "wait" : "good"), "worry level: " + m.risk), " ");
       if (m.files && m.files.length) {
         const f = el("details", "based"); f.append(el("summary", null, "Written from " + m.files.length + " of your files"));
-        m.files.forEach((id) => { const r = S.vault.find((x) => x.id === id); f.append(el("div", "small", r ? r.text : "A file you have since deleted")); });
+        f.addEventListener("toggle", async () => {
+          if (!f.open || f.dataset.done) return; f.dataset.done = "1";
+          try {
+            const got = (await B.api("/api/memory?limit=100&ids=" + m.files.slice(0, 50).map(encodeURIComponent).join(","))).items, by = new Map(got.map((r) => [r.id, r]));
+            m.files.forEach((id) => { const r = by.get(id); f.append(el("div", "small", r ? r.shelf_name + ": " + r.text : "A file you have since deleted")); });
+          } catch (e) { f.append(el("div", "small muted", e.message)); }
+        });
         d.append(f);
       } else meta.append("Written without any of your files. ");
       if (m.run_id) {
@@ -144,15 +160,19 @@
     const box = $("draft"), text = box.value.trim();
     if (!cur || sending || !text) return;
     const mine = cur.id; sending = true; sendingId = mine; pendingText = text; progressLines = []; say(""); drawConversation(); watchProgress(mine);
+    if (office) { office.showIdle(agentInfo()); drawDrawers(); office.say("agent", "Let me see…", 3000); caption("The helper is working on your message."); }
+    let report = null;
     try {
       const r = await B.api("/api/thread/send", { id: mine, text, simulate: $("misbehave").checked });
       box.value = "";
       if (r.needs_approval) pendingApproval = Object.assign({ threadId: mine }, r);
       if (cur && cur.id === mine) cur = r.thread;
+      report = r.report || null;
     } catch (e) { say(e.message); try { const t = await B.api("/api/thread?id=" + mine); if (cur && cur.id === mine) cur = t; } catch (_) { /* keep what is on screen */ } }
     sending = false; sendingId = null; pendingText = ""; clearInterval(progressTimer);
     try { await B.refresh(); } catch (_) { /* the screen already shows the answer */ }
-    drawConversation(); loadContext(); drawThreads();
+    drawConversation(); loadContext();
+    if (report && cur && cur.id === mine) replay(report);
   }
 
   function watchProgress(id) {
@@ -163,6 +183,7 @@
         const p = await B.api("/api/thread/progress?id=" + encodeURIComponent(id));
         progressLines = p.steps;
         const w = $("workbubble"); if (w && w.lastChild) w.lastChild.textContent = p.steps.length ? p.steps[p.steps.length - 1] : "";
+        if (p.steps.length) caption(p.steps[p.steps.length - 1]);
       } catch (e) { /* the answer itself will report problems */ }
     }, 900);
   }
@@ -174,11 +195,13 @@
     if (/^https:\/\//.test(p.approve_url || "")) { const a = document.createElement("a"); a.href = p.approve_url; a.target = "_blank"; a.rel = "noopener noreferrer"; a.className = "btn"; a.textContent = "Open the approval page"; acts.append(a); }
     acts.append(btn("I approved, continue", "btn", async () => {
       sending = true; sendingId = p.threadId; drawConversation();
-      try { const r = await B.api("/api/run/continue", { run_id: p.run_id }); pendingApproval = null; if (cur && cur.id === p.threadId) cur = r.thread; }
+      let report = null;
+      try { const r = await B.api("/api/run/continue", { run_id: p.run_id }); pendingApproval = null; if (cur && cur.id === p.threadId) cur = r.thread; report = r.report; }
       catch (e) { say(e.message + " If this keeps happening, press Cancel and send the message again."); }
       sending = false; sendingId = null;
       try { await B.refresh(); } catch (_) { /* optional */ }
       drawConversation(); loadContext();
+      if (report && cur && cur.id === p.threadId) replay(report);
     }), btn("Cancel", "btn warn", async () => {
       try { await B.api("/api/thread/cancel", { run_id: p.run_id }); } catch (e) { say(e.message); }
       pendingApproval = null;
@@ -188,40 +211,64 @@
     d.append(acts); return d;
   }
 
-  /* ---------- what the helper will see ---------- */
+  /* ---------- what the helper will see: the memory tree with tick boxes ---------- */
   async function loadContext() {
     if (!cur) return;
     const mine = cur.id;
     try {
       const c = await B.api("/api/thread/context?id=" + encodeURIComponent(mine) + "&draft=" + encodeURIComponent($("draft").value.slice(0, 300)));
       if (!cur || cur.id !== mine) return;
-      const key = JSON.stringify([c.shared.map((f) => f.id), c.locked.map((f) => f.id), c.likely, c.history.length, cur.lens, cur.history_turns, cur.budget.limit]);
+      const key = JSON.stringify([c.shelves.map((s) => [s.path, s.state, s.count, s.shared]), c.shared.map((f) => f.id), c.held_back.map((f) => f.id), c.likely, c.walk, c.suggest, c.history.length, cur.lens, cur.history_turns, cur.budget.limit]);
       const changed = key !== ctxKey; ctx = c; ctxKey = key;
-      if (changed) drawSide();
+      if (changed) { drawSide(); drawHint(); drawDrawers(); }
     } catch (e) { say(e.message); }
+  }
+
+  function drawHint() {
+    const h = $("hint"); h.replaceChildren();
+    if (!cur) return;
+    if (!cur.lens.shelves.length && !cur.lens.include.length) h.append(el("span", "small muted", "No shelves are open, so this helper will answer from your message alone."));
+    (ctx.suggest || []).forEach((s) => {
+      const row = el("span", "suggestion"); row.append(el("span", "small", "Your message looks like it needs " + s.name + " (" + s.matches + " matching file" + (s.matches === 1 ? "" : "s") + "). "), btn("Open that shelf", "btn go2", () => openShelf(s.path)));
+      h.append(row);
+    });
+  }
+
+  const isInherited = (s) => s.state === "open" && !cur.lens.shelves.includes(s.path);
+  function visibleShelf(s) {
+    for (let p = s.parent; p; p = p.includes("/") ? p.slice(0, p.lastIndexOf("/")) : "") if (!sideOpen.has(p)) return false;
+    return true;
+  }
+  async function openShelf(path) { return setSettings({ shelves: [...cur.lens.shelves.filter((p) => !(p.startsWith(path + "/"))), path].filter((p, i, a) => a.indexOf(p) === i) }); }
+  async function toggleShelf(path) {
+    if (!cur || !ctx) return;
+    const s = ctx.shelves.find((x) => x.path === path); if (!s) return;
+    if (cur.lens.shelves.includes(path)) return setSettings({ shelves: cur.lens.shelves.filter((p) => p !== path) });
+    if (s.state === "open") return;  // open because a shelf above it is open
+    return openShelf(path);
   }
 
   function drawSide() {
     const box = $("sidebody"); box.replaceChildren();
-    const S = B.state(), kinds = [...new Set(S.vault.map((r) => r.type))].sort();
-    box.append(el("p", "small", "Only what is switched on below, and the last few messages, can reach the helper. Everything else stays locked."));
+    box.append(el("p", "small", "Only the shelves ticked below, and the last few messages, can reach the helper. Everything else stays locked. Secret files can never be shared."));
 
-    const dr = el("fieldset", "seeing"); dr.append(el("legend", "small muted", "Drawers the helper may open"));
-    kinds.forEach((t) => {
-      const l = el("label"), i = document.createElement("input"); i.type = "checkbox"; i.checked = cur.lens.types.includes(t);
-      i.onchange = () => setSettings({ types: kinds.filter((k) => (k === t ? i.checked : cur.lens.types.includes(k))) });
-      l.append(i, el("span", null, B.typeLabel(t))); dr.append(l);
+    const tree = el("ul", "shelves sidetree");
+    if (!ctx.shelves.length) tree.append(el("li", "empty", "Your memory is empty. Add notes in My memory."));
+    ctx.shelves.filter(visibleShelf).forEach((s) => {
+      const li = el("li"); li.style.paddingLeft = (s.depth * 14) + "px";
+      const tg = s.has_children ? btn(sideOpen.has(s.path) ? "▾" : "▸", "twist", () => { sideOpen.has(s.path) ? sideOpen.delete(s.path) : sideOpen.add(s.path); drawSide(); }) : el("span", "twist");
+      const lab = el("label", "shelfpick" + (s.state === "open" ? " on" : s.state === "partly" ? " part" : "")), c = document.createElement("input");
+      c.type = "checkbox"; c.checked = s.state === "open"; c.indeterminate = s.state === "partly"; c.disabled = isInherited(s);
+      c.setAttribute("aria-label", "Let the helper see " + s.name + (isInherited(s) ? " (open because a shelf above it is open)" : ""));
+      c.onchange = () => toggleShelf(s.path);
+      lab.append(c, el("span", "sn", s.name), el("span", "cnt", String(s.count)));
+      if (s.secret) lab.append(el("span", "tag wait", s.secret + " secret"));
+      li.append(tg, lab); tree.append(li);
     });
-    box.append(dr);
+    box.append(tree);
 
-    const pv = el("fieldset", "privacy"); pv.append(el("legend", "small muted", "How private is too private?"));
-    [["low", "Everyday things only"], ["medium", "Personal things too"], ["high", "Everything, even secrets"]].forEach(([v, t]) => {
-      const l = el("label"), i = document.createElement("input"); i.type = "radio"; i.name = "lvl"; i.value = v; i.checked = cur.lens.max_sensitivity === v;
-      i.onchange = () => setSettings({ max_sensitivity: v }); l.append(i, el("span", null, t)); pv.append(l);
-    });
-    box.append(pv);
-
-    box.append(el("h3", "sub", "Files the helper can see (" + ctx.shared.length + ")"));
+    box.append(el("h3", "sub", "Files the helper can see (" + ctx.shared_count + ")"));
+    if (ctx.walk && ctx.walk.length) box.append(el("p", "small walk", "For your message it would open: " + ctx.walk.join(", ") + "."));
     const ul = el("ul", "filelist");
     ctx.shared.forEach((f) => {
       const li = el("li"), c = document.createElement("input"); c.type = "checkbox"; c.checked = true; c.setAttribute("aria-label", "Share: " + f.text);
@@ -231,19 +278,20 @@
       ul.append(li);
     });
     if (!ctx.shared.length) ul.append(el("li", "empty", "Nothing. The helper will answer from your message alone."));
+    if (ctx.shared_more) ul.append(el("li", "empty", "…and " + ctx.shared_more + " more."));
     box.append(ul);
 
-    if (ctx.locked.length) {
-      box.append(el("h3", "sub", "Locked (" + ctx.locked.length + ")"));
+    if (ctx.held_back.length) {
+      box.append(el("h3", "sub", "You held these back (" + ctx.held_back.length + ")"));
       const lk = el("ul", "filelist locked");
-      ctx.locked.forEach((f) => {
-        const li = el("li"), c = document.createElement("input"); c.type = "checkbox"; c.checked = false;
-        c.setAttribute("aria-label", "Share this " + B.typeLabel(f.type).replace(/s$/, "").toLowerCase() + " file anyway");
-        c.onchange = () => setSettings({ include: [...cur.lens.include, f.id], exclude: cur.lens.exclude.filter((x) => x !== f.id) });
-        li.append(c, el("span", null, B.typeLabel(f.type).replace(/s$/, "") + ", " + LEVEL_NAME[f.sensitivity] + ". " + f.why)); lk.append(li);
+      ctx.held_back.forEach((f) => {
+        const li = el("li"), c = document.createElement("input"); c.type = "checkbox"; c.checked = false; c.setAttribute("aria-label", "Share again: " + f.text);
+        c.onchange = () => setSettings({ exclude: cur.lens.exclude.filter((x) => x !== f.id) });
+        li.append(c, el("span", null, f.shelf_name + ": " + f.text)); lk.append(li);
       });
       box.append(lk);
     }
+    if (ctx.secret) box.append(el("p", "small muted", ctx.secret + " secret file" + (ctx.secret === 1 ? "" : "s") + " in your memory can never be shared."));
 
     const h = el("div", "setrow"); h.append(el("label", "small", "The helper remembers the last "));
     const num = document.createElement("input"); num.type = "number"; num.min = 0; num.max = 10; num.value = cur.history_turns; num.id = "histturns"; num.setAttribute("aria-label", "How many earlier messages the helper is shown");
@@ -257,8 +305,8 @@
 
     box.append(el("p", "small muted", ctx.goes_to_the_brain));
     const dng = el("div", "acts");
-    dng.append(btn("Clear this chat", "btn", () => confirmTwice(dng.firstChild, "Really clear?", () => act("/api/thread/clear", { id: cur.id }))),
-      btn("Delete this chat", "btn warn", async (e) => confirmTwice(e.target, "Really delete?", async () => { try { await B.api("/api/thread/delete", { id: cur.id }); cur = null; await B.refresh(); drawThreads(); drawConversation(); } catch (er) { say(er.message); } })));
+    dng.append(btn("Clear this chat", "btn", (e) => confirmTwice(e.target, "Really clear?", () => act("/api/thread/clear", { id: cur.id }))),
+      btn("Delete this chat", "btn warn", (e) => confirmTwice(e.target, "Really delete?", async () => { try { await B.api("/api/thread/delete", { id: cur.id }); await B.refresh(); back(); } catch (er) { say(er.message); } })));
     box.append(dng);
   }
 
@@ -272,107 +320,6 @@
     ctxKey = "";
     try { cur = await B.api("/api/thread/settings", Object.assign({ id: cur.id }, patch)); await B.refresh(); drawConversation(); await loadContext(); }
     catch (e) { say(e.message); await loadContext(); }
-  }
-
-  /* ---------- my memory ---------- */
-  function drawMemory() {
-    const S = B.state(), box = $("memlist"); box.replaceChildren();
-    const sg = $("suggest"); sg.replaceChildren();
-    S.proposals.forEach((p) => {
-      const n = el("div", "note"); n.append(el("div", null, "“" + p.text + "”"), el("div", "muted small", "A helper suggests you remember this. It is not saved unless you say yes."));
-      const a = el("div", "acts");
-      a.append(btn("Remember it", "btn", () => decide(p.id, "accept")), btn("No thanks", "btn", () => decide(p.id, "reject")));
-      n.append(a); sg.append(n);
-    });
-    if (!S.vault.length) box.append(el("p", "empty", "Your memory is empty. Add a note above, or say yes to a helper's suggestion."));
-    const groups = {};
-    S.vault.forEach((r) => (groups[r.type] = groups[r.type] || []).push(r));
-    Object.keys(groups).sort().forEach((t) => {
-      box.append(el("h3", "sub", B.typeLabel(t) + " (" + groups[t].length + ")"));
-      groups[t].forEach((r) => box.append(memCard(r)));
-    });
-  }
-
-  async function decide(id, action) {
-    try { await B.api("/api/proposal", { id, action }); await B.refresh(); drawMemory(); } catch (e) { $("memnote").textContent = e.message; }
-  }
-
-  function memCard(r) {
-    const c = el("div", "mem");
-    c.append(el("div", "memtext", r.text));
-    const meta = el("div", "small muted");
-    const src = r.source === "helper" ? "Suggested by " + r.helper + ", saved because you said yes" : "Written by you";
-    meta.append(src + (r.created ? " on " + when(r.created) : "") + ". " + LEVEL_NAME[r.sensitivity].replace(/^./, (x) => x.toUpperCase()) + ".");
-    if (r.edited) meta.append(" You corrected it later.");
-    c.append(meta);
-    const use = r.used.answers ? "Helped write " + r.used.answers + " answer(s); last in “" + r.used.last_chat + "”." : "Not used in any answer yet.";
-    c.append(el("div", "small muted", use));
-    const a = el("div", "acts");
-    a.append(btn("Edit", "btn", () => editCard(c, r)), btn("Delete", "btn warn", (e) => confirmTwice(e.target, "Really delete?", async () => {
-      try { await B.api("/api/memory", { action: "delete", id: r.id }); await B.refresh(); drawMemory(); } catch (er) { $("memnote").textContent = er.message; }
-    })));
-    c.append(a); return c;
-  }
-
-  function editCard(c, r) {
-    c.replaceChildren();
-    const ta = document.createElement("textarea"); ta.value = r.text; ta.rows = 3; ta.maxLength = 2000; ta.setAttribute("aria-label", "Text of this memory");
-    const sel = privacySelect(r.sensitivity);
-    const a = el("div", "acts");
-    a.append(btn("Save", "btn", async () => {
-      try { await B.api("/api/memory", { action: "update", id: r.id, text: ta.value, sensitivity: sel.value }); await B.refresh(); drawMemory(); } catch (e) { $("memnote").textContent = e.message; }
-    }), btn("Cancel", "btn", drawMemory));
-    c.append(ta, sel, a);
-  }
-
-  function privacySelect(v) {
-    const s = document.createElement("select"); s.setAttribute("aria-label", "How private this is");
-    [["low", "Everyday"], ["medium", "Personal"], ["high", "Secret"]].forEach(([k, t]) => { const o = document.createElement("option"); o.value = k; o.textContent = t; s.append(o); });
-    s.value = v || "low"; return s;
-  }
-
-  function setupMemoryForm() {
-    const f = $("memform"); const sel = privacySelect("low"); sel.id = "memlevel"; $("memlevelslot").replaceChildren(sel);
-    f.onsubmit = async (e) => {
-      e.preventDefault(); const text = $("memtext").value, type = $("memtype").value.trim().toLowerCase() || "note";
-      try { await B.api("/api/memory", { action: "add", type, text, sensitivity: sel.value }); $("memtext").value = ""; $("memnote").textContent = "Saved."; await B.refresh(); drawMemory(); }
-      catch (er) { $("memnote").textContent = er.message; }
-    };
-  }
-
-  /* ---------- bring in a file ---------- */
-  function splitNotes(text) {
-    const out = [];
-    text.replace(/\r\n/g, "\n").split(/\n\s*\n/).forEach((para) => {
-      let p = para.trim().replace(/[ \t]+/g, " "); if (!p) return;
-      while (p.length > 800) {  // long paragraphs are cut at a sentence end so each note stays readable
-        let cut = p.lastIndexOf(". ", 800); if (cut < 200) cut = p.lastIndexOf(" ", 800); if (cut < 200) cut = 800;
-        out.push(p.slice(0, cut + 1).trim()); p = p.slice(cut + 1).trim();
-      }
-      if (p) out.push(p);
-    });
-    return out;
-  }
-
-  function setupImport() {
-    $("memfile").onchange = async (ev) => {
-      const f = ev.target.files[0], box = $("importbox"); box.replaceChildren(); if (!f) return;
-      if (f.size > 300000) { box.append(el("p", "warnline", "That file is bigger than 300 KB. Cut it into smaller parts first.")); return; }
-      const notes = splitNotes(await f.text()).slice(0, 50);
-      if (!notes.length) { box.append(el("p", "warnline", "There is no text in that file.")); return; }
-      box.append(el("p", "small", "Found " + notes.length + " note(s). Untick the ones you do not want."));
-      const list = el("ul", "filelist"), boxes = [];
-      notes.forEach((t) => { const li = el("li"), c = document.createElement("input"); c.type = "checkbox"; c.checked = true; c.setAttribute("aria-label", "Keep: " + t.slice(0, 60)); boxes.push(c); li.append(c, el("span", null, t)); list.append(li); });
-      const sel = privacySelect("low"), type = document.createElement("input"); type.type = "text"; type.value = "note"; type.size = 10; type.maxLength = 20; type.setAttribute("aria-label", "Which drawer");
-      const row = el("div", "composerrow"); row.append(el("label", "small", "Drawer "), type, sel);
-      const save = btn("Save the ticked notes", "btn go2", async () => {
-        const keep = notes.filter((_, i) => boxes[i].checked); if (!keep.length) { $("memnote").textContent = "Tick at least one note."; return; }
-        save.disabled = true;
-        try { await B.api("/api/memory", { action: "add_many", items: keep, sensitivity: sel.value, type: type.value.trim().toLowerCase() || "note" }); box.replaceChildren(); $("memfile").value = ""; $("memnote").textContent = "Saved " + keep.length + " note(s)."; await B.refresh(); drawMemory(); }
-        catch (e) { $("memnote").textContent = e.message; save.disabled = false; }
-      });
-      box.append(list, row, save);
-    };
   }
 
   /* ---------- meet a helper ---------- */
@@ -390,7 +337,7 @@
     p.author_says.skills.forEach((s) => {
       const d = el("div", "skill"); d.append(el("div", "name", s.name), el("div", null, s.does));
       const q = el("div", "small muted"); q.append("Try asking: ");
-      (s.try_asking || []).forEach((t) => { const b = btn("“" + t + "”", "linkbtn", async () => { $("profile").close(); await startWith(key, t); }); q.append(b, " "); });
+      (s.try_asking || []).forEach((t) => { q.append(btn("“" + t + "”", "linkbtn", async () => { $("profile").close(); await startWith(key, t); }), " "); });
       d.append(q); body.append(d);
     });
     if (p.author_says.good_to_know && p.author_says.good_to_know.length) {
@@ -410,33 +357,27 @@
       body.append(el("p", null, "Passed " + m.passes + " of " + m.total + " test questions. How much to trust it: " + m.score + " out of 100." + (m.infra_failures ? " " + m.infra_failures + " run(s) were thrown out because the thinking service was down." : "")));
       m.by_skill.forEach((s) => { const r = el("div", "skillrow"); r.append(el("span", null, s.what), el("b", null, s.passes + " of " + s.total)); body.append(r); if (s.ask) body.append(el("div", "small muted", "Test question: “" + s.ask + "”")); });
     }
-    const go = btn("Chat with " + name, "btn go2", async () => { dlg.close(); showView("chat"); await newThread(key); });
+    const go = btn("Chat with " + name, "btn go2", async () => { dlg.close(); await startNew(key); });
     body.append(el("div", "acts", ""), go);
-  }
-
-  async function startWith(key, text) {
-    showView("chat"); await newThread(key); $("draft").value = text; $("draft").focus(); loadContext();
   }
 
   /* ---------- start ---------- */
   function mount(bridge) {
     B = bridge;
-    $("tab-chat").parentNode.addEventListener("keydown", (e) => {
-      const tabs = ["chat", "memory", "office"], i = tabs.findIndex((n) => $("tab-" + n) === document.activeElement);
+    $("tab-office").parentNode.addEventListener("keydown", (e) => {
+      const tabs = ["office", "memory"], i = tabs.findIndex((n) => $("tab-" + n) === document.activeElement);
       if (i < 0) return; let j = i;
-      if (e.key === "ArrowRight") j = (i + 1) % 3; else if (e.key === "ArrowLeft") j = (i + 2) % 3; else if (e.key === "Home") j = 0; else if (e.key === "End") j = 2; else return;
+      if (e.key === "ArrowRight" || e.key === "ArrowLeft") j = (i + 1) % 2; else if (e.key === "Home") j = 0; else if (e.key === "End") j = 1; else return;
       e.preventDefault(); showView(tabs[j]); $("tab-" + tabs[j]).focus();
     });
-    $("tab-chat").onclick = () => showView("chat"); $("tab-memory").onclick = () => showView("memory"); $("tab-office").onclick = () => showView("office");
-    $("newchat").onclick = () => { const p = $("picker"); p.hidden = !p.hidden; if (!p.hidden) drawPicker(); };
+    $("tab-office").onclick = () => showView("office"); $("tab-memory").onclick = () => showView("memory");
+    $("backtofloor").onclick = back;
     $("composer").onsubmit = send;
     $("draft").oninput = () => { clearTimeout(draftTimer); draftTimer = setTimeout(loadContext, 350); };
     $("draft").onkeydown = (e) => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); $("composer").requestSubmit(); } };
     $("profileclose").onclick = () => $("profile").close();
-    setupMemoryForm(); setupImport(); drawPicker();
-    let v = "chat"; try { v = sessionStorage.getItem("ab-view") || "chat"; } catch (e) { /* default tab */ }
-    showView(v); drawConversation();
-    if (!B.state().threads.length) $("picker").hidden = false;
+    let v = "office"; try { v = sessionStorage.getItem("ab-view") || "office"; } catch (e) { /* default tab */ }
+    showView(v === "memory" ? "memory" : "office");
   }
-  window.ChatUI = { mount, profile, startWith, redraw: () => { drawThreads(); if (!$("view-memory").hidden) drawMemory(); } };
+  window.ChatUI = { mount, profile, startWith, startNew, open, redraw: () => { if (view === "chat" && cur) { drawBudget(); } } };
 })();

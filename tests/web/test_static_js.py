@@ -10,7 +10,7 @@ STATIC = Path(__file__).resolve().parent.parent.parent / "src" / "bridge" / "web
 NODE = shutil.which("node")
 pytestmark = pytest.mark.skipif(NODE is None, reason="node is not installed")
 
-@pytest.mark.parametrize("name", ["chat.js", "office.js", "story.js", "app.js"])
+@pytest.mark.parametrize("name", ["chat.js", "office.js", "story.js", "app.js", "market.js", "memory.js"])
 def test_every_script_is_valid_javascript(name):
     r = subprocess.run([NODE, "--check", str(STATIC / name)], capture_output=True, text=True)
     assert r.returncode == 0, r.stderr

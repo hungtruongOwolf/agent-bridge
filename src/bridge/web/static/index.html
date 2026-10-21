@@ -19,18 +19,43 @@
 <div class="recs" id="recs" aria-live="polite"></div>
 
 <nav class="tabs" role="tablist" aria-label="Where do you want to be?">
-  <button id="tab-chat" role="tab" aria-selected="true" aria-controls="view-chat" type="button">Chats</button>
+  <button id="tab-office" role="tab" aria-selected="true" aria-controls="view-office" type="button">My office</button>
   <button id="tab-memory" role="tab" aria-selected="false" aria-controls="view-memory" type="button">My memory</button>
-  <button id="tab-office" role="tab" aria-selected="false" aria-controls="view-office" type="button">The office</button>
 </nav>
 
-<section id="view-chat" class="chatview" role="tabpanel">
+<!-- The market floor: one stall for every chat you have open, all in one picture. -->
+<section id="view-office" class="floorview" role="tabpanel">
+  <div class="market panel">
+    <div class="title">Your market floor</div>
+    <div class="body">
+      <div class="marketbar" id="marketbar" aria-live="polite"></div>
+      <div class="stalls" id="stalls" aria-label="Your chats, one stall each"></div>
+    </div>
+  </div>
+  <div class="panel hirepanel" id="hirepanel" hidden>
+    <div class="title">Open a new stall: who do you want to talk with?</div>
+    <div class="body"><div id="picker" class="picker"></div></div>
+  </div>
+  <div class="panel" id="notespanel" hidden>
+    <div class="title">Helpers suggest you remember</div>
+    <div class="body"><div id="notes"></div></div>
+  </div>
+</section>
+
+<!-- One chat = one small office. -->
+<section id="view-chat" class="chatview" role="tabpanel" hidden>
   <aside class="chatleft">
-    <div class="panel"><div class="title">Your chats</div><div class="body">
-      <button class="btn go2" id="newchat" type="button">Start a new chat</button>
-      <div id="picker" class="picker" hidden></div>
-      <ul class="threads" id="threads"></ul>
-    </div></div>
+    <button class="btn" id="backtofloor" type="button">← All my chats</button>
+    <div class="panel minioffice">
+      <div class="title" id="officetitle">This chat's office</div>
+      <div class="body">
+        <div class="floorwrap"><canvas id="floor" role="img" aria-label="This chat's office: a safe with your shelves, a glass room where the helper works, a guard, and your assistant"></canvas></div>
+        <p class="caption" id="caption" aria-live="polite"></p>
+      </div>
+    </div>
+    <div class="panel" id="sidepanel" hidden>
+      <div class="title">What the helper sees</div><div class="body" id="sidebody"></div>
+    </div>
   </aside>
   <div class="chatmid panel">
     <div class="convohead" id="convohead"></div>
@@ -38,6 +63,7 @@
     <p class="small budget" id="budgetline"></p>
     <p class="small warnline" id="chatnote" role="alert"></p>
     <form id="composer" class="composer" hidden autocomplete="off">
+      <div id="hint" class="hint" aria-live="polite"></div>
       <textarea id="draft" rows="2" maxlength="1000" placeholder="Write a message. Enter sends, Shift+Enter makes a new line." aria-label="Your message"></textarea>
       <div class="composerrow">
         <details class="demotools"><summary>Demo tools</summary>
@@ -47,33 +73,42 @@
       </div>
     </form>
   </div>
-  <aside class="chatright" id="sidepanel" hidden>
-    <div class="panel"><div class="title">What the helper sees</div><div class="body" id="sidebody"></div></div>
-  </aside>
 </section>
 
 <section id="view-memory" class="memview" role="tabpanel" hidden>
-  <div class="panel"><div class="title">My memory</div><div class="body">
-    <p>This is everything a helper could ever be allowed to look at. <b>Nothing is learned behind your back.</b> Memory changes only when you write or fix something here, or when you say yes to a helper's suggestion. Each item shows where it came from and which answers it helped write.</p>
+  <div class="panel memintro"><div class="title">My memory</div><div class="body">
+    <p>Everything a helper could ever be allowed to look at, kept on shelves like a small library. <b>Nothing is learned behind your back.</b>
+      Memory changes only when you write or fix something here, or when you say yes to a helper's suggestion. <b>Secret</b> files never leave this page: no helper can be given one, even if you ask.</p>
     <div id="suggest"></div>
-    <form id="memform" class="memform" autocomplete="off">
-      <h3 class="sub">Add something</h3>
-      <textarea id="memtext" rows="2" maxlength="2000" placeholder="For example: Maria prefers email over calls." aria-label="What to remember"></textarea>
-      <div class="composerrow">
-        <label class="small">Drawer <input id="memtype" type="text" value="note" size="10" maxlength="20" aria-label="Which drawer"></label>
-        <span id="memlevelslot"></span>
-        <button class="btn" type="submit">Save to memory</button>
-      </div>
-    </form>
-    <div class="memform">
-      <h3 class="sub">Or bring in a file</h3>
-      <p class="small muted">Pick a text file (.txt, .md or .csv). It is read in your browser, split into short notes, and you choose which ones to keep. Nothing is saved until you press Save.</p>
-      <input id="memfile" type="file" accept=".txt,.md,.csv,text/plain" aria-label="Choose a text file to import">
-      <div id="importbox"></div>
-    </div>
     <p class="small warnline" id="memnote" role="status"></p>
-    <div id="memlist"></div>
   </div></div>
+  <div class="memgrid">
+    <div class="panel"><div class="title">Shelves</div><div class="body" id="shelftree"></div></div>
+    <div class="panel"><div class="title" id="shelftitle">Files</div><div class="body">
+      <div class="memsearch"><input id="memq" type="search" placeholder="Search your memory" aria-label="Search your memory"></div>
+      <div id="shelfactions" class="acts"></div>
+      <div id="memlist"></div>
+      <button class="btn" id="memmore" type="button" hidden>Show more</button>
+    </div></div>
+    <div class="panel"><div class="title">Add to memory</div><div class="body">
+      <form id="memform" class="memform" autocomplete="off">
+        <textarea id="memtext" rows="3" maxlength="2000" placeholder="For example: Maria prefers email over calls." aria-label="What to remember"></textarea>
+        <label class="small fieldrow">Shelf <input id="memshelf" type="text" list="shelfnames" placeholder="work/clients" maxlength="200" aria-label="Which shelf"></label>
+        <datalist id="shelfnames"></datalist>
+        <div class="composerrow">
+          <span id="memlevelslot"></span>
+          <select id="memkind" aria-label="What kind of thing is it"><option value="note">A note</option><option value="contact">A person</option></select>
+          <button class="btn go2" type="submit">Save to memory</button>
+        </div>
+      </form>
+      <div class="memform">
+        <h3 class="sub">Or bring in a file</h3>
+        <p class="small muted">Pick a text file (.txt, .md or .csv). It is read in your browser and split into short notes. You choose which to keep and where they go.</p>
+        <input id="memfile" type="file" accept=".txt,.md,.csv,text/plain" aria-label="Choose a text file to import">
+        <div id="importbox"></div>
+      </div>
+    </div></div>
+  </div>
 </section>
 
 <dialog id="profile" class="profile" aria-label="About this helper">
@@ -81,54 +116,10 @@
   <div class="acts"><button class="btn" id="profileclose" type="button">Close</button></div>
 </dialog>
 
-<main class="layout" id="view-office" role="tabpanel" hidden>
-  <section class="left">
-    <div class="panel">
-      <div class="title">1. Who do you want to hire?</div>
-      <div class="body"><ul class="hire" id="hire"><li class="empty">Loading the helpers.</li></ul></div>
-    </div>
-    <div class="panel">
-      <div class="title">2. What may they look at?</div>
-      <div class="body">
-        <p class="small muted" style="margin-bottom:8px">Tick a drawer to let the helper see it. You can also click the drawers in the safe.</p>
-        <fieldset class="seeing" id="seeing" aria-label="Drawers the helper may open"></fieldset>
-        <div class="small muted" style="margin-top:10px">How private is too private?</div>
-        <fieldset class="privacy" id="privacy" aria-label="How private the files can be" style="border:0;padding:0;margin:4px 0 0">
-          <label><input type="radio" name="level" value="low"><span>Everyday things only</span></label>
-          <label><input type="radio" name="level" value="medium" checked><span>Personal things too</span></label>
-          <label><input type="radio" name="level" value="high"><span>Everything, even secrets</span></label>
-        </fieldset>
-        <p class="count" id="count"></p>
-        <details><summary>See what is in your files</summary><ul class="files" id="files"></ul></details>
-      </div>
-    </div>
-  </section>
-
-  <section class="middle">
-    <div class="floorwrap"><canvas id="floor" role="img" aria-label="Your office: a safe with your files, a glass room where the hired helper works, a guard, and your assistant"></canvas></div>
-    <p class="caption" id="caption" aria-live="polite"></p>
-    <label class="taskrow small">What do you want them to do? <input id="task" type="text" maxlength="1000" placeholder="For example: Which accounts need attention?" autocomplete="off"></label>
-    <div class="startbar">
-      <button class="btn go" id="go" type="button" disabled>Pick someone to hire first</button>
-      <div>
-        <p class="small muted">Start the job when you are happy with who you picked and what they may look at.</p>
-        <label class="theft"><input type="checkbox" id="theft" autocomplete="off"><span>Test mode: make the helper misbehave, to see the guard work.</span></label>
-      </div>
-    </div>
-    <p class="replay" id="replay"></p>
-    <ol class="story" id="story" aria-live="polite" aria-label="What is happening"></ol>
-  </section>
-
-  <section class="right">
-    <div class="panel"><div class="title">The job</div><div class="body"><div id="jobstatus"><div class="empty">Nothing running. Pick someone to hire and press Start.</div></div><div id="report"></div></div></div>
-    <div class="panel"><div class="title">Your coins</div><div class="body"><div id="coinsbox"><div class="empty">Nothing is on hold. Money only moves after you start a job.</div></div></div></div>
-    <div class="panel"><div class="title">Remember this?</div><div class="body"><div id="notes"></div></div></div>
-    <div class="panel"><div class="title">Past jobs</div><div class="body"><div id="history"></div></div></div>
-  </section>
-</main>
-
 <script src="/static/office.js"></script>
 <script src="/static/story.js"></script>
+<script src="/static/market.js"></script>
+<script src="/static/memory.js"></script>
 <script src="/static/chat.js"></script>
 <script src="/static/app.js"></script>
 </body>
