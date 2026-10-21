@@ -77,3 +77,27 @@ def test_improve_then_approve_publishes_a_better_version(tmp_path, monkeypatch, 
 def test_approve_without_a_candidate_refuses(tmp_path, capsys):
     assert cli.main(["approve", "nothing", "--state", str(tmp_path / "s")]) == 2
     assert "no candidate" in capsys.readouterr().out
+
+
+def test_paypal_check_reports_missing_credentials_without_crashing(tmp_path, capsys):
+    assert cli.main(["paypal-check", "--env", str(tmp_path / "none.env")]) == 2
+    assert "FAILED" in capsys.readouterr().out
+
+
+def test_paypal_check_with_a_fake_transport_creates_an_order_and_never_approves(tmp_path, monkeypatch, capsys):
+    env = tmp_path / ".env"
+    env.write_text("PAYPAL_CLIENT_ID=i\nPAYPAL_CLIENT_SECRET=s\n", encoding="utf-8")
+    calls = []
+
+    def http(method, url, headers, body):
+        calls.append(url)
+        if url.endswith("/v1/oauth2/token"):
+            return 200, {"access_token": "T"}
+        return 201, {"id": "ORD1", "links": [{"rel": "approve", "href": "https://sb/approve/ORD1"}]}
+
+    from bridge.payments import paypal
+    monkeypatch.setattr(cli, "PayPalSandbox", lambda cid, sec: paypal.PayPalSandbox(cid, sec, http=http))
+    assert cli.main(["paypal-check", "--env", str(env)]) == 0
+    out = capsys.readouterr().out
+    assert "nothing was charged" in out and "ORD1" in out
+    assert not any("/authorize" in u or "/capture" in u for u in calls)  # it only created an order

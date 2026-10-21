@@ -23,6 +23,8 @@ from .sandbox.cell import DockerCell, docker_available
 from .pack.workflow import parse
 from .hub.certifier import Certifier, sales_dev_suite
 from .improve import improve
+from .payments.paypal import PayPalSandbox, load_paypal_credentials
+from .payments.provider import ProviderError
 from .world import open_world, seed as seed_world
 
 ICON = {Outcome.COMPLETE: "OK", Outcome.PARTIAL_BUDGET: "PARTIAL", Outcome.FAILED_PACK: "FAILED", Outcome.FAILED_INFRA: "INFRA-FAILED", Outcome.KILLED: "KILLED"}
@@ -157,6 +159,22 @@ def approve_cmd(args) -> int:
     return 0
 
 
+def paypal_check_cmd(args) -> int:
+    """Safe live check of the sandbox credentials: get a token and create one $0.01 AUTHORIZE order.
+    No money moves: an order does nothing until a buyer approves it, and this command never approves."""
+    try:
+        cid, secret = load_paypal_credentials(args.env)
+        client = PayPalSandbox(cid, secret)
+        auth = client.authorize(1, "bridge-paypal-check-1", "bridge-paypal-check")
+    except ProviderError as e:
+        print(f"PayPal sandbox check FAILED: {e}")
+        return 2
+    print("PayPal sandbox check OK: credentials accepted, test order created (nothing was charged).")
+    print(f"order id: {auth.auth_id}")
+    print(f"a buyer would approve it here: {auth.approve_url}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     for stream in (sys.stdout, sys.stderr):
         stream.reconfigure(encoding="utf-8", errors="replace")
@@ -188,6 +206,9 @@ def main(argv: list[str] | None = None) -> int:
     ap2.add_argument("--state", default=".bridge")
     ap2.add_argument("--env", default=".env")
     ap2.set_defaults(fn=approve_cmd)
+    pc = sub.add_parser("paypal-check", help="verify PayPal sandbox credentials (creates one test order, charges nothing)")
+    pc.add_argument("--env", default=".env")
+    pc.set_defaults(fn=paypal_check_cmd)
     sv = sub.add_parser("serve", help="start the local web console")
     sv.add_argument("--packs", default="examples/packs")
     sv.add_argument("--vault", default="examples/vault.json")
