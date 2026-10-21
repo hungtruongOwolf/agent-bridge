@@ -36,7 +36,7 @@ class FakeWeb:
 class SmartModel:
     """A model that answers the sales-risk suite correctly: names the accounts whose notes say at risk."""
 
-    NAMES = ("Acme", "Globex", "Initech", "Hooli")
+    NAMES = ("Acme", "Globex", "Initech", "Hooli", "Umbrella", "Wayne")
 
     def complete(self, prompt, inputs):
         from bridge.engine.flowd import ModelReply
