@@ -35,6 +35,27 @@ def failure_message(outcome: str, reason: str = "") -> str:
     return "The helper could not give an answer I can trust, so I am not passing it on. You were not charged for this answer."
 
 
+def answer_text(result: dict) -> str:
+    """Turn any helper's structured answer into readable text: the summary first, then every other field with a plain label.
+    'risk' is shown separately as a tag, so it is left out here."""
+    if not isinstance(result, dict):
+        return str(result)
+    lines = [str(result.get("summary", "")).strip()]
+    for key, val in result.items():
+        if key in ("summary", "risk") or val in (None, "", []):
+            continue
+        label = key.replace("_", " ").capitalize()
+        if isinstance(val, list):
+            lines.append(label + ":
+" + "
+".join("• " + str(x) for x in val))
+        else:
+            lines.append(f"{label}: {val}")
+    return "
+
+".join(x for x in lines if x)
+
+
 def how_made(steps: list[dict], vault_texts: dict[str, str] | None = None) -> list[str]:
     """What happened during one answer, in plain sentences, from the run's own record (never from the helper's claims)."""
     out: list[str] = []

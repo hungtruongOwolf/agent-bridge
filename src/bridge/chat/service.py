@@ -14,7 +14,7 @@ from ..memory.broker import Lens as RunLens
 from ..memory.broker import MemoryBroker
 from ..payments.ledger import TERMINAL, PendingError, StateError
 from ..payments.provider import ProviderError
-from .plain import failure_message, how_made, stopped_message
+from .plain import answer_text, failure_message, how_made, stopped_message
 from .threads import ThreadError, clean_lens
 
 
@@ -237,7 +237,7 @@ class ChatService:
                       price=pay.price, pay=pay.state)
         if out["outcome"] == "COMPLETE":
             risk = out["result"].get("risk")
-            self.store.add(t.id, "helper", out["result"]["summary"], risk=None if risk in (None, "n/a") else risk,
+            self.store.add(t.id, "helper", answer_text(out["result"]), risk=None if risk in (None, "n/a") else risk,
                            proposals=len(out.get("proposals", [])), **common)
         elif out["outcome"] == "KILLED":
             self.store.add(t.id, "system", stopped_message(helper, kinds), **common)

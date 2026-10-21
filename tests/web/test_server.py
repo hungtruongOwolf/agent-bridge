@@ -53,7 +53,7 @@ def test_state_lists_ranked_market_and_vault(srv):
     app, url = srv
     code, st = call(url + "/api/state")
     assert code == 200 and st["market"][0]["status"] == "certified" and {r["id"] for r in st["market"] if r["status"] == "flagged"} == {"friendly-helper", "quick-insights"}
-    assert len(st["vault"]) == 5 and st["proposals"] == []
+    assert len(st["vault"]) == 7 and st["proposals"] == []
 
 
 def test_page_carries_the_token(srv):
@@ -130,7 +130,7 @@ def test_run_creates_a_pending_proposal_and_does_not_touch_the_vault(mem_app):
     code, rep = run_brief(app, url)
     assert code == 200 and rep["outcome"] == "COMPLETE" and len(rep["proposals"]) == 1
     st = call(url + "/api/state")[1]
-    assert len(st["proposals"]) == 1 and len(st["vault"]) == 5  # still only the user's records
+    assert len(st["proposals"]) == 1 and len(st["vault"]) == 7  # still only the user's records
 
 
 def test_accept_adds_a_marked_record_that_survives_restart(mem_app):
@@ -140,7 +140,7 @@ def test_accept_adds_a_marked_record_that_survives_restart(mem_app):
     vault = call(url + "/api/state")[1]["vault"]
     new = [r for r in vault if r["trust"] == 1]
     assert len(new) == 1 and new[0]["from_run"] and new[0]["sensitivity"] == "low"
-    assert len(server.App(app.world, EX / "packs", EX / "vault.json", app.env_file).vault().all()) == 6
+    assert len(server.App(app.world, EX / "packs", EX / "vault.json", app.env_file).vault().all()) == 8
 
 
 def test_reject_leaves_the_vault_unchanged(mem_app):
@@ -148,7 +148,7 @@ def test_reject_leaves_the_vault_unchanged(mem_app):
     pid = run_brief(app, url)[1]["proposals"][0]["id"]
     assert call(url + "/api/proposal", {"id": pid, "action": "reject"}, app.token)[0] == 200
     st = call(url + "/api/state")[1]
-    assert st["proposals"] == [] and len(st["vault"]) == 5
+    assert st["proposals"] == [] and len(st["vault"]) == 7
 
 
 def test_accepting_twice_or_a_bad_id_is_a_400(mem_app):
@@ -166,7 +166,7 @@ def test_revert_undoes_one_run_and_keeps_the_users_own_records(mem_app):
     call(url + "/api/proposal", {"id": rep["proposals"][0]["id"], "action": "accept"}, app.token)
     code, out = call(url + "/api/revert", {"run_id": rep["run_id"]}, app.token)
     assert code == 200 and out["removed_from_vault"] == 1
-    assert len(call(url + "/api/state")[1]["vault"]) == 5
+    assert len(call(url + "/api/state")[1]["vault"]) == 7
 
 
 def test_proposal_endpoints_need_the_token(mem_app):

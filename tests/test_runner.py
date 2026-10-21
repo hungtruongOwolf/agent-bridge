@@ -31,9 +31,9 @@ LENS = Lens(types=frozenset({"note", "contact"}))
 def test_honest_run_report():
     rep = run_pack(EX / "packs" / "private-analyst", vault(), LENS, Good(), seed="s")
     assert rep.outcome == "COMPLETE" and rep.result["risk"] == "high"
-    assert rep.staged["count"] == 3 and set(rep.withheld) == {"n3", "f1"}
+    assert rep.staged["count"] == 5 and set(rep.withheld) == {"n3", "f1"}
     assert rep.journal_ok and rep.journal_entries >= 8
-    assert set(rep.records_handed) <= {"n1", "n2", "c1"}
+    assert set(rep.records_handed) <= {"n1", "n2", "n4", "n5", "c1"}
     json.dumps(rep.__dict__)  # serialisable for the web API
     started = [s for s in rep.steps if s["event"] == "step_started"]
     assert [s["kind"] for s in started] == ["tool", "llm", "gate", "return"]  # step kind is not overwritten
@@ -56,7 +56,7 @@ def test_report_carries_the_audit_journal_and_a_plain_summary():
     rep = run_pack(EX / "packs" / "private-analyst", vault(), LENS, Good(), seed="s")
     assert rep.journal[0]["kind"] == "run_started" and rep.journal[-1]["kind"] == "run_finished"
     assert all(len(e["hash"]) == 12 for e in rep.journal) and len(rep.journal) == rep.journal_entries
-    assert rep.summary == "Delivered a result after reading 3 record(s); 2 stayed private."
+    assert rep.summary == "Delivered a result after reading 5 record(s); 2 stayed private."
 
 
 def test_summaries_for_each_kind_of_ending():

@@ -340,3 +340,10 @@ def test_progress_shows_what_a_running_answer_has_done_so_far(srv):
     send(app, url, t["id"], "briefing")
     assert seen["progress"]["working"] is True and any("read" in s for s in seen["progress"]["steps"])
     assert call(url + "/api/thread/progress?id=" + t["id"])[1] == {"working": False, "steps": []}
+
+
+def test_any_helpers_structured_answer_is_shown_as_readable_text():
+    from bridge.chat.plain import answer_text
+    t = answer_text({"summary": "Two tasks.", "risk": "n/a", "action_items": ["Priya books the venue", "Sam sends the deck"], "owner": "Priya"})
+    assert t == "Two tasks.\n\nAction items:\n• Priya books the venue\n• Sam sends the deck\n\nOwner: Priya"
+    assert answer_text({"summary": "Only this", "action_items": []}) == "Only this"

@@ -1,0 +1,32 @@
+id: action-finder
+version: 0.1.0
+author: demo
+summary: "Turns your meeting notes into a short list of who needs to do what, and by when."
+speciality: Meeting notes
+suite: meeting-notes
+skills:
+  - name: Pull out the to-do list
+    does: Reads the meeting notes you share and lists the tasks people agreed to, with the owner when the notes say who.
+    try_asking:
+      - "What are the action items from my meetings?"
+      - "What did we agree to do?"
+  - name: Find who owns something
+    does: Looks through the notes for one topic and tells you who was given it.
+    try_asking:
+      - "Who is handling the venue booking?"
+needs:
+  - note
+limits:
+  - "Only knows what is in the meeting notes you share."
+  - "Does not look anything up on the web."
+  - "Lists at most six items."
+result_schema:
+  type: object
+  additionalProperties: false
+  required: [summary, action_items]
+  properties:
+    summary: {type: string, maxLength: 400}
+    action_items:
+      type: array
+      maxItems: 6
+      items: {type: string, maxLength: 140}
