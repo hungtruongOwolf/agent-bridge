@@ -112,6 +112,8 @@ class ThreadStore:
         with self.lock:
             if len(self.threads) >= MAX_THREADS:
                 raise ThreadError(f"you have {MAX_THREADS} chats; delete some before starting a new one")
+            for tid in [i for i, o in self.threads.items() if not o.messages and not o.busy and not o.runs]:
+                del self.threads[tid]  # a chat nobody wrote in is just clutter; only one blank chat is kept at a time
             now = self.clock()
             t = Thread(id="t_" + secrets.token_hex(4), title=(title.strip() or "New chat")[:MAX_TITLE], agent_key=agent_key,
                        created=now, updated=now, lens=lens or Lens())

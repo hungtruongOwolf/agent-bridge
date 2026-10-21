@@ -110,7 +110,10 @@ def test_clearing_and_deleting(store):
 
 
 def test_summaries_list_the_most_recent_chat_first(store):
-    a, b = store.create("k1", "older"), store.create("k2", "newer")
+    a = store.create("k1", "older")
+    store.add(a.id, "user", "hello from older")
+    b = store.create("k2", "newer")
+    store.add(b.id, "user", "later")
     store.add(a.id, "user", "hello from older")
     rows = store.summaries()
     assert [r["title"] for r in rows] == ["older", "newer"] and rows[0]["last"] == "hello from older"
@@ -119,3 +122,12 @@ def test_summaries_list_the_most_recent_chat_first(store):
 def test_titles_are_trimmed_and_capped(store):
     t = store.create("k1", "  " + "x" * 100)
     assert len(t.title) == 60 and not t.title.startswith(" ")
+
+
+def test_starting_a_new_chat_removes_blank_ones_but_keeps_chats_with_messages(tmp_path):
+    store = ThreadStore(tmp_path / "t.json", clock=lambda: 1.0)
+    blank = store.create("k1")
+    used = store.create("k1")
+    store.add(used.id, "user", "hello")
+    fresh = store.create("k2")
+    assert blank.id not in store.threads and used.id in store.threads and fresh.id in store.threads
