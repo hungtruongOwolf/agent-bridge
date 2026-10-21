@@ -99,3 +99,53 @@ def test_attestations_persist_and_are_reverified_on_load(world, tmp_path):
     assert Marketplace(reg, market.trusted, path).ranked()[0]["status"] == "certified"
     # a different trust set (certifier no longer trusted) drops the stored attestation
     assert Marketplace(reg, {"someone-else"}, path).ranked()[0]["status"] == "uncertified"
+
+
+def test_a_profile_separates_what_the_author_says_from_what_was_measured(world):
+    reg, market, cert, packs = world
+    good_dir, good = packs["private-analyst"]
+    market.add_attestation(cert.certify(good_dir, Fixed(), "fixed"))
+    p = market.profile(good.key)
+    assert [s["name"] for s in p["author_says"]["skills"]] == ["Spot accounts at risk", "Answer questions about your sales notes"]
+    assert p["author_says"]["good_to_know"] and p["measured"]["tested"] and p["measured"]["suite"] == "sales-risk v2"
+    skills = {s["what"]: (s["passes"], s["total"]) for s in p["measured"]["by_skill"]}
+    assert len(skills) == 3 and all(t == 3 for _, t in skills.values())
+
+
+def test_what_a_pack_can_touch_is_read_from_its_program_not_from_its_claims(world):
+    reg, market, cert, packs = world
+    plain = market.profile(packs["private-analyst"][1].key)
+    kinds = [w["kind"] for w in plain["works_with"]]
+    assert kinds[0] == "files" and "web" not in kinds and "program" not in kinds
+    assert "Use the internet." in plain["cannot"] and "Send your files to anyone." in plain["cannot"]
+    code = market.profile(packs["exfil-kit"][1].key) if "exfil-kit" in packs else None
+    assert code is None or "program" in [w["kind"] for w in code["works_with"]]
+
+
+def test_a_flagged_pack_shows_what_it_did_instead_of_a_score(world):
+    reg, market, cert, packs = world
+    market.add_attestation(cert.certify(packs["data-thief"][0], Leaky(), "leaky"))
+    m = market.profile(packs["data-thief"][1].key)["measured"]
+    assert m["status"] == "flagged" and "score" not in m and "OFF_LENS_QUERY" in m["violations"]
+
+
+def test_an_untested_pack_says_so_plainly(world):
+    reg, market, cert, packs = world
+    m = market.profile(packs["private-analyst"][1].key)["measured"]
+    assert m["tested"] is False and "not ranked" in m["note"]
+
+
+def test_unknown_or_revoked_packs_have_no_profile(world):
+    reg, market, cert, packs = world
+    with pytest.raises(MarketError):
+        market.profile("nope/none@1.0.0")
+    key = packs["private-analyst"][1].key
+    reg.revoke(key, "malicious-confirmed")
+    with pytest.raises(MarketError):
+        market.profile(key)
+
+
+def test_listing_rows_carry_skill_names_and_what_the_pack_uses(world):
+    reg, market, cert, packs = world
+    row = next(r for r in market.ranked() if r["id"] == "private-analyst")
+    assert row["skills"][0] == "Spot accounts at risk" and row["web"] is False and row["code"] is False

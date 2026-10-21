@@ -10,6 +10,7 @@ import json
 import re
 import secrets
 import time
+import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -23,6 +24,7 @@ from ..payments.ledger import Ledger, PendingError, StateError
 from ..payments.provider import FakeProvider, ProviderError
 from ..pack.digest import tree_digest
 from ..runner import run_pack
+from ..hub.market import MarketError
 from ..world import World
 
 STATIC = Path(__file__).parent / "static"
@@ -286,6 +288,12 @@ def make_handler(app: App):
                 return self._send(200, ("<!doctype html><meta charset=utf-8><title>agent-bridge</title>"
                                         "<body style='font:16px system-ui;padding:40px'>" + note + "</body>").encode(),
                                   "text/html; charset=utf-8")
+            if self.path.split("?")[0] == "/api/agent":
+                q = urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
+                try:
+                    return self._json(200, app.world.market.profile((q.get("key") or [""])[0]))
+                except MarketError as e:
+                    return self._json(404, {"error": str(e)})
             if self.path.startswith("/api/report/"):
                 rep = app.reports.get(self.path.rsplit("/", 1)[1])
                 return self._json(200, rep) if rep else self._json(404, {"error": "unknown run"})

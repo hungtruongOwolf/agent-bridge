@@ -438,3 +438,14 @@ def test_the_floor_replays_the_run_record_and_says_so(srv):
         assert needle in story
     assert "replays what really happened" in static_text(url, "app.js")
 
+
+
+def test_the_profile_endpoint_describes_a_helper_and_refuses_unknown_ones(srv):
+    import urllib.parse
+    app, url = srv
+    key = key_of(app, "private-analyst")
+    code, p = call(url + "/api/agent?key=" + urllib.parse.quote(key, safe=""))
+    assert code == 200 and p["id"] == "private-analyst" and p["author_says"]["skills"] and p["cannot"]
+    assert p["measured"]["tested"] is True and p["price_cents"] == 40
+    assert call(url + "/api/agent?key=" + urllib.parse.quote("nope", safe=""))[0] == 404
+    assert call(url + "/api/agent")[0] == 404
