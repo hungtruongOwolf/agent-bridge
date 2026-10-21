@@ -1,0 +1,15 @@
+agent-bridge
+Copyright (c) 2026 agent-bridge contributors, MIT License.
+
+Third-party software used (not bundled; installed from PyPI):
+- PyYAML (MIT)
+- jsonschema (MIT)
+- cryptography (Apache-2.0 or BSD-3-Clause)
+- pytest (MIT), development only
+
+Container image pulled at run time for the sealed Cell:
+- python:3.12-slim (Python Software Foundation License, Debian packages under their own licenses)
+
+Services called at run time (their own terms apply):
+- Nebius Token Factory, running NVIDIA Nemotron models (NVIDIA Open Model License applies to the models)
+- Tavily Search API
