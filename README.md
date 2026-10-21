@@ -50,7 +50,8 @@ bridge run examples/packs/private-analyst --vault examples/vault.json --types no
 bridge improve deal-brief      # propose better instructions, measured on a public dev suite
 bridge approve deal-brief      # owner approval: publish the candidate, certify it on the held-out suite
 bridge paypal-check            # optional: verify PayPal sandbox credentials (creates one uncharged test order)
-bridge serve --payments paypal # optional: use the PayPal sandbox instead of the built-in test money
+bridge serve --payments paypal-mock # optional: a local practice PayPal with an approval page (no credentials)
+bridge serve --payments paypal # optional: the real PayPal sandbox (needs credentials, see docs/paypal-setup.md)
 pytest                         # ~310 tests; the container tests are skipped if no engine is found
 ```
 
@@ -114,9 +115,10 @@ socket, a file handle or the model key. Anything it wants goes through the Broke
 
 - **Pull mode has no fair exchange.** The requester's machine runs the pack and could keep the output
   without paying. The payment design (a hold, a floor fee, dispute handling) limits the loss; it does not remove it.
-- **Money is test money.** Payments run through a ledger with a fake in-memory provider. A PayPal sandbox client
-  exists but has **not been run against the live sandbox yet**; until `bridge paypal-check` and the contract tests
-  pass with real credentials, treat it as unverified. No real money moves anywhere in this repo.
+- **Money is test money.** Payments run through a ledger with three providers: demo coins, a **practice PayPal** (a local emulator
+  of the sandbox, run through the real client code and shown with an approval page and receipts), and the PayPal sandbox client. The
+  client has been tested against the practice server only; it has **not been run against the live sandbox yet** (see `docs/paypal-setup.md`
+  for what the owner needs to provide). Nothing real moves in any mode.
 - **Detection is evidence, not proof.** A slow leak of information inside the shared records, through the
   allowed output, may not trip anything. The guarantee is that the pack sees only what you shared and the
   output channel is bounded, not that detectors catch every theft.

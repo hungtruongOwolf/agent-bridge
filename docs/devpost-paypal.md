@@ -10,7 +10,8 @@ Agents hire agents. Money follows the evidence.
 ## Honest disclosure (put this near the top of the description)
 
 All payments in the demo are **test money**. The ledger and every money flow are implemented and tested against an in-memory
-provider. A PayPal sandbox client (Orders v2 authorize, capture, void, refund, Payouts) is included. [CHOOSE ONE BEFORE SUBMITTING:
+provider and against a local **practice PayPal** server that emulates the sandbox (approval page, authorize, capture, void, refund, payouts)
+and runs the real client code. A PayPal sandbox client (Orders v2 authorize, capture, void, refund, Payouts) is included. [CHOOSE ONE BEFORE SUBMITTING:
 "It has been run against the live PayPal sandbox, see the video." OR "It has not yet been run against the live PayPal sandbox; the video uses the
 built-in test money."] No real money moves anywhere.
 
@@ -43,7 +44,7 @@ Outages and crashes release the hold with no charge.
 - **Silence rule**: if the requester goes quiet after the run started, the floor is captured and the outcome falls to auto-accept, so an author is not unpaid
   just because the requester never reported back.
 - **Providers**: a fake provider that can lose replies, decline captures and require buyer approval; a PayPal sandbox client that refuses any non-sandbox host.
-- **Integration**: the same console shows price, hold, floor, outcome, refund and the author payout, always labelled TEST MONEY.
+- **Integration**: the console shows price, hold, floor, outcome, refund and the author payout as plain-language receipts (click the coins chip), always labelled as test or practice money. The approval page tells the console tab, so the chat carries on by itself once the buyer approves.
 
 ## Challenges
 
