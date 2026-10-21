@@ -10,6 +10,14 @@
 
   window.niceName = (id) => String(id || "").split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
   const cents = (c) => c + "¢";
+  window.plural = (n, one, many) => n + " " + (n === 1 ? one : many || one + "s");
+  let toastTimer = null;
+  /* a short message that appears where you are looking, whatever screen you are on */
+  function toast(text, bad) {
+    let t = $("toast"); if (!t) { t = el("div"); t.id = "toast"; t.setAttribute("role", "status"); t.setAttribute("aria-live", "polite"); document.body.append(t); }
+    t.textContent = text || ""; t.className = text ? (bad ? "bad on" : "on") : ""; clearTimeout(toastTimer);
+    if (text) toastTimer = setTimeout(() => { t.className = ""; }, bad ? 6000 : 3500);
+  }
 
   const KNOWN = /spending limit|still working|write a message|characters|full|exist|no longer|shelf|shelves|type|text|secret|everyday|name|hold is not approved|payment could not|not helpful|already|limit|remember|choose|file|levels|add between/i;
   function friendly(msg, status) {
@@ -28,7 +36,7 @@
 
   function drawCoins() {
     const w = S.payments; if (!w) return;
-    $("coinchip").textContent = "Paid to helpers " + cents(w.paid_out) + ", on hold " + cents(w.held);
+    $("coinchip").textContent = "Spent " + cents(w.captured) + (w.on_hold ? ", on hold " + cents(w.on_hold) : "");
     $("coinlabel").textContent = w.provider === "paypal-sandbox" ? "PayPal coins" : "Coins";
   }
 
@@ -47,6 +55,7 @@
     try { found = (await api("/api/match?q=" + encodeURIComponent(text.slice(0, 300)))).matches; } catch (e) { box.replaceChildren(el("p", "small", e.message)); return; }
     box.replaceChildren();
     if (!found.length) { box.append(el("p", "small", "Nobody is for hire yet.")); return; }
+    if (found[0].matched) found = found.filter((m) => m.matched);  // only the ones that really fit, when there are any
     box.append(el("p", "recshead", found[0].matched ? "These helpers fit what you asked:" : "Nobody says they are made for that. The best tested helpers are:"));
     found.forEach((m) => {
       const row = el("div", "rec"), who = el("div", "who");
@@ -80,7 +89,7 @@
       $("askform").onsubmit = (e) => { e.preventDefault(); voiceOn = false; ask($("ask").value, false); $("ask").select(); };
       setupVoice();
       $("helpbtn").onclick = () => $("help").showModal(); $("helpclose").onclick = () => $("help").close();
-      window.Bridge = { api, el, state: () => S, refresh, cents, niceName: window.niceName, blocked: S.blocked_phrases, bad: BAD };
+      window.Bridge = { api, el, state: () => S, refresh, cents, toast, plural: window.plural, niceName: window.niceName, blocked: S.blocked_phrases, bad: BAD };
       window.Market.mount(window.Bridge); window.MemoryUI.mount(window.Bridge); window.Studio.mount(window.Bridge); window.ChatUI.mount(window.Bridge);
       const logo = $("logo"), c = logo.getContext("2d"); c.imageSmoothingEnabled = false; c.fillStyle = "#FFF8E7"; c.fillRect(0, 0, 20, 14);
       window.OfficeArt.person(c, 10, 14, { pose: "idle", facing: "f", shirt: "#5CA97A", hat: "cap", skin: "#E0AC82", hair: "#1A1320" }, 0);

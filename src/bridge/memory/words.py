@@ -9,9 +9,14 @@ whom why will with would you your about any anything give show""".split())
 
 
 def stem(w: str) -> str:
-    for suffix in ("ing", "ed", "es", "s"):
-        if len(w) > len(suffix) + 2 and w.endswith(suffix):
-            return w[: -len(suffix)]
+    """A rough stem. Two passes, so 'meetings' and 'meeting' both end up as 'meet' (plural first, then -ing/-ed)."""
+    for _ in range(2):
+        for suffix in ("ing", "ed", "es", "s"):
+            if len(w) > len(suffix) + 2 and w.endswith(suffix):
+                w = w[: -len(suffix)]
+                break
+        else:
+            break
     return w
 
 

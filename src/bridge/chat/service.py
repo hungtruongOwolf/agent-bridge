@@ -114,8 +114,21 @@ class ChatService:
 
     def delete(self, body: dict) -> dict:
         tid = str(body.get("id", ""))
-        if self.store.get(tid).busy:
+        t = self.store.get(tid)
+        if t.busy:
             raise ChatBusy("wait for the answer to arrive before deleting this chat")
+        with self.app.lock:  # leaving a chat means its last answer was good enough: settle it so no money is left hanging
+            for rid in t.runs:
+                row = self.app.ledger.rows.get(rid)
+                if row is not None and row.state == "RESULT_READY":
+                    try:
+                        self.app.ledger.accept(rid, self.app.clock())
+                    except (StateError, ProviderError, PendingError):
+                        pass
+            try:
+                self.app.ledger.release_payouts(self.app.clock())
+            except (ProviderError, PendingError):
+                pass
         self.store.delete(tid)
         return {"deleted": tid}
 

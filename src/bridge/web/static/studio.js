@@ -10,7 +10,7 @@
   const btn = (text, cls, fn) => { const b = el("button", cls || "btn", text); b.type = "button"; if (fn) b.onclick = fn; return b; };
   const NS = "http://www.w3.org/2000/svg";
   const sv = (tag, attrs, text) => { const e = document.createElementNS(NS, tag); for (const k in attrs || {}) e.setAttribute(k, attrs[k]); if (text !== undefined) e.textContent = text; return e; };
-  const note = (t) => { $("studionote").textContent = t || ""; };
+  const note = (t) => { $("studionote").textContent = ""; if (t) B.toast(t, !/^(Published|Saved)/.test(t)); };
   const NW = 190, NH = 74, GX = 80, GY = 40;
 
   const KIND = {
@@ -42,7 +42,7 @@
     list.helpers.forEach((h) => {
       const b = el("button", "threadbtn" + (H && H.id === h.id ? " cur" : "")); b.type = "button";
       const live = h.versions.find((v) => !v.revoked);
-      b.append(el("span", "name", h.title), el("span", "blurb", h.problems ? h.problems + " thing(s) to fix" : live ? "On the market: v" + live.version : "Draft v" + h.version));
+      b.append(el("span", "name", h.title), el("span", "blurb", h.problems ? window.plural(h.problems, "thing") + " to fix" : live ? "On the market: v" + live.version : "Draft v" + h.version));
       b.onclick = () => openHelper(h.id);
       box.append(b);
     });
@@ -71,11 +71,25 @@
     drawProblems(); drawGraph(); drawPanel();
   }
 
+  const nameOf = (id) => { const s = byId(id); return s ? (KIND[kindOf(s)] || {}).title + " (" + id + ")" : id; };
+  function say(p) {  // the checker's words, in plain language, and which step they are about
+    let m;
+    if ((m = /step '([a-z0-9_]+)' is unreachable from start/.exec(p))) return [m[1], "“" + nameOf(m[1]) + "” is not connected: nothing leads to it. Drag the green dot of an earlier step onto it, or remove it."];
+    if ((m = /step '([a-z0-9_]+)': (.*)/.exec(p))) return [m[1], "“" + nameOf(m[1]) + "”: " + m[2].replace(/`/g, "")];
+    if ((m = /cycle through step '([a-z0-9_]+)'/.exec(p))) return [m[1], "The steps go round in a circle at “" + nameOf(m[1]) + "”. Loops are not available yet."];
+    return [null, p.replace(/^The steps: /, "")];
+  }
   function drawProblems() {
     const box = $("problems"); box.replaceChildren();
-    if (!problems.length) { box.append(el("p", "small okline", dirty ? "Saving…" : "Everything checks out. This helper is ready to try or publish.")); return; }
-    box.append(el("p", "small warnline", problems.length + " thing" + (problems.length === 1 ? "" : "s") + " to fix before it can be published:"));
-    const ul = el("ul", "small"); problems.slice(0, 6).forEach((p) => ul.append(el("li", null, p))); box.append(ul);
+    if (!problems.length) { box.append(el("p", "small okline", dirty ? "Saving…" : "✓ Everything checks out. This helper is ready to practise or publish.")); return; }
+    box.append(el("p", "small warnline", window.plural(problems.length, "thing") + " to fix before it can be published:"));
+    const ul = el("ul", "small probs");
+    problems.slice(0, 6).forEach((p) => {
+      const [id, text] = say(p), li = el("li");
+      if (id && byId(id)) { const b = btn(text, "linkbtn probbtn", () => select(id)); b.title = "Show this step"; li.append(b); } else li.append(text);
+      ul.append(li);
+    });
+    box.append(ul);
   }
 
   /* ---------- saving ---------- */
@@ -230,6 +244,11 @@
 
   /* ---------- adding and removing steps ---------- */
   function newId(base) { let i = 1; while (byId(base + (i > 1 ? i : ""))) i++; return base + (i > 1 ? i : ""); }
+  function lastOnMainPath() {  // the last working step before the check or the hand-over: new steps go after it
+    const seen = new Set(), order = []; let cur = wf && wf.start;
+    while (cur && byId(cur) && !seen.has(cur)) { seen.add(cur); order.push(byId(cur)); cur = byId(cur).next; }
+    return order.filter((x) => x.kind !== "return" && x.kind !== "gate").pop() || null;
+  }
   function addStep(kind) {
     if (!wf) return;
     const tmpl = {
@@ -241,10 +260,9 @@
       deliver: (id) => ({ id, kind: "return", reads: [(steps().filter((s) => s.kind === "llm").pop() || {}).id].filter(Boolean) })
     }[kind];
     const base = { files: "read", web: "web", think: "think", check: "check", program: "program", deliver: "done" }[kind];
-    const s = tmpl(newId(base)), after = (sel && byId(sel)) || steps().find((x) => x.next && byId(x.next) && byId(x.next).kind === "return" && x.kind !== "gate");
+    const s = tmpl(newId(base)), after = (sel && byId(sel)) || lastOnMainPath();
     if (after && after.kind !== "return" && s.kind !== "return") { s.next = after.next; if (s.kind === "gate") s.on_fail = after.on_fail || undefined; after.next = s.id; }
     else if (s.kind !== "return") { const last = steps().find((x) => x.kind === "return"); if (last) s.next = last.id; }
-    if (after) { const P = place(); if (P[after.id]) layout[s.id] = { x: Math.round(P[after.id].x + (NW + GX) / 2), y: Math.round(P[after.id].y + NH + 30) }; }
     wf.steps.push(s); if (!wf.start) wf.start = s.id;
     sel = s.id; changed(["steps"]); drawGraph(); drawPanel();
   }
@@ -393,7 +411,7 @@
   function publishPanel(box) {
     const m = H.manifest;
     box.append(el("p", "small", "Publishing puts version " + m.version + " on the market with your signature. A tester then runs it on a fixed set of questions and tries to catch it cheating. Its trust score comes from that, not from you."));
-    if (problems.length) box.append(el("p", "small warnline", "Fix the " + problems.length + " thing(s) above first."));
+    if (problems.length) box.append(el("p", "small warnline", "Fix the " + window.plural(problems.length, "thing") + " listed at the top first."));
     const price = document.createElement("input"); price.type = "number"; price.min = 0.01; price.max = 5; price.step = 0.05; price.value = ((H.versions[0] && H.versions[0].price_usd) || 0.2); price.setAttribute("aria-label", "Price per answer in dollars");
     const mail = input(H.versions[0] ? H.versions[0].payout_email : "", () => {}, 120); mail.placeholder = "you@example.com (optional)";
     box.append(field("Price per answer (US dollars)", price, "Demo money only: nothing real moves in this demo."), field("Where you would be paid", mail));

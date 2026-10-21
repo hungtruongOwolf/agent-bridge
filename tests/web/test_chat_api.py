@@ -455,3 +455,14 @@ def test_a_long_note_is_one_item_in_memory_and_in_what_the_helper_sees(srv):
     assert len(shown) == 1 and shown[0]["used"]["answers"] == 1  # passages roll up into the one note
     assert call(url + "/api/thread/settings", {"id": t["id"], "exclude": [out[1]["id"]]}, app.token)[0] == 200
     assert call(url + "/api/thread/context?id=" + t["id"])[1]["shared_count"] == 0
+
+
+def test_deleting_a_chat_settles_its_last_answer_so_no_money_is_left_hanging(srv):
+    app, url, _ = srv
+    t = new_chat(app, url)
+    out = send(app, url, t["id"], "Acme renewal risk")[1]
+    rid = out["thread"]["messages"][-1]["run_id"]
+    assert app.ledger.rows[rid].state == "RESULT_READY"
+    assert call(url + "/api/thread/delete", {"id": t["id"]}, app.token)[0] == 200
+    assert app.ledger.rows[rid].state == "SETTLED"
+    assert call(url + "/api/state")[1]["payments"]["on_hold"] == 0

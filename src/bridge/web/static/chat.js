@@ -130,7 +130,7 @@
         });
         d.append(how);
       }
-      if (m.proposals) meta.append(m.proposals + " thing(s) to remember are waiting in My memory. ");
+      if (m.proposals) meta.append(window.plural(m.proposals, "suggestion") + " to remember " + (m.proposals === 1 ? "is" : "are") + " waiting under My office. ");
     }
     if (m.payment) {
       const p = m.payment;

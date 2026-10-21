@@ -27,7 +27,7 @@ from ..chat.service import ChatBusy, ChatService
 from ..chat.threads import ThreadError, ThreadStore
 from ..engine.limits import clean_history
 from ..engine.journal import Journal
-from ..payments.ledger import Ledger, PendingError, StateError
+from ..payments.ledger import TERMINAL, Ledger, PendingError, StateError
 from ..payments.provider import FakeProvider, ProviderError
 from ..pack.digest import tree_digest
 from ..runner import run_pack
@@ -292,6 +292,9 @@ class App:
             except (ProviderError, PendingError):
                 pass  # the provider is slow; show what we know and try again on the next refresh
             summary = self.ledger.summary()
+            on_hold = sum(max(0, r.price - r.captured() - sum(c["amount"] for c in r.captures if c["id"] in r.refunded))
+                          for r in self.ledger.rows.values() if r.state not in TERMINAL and r.state != "AWAITING_APPROVAL")
+            summary["on_hold"] = on_hold
         return {**summary, "test_money": True, "provider": self.payments_mode, "holdback": "demo holdback 0 s; production would hold for days"}
 
     def settle(self, body: dict) -> dict:

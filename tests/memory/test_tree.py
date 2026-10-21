@@ -108,3 +108,11 @@ def test_a_huge_memory_is_searched_by_deciding_not_scanning():
     assert hits[0].id == "needle"
     assert len(opened) < 40, "only a few shelves are opened out of 280"
     assert searched < 0.2 and built < 10
+
+
+def test_a_plural_and_its_ing_form_find_each_other():
+    from bridge.memory.words import stem
+    assert stem("meetings") == stem("meeting") == stem("meets")
+    assert stem("prefers") == "prefer" and stem("accounts") == "account" and stem("budgets") == "budget"
+    t = MemoryTree([rec("m1", "work/meetings", "Meeting notes, Monday: Priya will book the venue.")])
+    assert [r.id for r in t.route("what are the action items from my meetings")[0]] == ["m1"]

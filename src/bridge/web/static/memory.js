@@ -10,7 +10,7 @@
   const btn = (text, cls, fn) => { const b = el("button", cls || "btn", text); b.type = "button"; if (fn) b.onclick = fn; return b; };
   const when = (t) => (t ? new Date(t * 1000).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "");
   const pretty = (p) => (p ? p.split("/").map((x) => x.replace(/^./, (c) => c.toUpperCase())).join(" › ") : "Everything");
-  const note = (t) => { $("memnote").textContent = t || ""; };
+  const note = (t) => { $("memnote").textContent = ""; if (t) B.toast(t, !/^(Saved|Moved)/.test(t)); };
   const shelves = () => (B.state().memory ? B.state().memory.shelves : []);
 
   function confirmTwice(b, label, fn) {
@@ -226,7 +226,7 @@
     inp.value = kind === "move" ? sel : (s ? s.label : ""); inp.setAttribute("aria-label", kind === "move" ? "New shelf path" : "A short note about this shelf");
     const go = btn("Save", "btn go2", async () => {
       try {
-        if (kind === "move") { const r = await B.api("/api/memory", { action: "move_shelf", from: sel, to: inp.value }); const to = inp.value.trim().toLowerCase().replace(/\s*\/\s*/g, "/"); note("Moved " + r.moved + " file(s)."); sel = to; }
+        if (kind === "move") { const r = await B.api("/api/memory", { action: "move_shelf", from: sel, to: inp.value }); const to = inp.value.trim().toLowerCase().replace(/\s*\/\s*/g, "/"); note("Moved " + window.plural(r.moved, "note") + "."); sel = to; }
         else { await B.api("/api/memory", { action: "shelf_note", shelf: sel, text: inp.value }); note("Saved."); }
         await B.refresh(); await select(sel);
       } catch (e) { note(e.message); }
@@ -271,7 +271,7 @@
     if (r.long) meta.append(" Kept whole, stored as " + r.parts + " passages so a helper reads only the part it needs.");
     if (r.edited) meta.append(" You corrected it later.");
     c.append(meta);
-    c.append(el("div", "small muted", r.used.answers ? "Helped write " + r.used.answers + " answer(s); last in “" + r.used.last_chat + "”." : "Not used in any answer yet."));
+    c.append(el("div", "small muted", r.used.answers ? "Helped write " + window.plural(r.used.answers, "answer") + "; last in “" + r.used.last_chat + "”." : "Not used in any answer yet."));
     const a = el("div", "acts");
     a.append(btn("Edit", "btn", () => edit(c, r)), btn("Delete", "btn warn", (e) => confirmTwice(e.target, "Really delete?", async () => {
       try { await B.api("/api/memory", { action: "delete", id: r.id }); await B.refresh(); } catch (er) { note(er.message); }
@@ -345,7 +345,7 @@
       const drawList = () => {
         listBox.replaceChildren(); boxes.length = 0;
         if (mode.v === "whole") { listBox.append(el("p", "small muted", "It will be saved whole and cut into passages behind the scenes.")); return; }
-        listBox.append(el("p", "small", "Found " + notes.length + " note(s). Untick the ones you do not want."));
+        listBox.append(el("p", "small", "Found " + window.plural(notes.length, "note") + ". Untick the ones you do not want."));
         const list = el("ul", "filelist");
         notes.forEach((t) => { const li = el("li"), c = document.createElement("input"); c.type = "checkbox"; c.checked = true; c.setAttribute("aria-label", "Keep: " + t.slice(0, 60)); boxes.push(c); li.append(c, el("span", null, t)); list.append(li); });
         listBox.append(list);

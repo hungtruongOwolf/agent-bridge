@@ -62,13 +62,13 @@
   /* the market square: the shared places every stall depends on */
   function bar(d) {
     const sq = $("square"); sq.replaceChildren();
-    const n = d.stalls.length, pay = B.state().payments || { paid_out: 0, held: 0 };
+    const n = d.stalls.length, pay = B.state().payments || { captured: 0, on_hold: 0 };
     const head = el("div", "panel"); head.append(el("div", "title", "The market square")); const body = el("div", "body sqbody"); head.append(body);
-    body.append(btn(picking || !n ? "Hide the helpers" : "+ Open a new stall", "btn go2 sqwide", () => { picking = !picking; $("hirepanel").hidden = !(picking || !n); drawPicker(); bar(d); }));
+    body.append(btn(picking ? "Hide the list of helpers" : "+ Open a new stall", "btn go2 sqwide", () => { picking = !picking; $("hirepanel").hidden = !(picking || !n); drawPicker(); bar(d); if (picking) $("hirepanel").scrollIntoView({ block: "nearest" }); }));
     body.append(squareCard({ shirt: "#3D2E4A", hat: "guard", skin: "#E0AC82", hair: "#1A1320" }, "Guard post",
       [d.guard.stopped ? "Stopped " + d.guard.stopped + " sneaky attempt" + (d.guard.stopped === 1 ? "" : "s") + "." : "Nothing suspicious so far.", "Checks every answer before it reaches you."]));
     body.append(squareCard({ shirt: "#DCAB3C", hat: "visor", skin: "#C68642", hair: "#3B2A20" }, "Bank",
-      ["Paid to helpers: " + B.cents(pay.paid_out), "On hold for you: " + B.cents(pay.held), "Money only moves after a helper answers."]));
+      ["Spent on answers: " + B.cents(pay.captured || 0), "On hold for you: " + B.cents(pay.on_hold || 0), "Nothing is charged until a helper answers."]));
     const open = btn("Open my memory", "btn", () => window.ChatUI.show("memory"));
     body.append(squareCard({ shirt: "#9482D3", hat: "glasses", skin: "#F5CBA7", hair: "#8A5A2B" }, "Library",
       [d.memory.total + " files on shelves", d.memory.secret ? d.memory.secret + " secret, never shared" : "No secret files yet"], open));
@@ -95,6 +95,7 @@
 
   function draw(d) {
     bar(d); welcome(d.stalls.length);
+    document.querySelector(".floorgrid").hidden = !d.stalls.length;  // no chats yet: just the welcome and the list of helpers
     const box = $("stalls"); box.replaceChildren();
     d.stalls.forEach((s) => box.append(stallCard(s)));
     const add = el("button", "stall newstall"); add.type = "button";
@@ -150,7 +151,7 @@
     });
     const flagged = S.market.filter((m) => m.status === "flagged");
     if (flagged.length) {
-      box.append(el("p", "small muted", flagged.length + " helper(s) were caught cheating in tests and are blocked:"));
+      box.append(el("p", "small muted", window.plural(flagged.length, "helper was", "helpers were") + " caught cheating in tests and cannot be chatted with:"));
       flagged.forEach((m) => {
         const reasons = [...new Set((m.violations || []).filter((v) => v !== "KILLED").map((v) => B.bad[v] || v))];
         box.append(el("p", "small", B.niceName(m.id) + " " + (reasons.length ? reasons.join(", and ") + "." : "was caught cheating.")));
@@ -164,7 +165,6 @@
   }
   function mount(bridge) {
     B = bridge;
-    $("welcomego").onclick = () => { picking = true; $("hirepanel").hidden = false; drawPicker(); $("hirepanel").scrollIntoView({ block: "nearest" }); };
     $("welcomehide").onclick = () => { try { localStorage.setItem("ab-welcome", "1"); } catch (e) { /* optional */ } $("welcome").hidden = true; };
   }
   window.Market = { mount, start, stop, redraw: () => { if (!$("view-office").hidden) { last = ""; poll(); drawPicker(); } }, drawPicker };
