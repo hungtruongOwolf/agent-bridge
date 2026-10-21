@@ -307,7 +307,7 @@ def test_money_state_persists_across_a_restart(mem_app):
     rid = run_brief(app, url)[1]["run_id"]
     again = server.App(app.world, EX / "packs", EX / "vault.json", app.env_file, cell=FakeCell(), web=FakeWeb())
     assert again.ledger.rows[rid].state == "RESULT_READY" and again.ledger.provider.captured_total() == 15
-    again.settle({"run_id": rid, "action": "accept"})
+    again.payments.settle({"run_id": rid, "action": "accept"})
     assert again.ledger.provider.captured_total() == 60
 
 
