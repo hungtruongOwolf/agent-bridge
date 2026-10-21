@@ -66,6 +66,12 @@ code{font:12px ui-monospace,Consolas,monospace;background:var(--chip);padding:1p
 .facts{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;font-size:12px;margin-top:12px;color:var(--muted)}
 .facts b{color:var(--ink);font-weight:600;overflow-wrap:anywhere}
 .empty{color:var(--muted);font-size:13px;padding:10px 0}
+.audit{margin-top:12px;font-size:12px;border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+.audit summary{cursor:pointer;font-weight:600}
+.arow{display:grid;grid-template-columns:34px 110px 1fr;gap:6px;padding:3px 0;border-top:1px solid var(--line);overflow-wrap:anywhere}
+.hist{border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin-bottom:8px;cursor:pointer;font-size:13px}
+.hist:hover{border-color:var(--accent)}
+@media (max-width:600px){ header{padding:12px 14px} main{padding:12px;gap:12px} .mode{margin-left:0} .arow{grid-template-columns:30px 1fr} .arow span:last-child{grid-column:1 / -1} }
 .prop{border:1px dashed var(--warn);background:var(--warnbg);border-radius:10px;padding:10px;margin-bottom:8px;font-size:13px}
 .prop .acts{display:flex;gap:8px;margin-top:8px}
 .btn{border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:8px;padding:5px 12px;font-size:13px;font-weight:600}
@@ -101,6 +107,8 @@ code{font:12px ui-monospace,Consolas,monospace;background:var(--chip);padding:1p
     <label class="sim"><input type="checkbox" id="sim"> Simulate a compromised model (copies everything it can see)</label>
     <ul class="tl" id="tl"></ul>
     <div id="out"></div>
+    <h2 style="margin-top:20px">Past runs</h2>
+    <div id="history"><div class="empty">No runs yet.</div></div>
   </section>
 </main>
 <script>
@@ -170,7 +178,7 @@ function drawReview(){
     a.append(ok,no); c.append(a); box.append(c);
   });
 }
-async function refresh(){ S = await api("/api/state"); drawTypes(true); drawVault(); drawReview(); drawMarket(); }
+async function refresh(){ S = await api("/api/state"); drawTypes(true); drawVault(); drawReview(); drawMarket(); drawHistory(); }
 
 function drawTypes(keep){
   const types = [...new Set(S.vault.map(r => r.type))];
@@ -190,28 +198,21 @@ const WHY = {
   SANDBOX_WRITE: "The pack code tried to write a file outside its scratch space."
 };
 
-async function run(){
-  if (running || !selected) return; running = true; $("go").disabled = true; $("go").textContent = "Running…";
-  $("tl").replaceChildren(); $("out").replaceChildren();
-  let rep;
-  try { rep = await api("/api/run",{key:selected, types:lensTypes(), max_sensitivity:$("sens").value, model:$("sim").checked ? "leak" : "nebius"}); }
-  catch(e){ $("out").append(el("div","banner kill")); $("out").lastChild.append(el("h3",null,"Could not run"), el("p",null,String(e.message))); running=false; $("go").disabled=false; $("go").textContent="Run again"; return; }
+const DESC = {tool:"reads memory through the broker", llm:"asks the model", gate:"checks its own result", "return":"returns a result", code:"runs code in a sealed cell"};
 
-  const DESC = {tool:"reads memory through the broker", llm:"asks the model", gate:"checks its own result", "return":"returns a result", code:"runs code in a sealed cell"};
-  const kindOf = {};
+async function play(rep, animate){
+  const pause = (ms) => animate ? sleep(ms) : Promise.resolve();
+  $("tl").replaceChildren(); $("out").replaceChildren();
+  const line = (icon, cls, build) => { const li = el("li"); li.append(el("span","ic " + cls, icon)); const d = el("div"); build(d); li.append(d); $("tl").append(li); };
   for (const s of rep.steps) {
-    if (s.event === "step_started") {
-      kindOf[s.step] = s.kind;
-      const li = el("li"); li.append(el("span","ic","›")); const d = el("div"); d.append(el("b",null,s.step), document.createTextNode(" · " + (DESC[s.kind] || s.kind))); li.append(d); $("tl").append(li); await sleep(380);
-    }
-    if (s.event === "model_call") { const li = el("li"); li.append(el("span","ic ok","✓")); li.append(el("div",null,"model answered · " + s.tokens + " tokens")); $("tl").append(li); await sleep(250); }
-    if (s.event === "incident") { const li = el("li"); li.append(el("span","ic bad","!")); li.append(el("div",null,"INCIDENT at step " + s.step + (s.evidence ? " · evidence: " + s.evidence : ""))); $("tl").append(li); await sleep(300); }
+    if (s.event === "step_started") { line("›","", d => d.append(el("b",null,s.step), document.createTextNode(" · " + (DESC[s.kind] || s.kind)))); await pause(380); }
+    if (s.event === "model_call") { line("✓","ok", d => d.textContent = "model answered · " + s.tokens + " tokens"); await pause(250); }
+    if (s.event === "incident") { line("!","bad", d => d.textContent = "INCIDENT at step " + s.step + (s.evidence ? " · evidence: " + s.evidence : "")); await pause(300); }
   }
-  for (const ev of rep.broker_events) {
-    const li = el("li"); li.append(el("span","ic bad","!")); const d = el("div"); d.append(el("b",null,"Blocked: "), document.createTextNode(WHY[ev.kind] || ev.kind), el("br"), el("span","meta",ev.detail)); li.append(d); $("tl").append(li); await sleep(300);
-  }
+  for (const ev of rep.broker_events) { line("!","bad", d => d.append(el("b",null,"Blocked: "), document.createTextNode(WHY[ev.kind] || ev.kind), el("br"), el("span","meta",ev.detail))); await pause(300); }
 
   const out = $("out");
+  out.append(el("div","meta",rep.summary || ""));
   if (rep.outcome === "KILLED") {
     const b = el("div","banner kill"); b.append(el("h3",null,"Run stopped. Nothing was delivered."), el("p",null,"The pack was caught trying to take data it was not granted. The result was discarded, the incident is on the audit log, and your real records were never exposed.")); out.append(b);
   } else if (rep.outcome === "COMPLETE") {
@@ -226,21 +227,47 @@ async function run(){
   add("kept private", rep.withheld.length ? rep.withheld.join(", ") : "none");
   add("tokens", String(rep.tokens));
   add("pack digest", rep.digest.slice(0,26) + "…");
-  add("audit journal", rep.journal_entries + " entries, hash chain verified");
   out.append(f);
-  if (rep.outcome === "COMPLETE" && rep.proposals.length) {
-    const n = el("div","note","This agent suggested something to remember. Review it on the left, under “Waiting for your decision”.");
-    out.append(n);
+
+  const det = el("details","audit"); det.append(el("summary",null,"Audit log · " + rep.journal_entries + " entries · hash chain verified"));
+  (rep.journal || []).forEach(e => { const row = el("div","arow"); row.append(el("span","meta","#" + e.seq), el("code",null,e.kind), el("span","meta",e.hash + " " + JSON.stringify(e.data).slice(0,110))); det.append(row); });
+  out.append(det);
+
+  if (rep.outcome === "COMPLETE" && rep.proposals && rep.proposals.length) {
+    out.append(el("div","note","This agent suggested something to remember. Review it on the left, under “Waiting for your decision”."));
     const undo = el("button","btn","Undo everything from this run");
     undo.onclick = async () => { const r = await api("/api/revert",{run_id:rep.run_id}); undo.textContent = "Undone (" + r.removed_from_vault + " saved, " + r.dropped_pending + " pending removed)"; undo.disabled = true; await refresh(); };
     out.append(undo);
+  }
+}
+
+async function run(){
+  if (running || !selected) return; running = true; $("go").disabled = true; $("go").textContent = "Running…";
+  $("tl").replaceChildren(); $("out").replaceChildren();
+  try {
+    const rep = await api("/api/run",{key:selected, types:lensTypes(), max_sensitivity:$("sens").value, model:$("sim").checked ? "leak" : "nebius"});
+    await play(rep, true);
+  } catch(e) {
+    const b = el("div","banner kill"); b.append(el("h3",null,"Could not run"), el("p",null,String(e.message))); $("out").append(b);
   }
   await refresh();
   running = false; $("go").disabled = false; $("go").textContent = "Run again";
 }
 
+function drawHistory(){
+  const box = $("history"); box.replaceChildren();
+  if (!S.history || !S.history.length) { box.append(el("div","empty","No runs yet.")); return; }
+  S.history.forEach(h => {
+    const c = el("div","hist"); const top = el("div","row");
+    top.append(el("b",null,h.pack), el("span","chip " + (h.outcome === "COMPLETE" ? "ok" : (h.outcome === "KILLED" ? "bad" : "warn")), h.outcome.toLowerCase().replace("_"," ")));
+    c.append(top, el("div","meta",h.summary));
+    c.onclick = async () => { try { await play(await api("/api/report/" + h.run_id), false); } catch(e) { $("out").replaceChildren(el("div","empty","That run is no longer available.")); } };
+    box.append(c);
+  });
+}
+
 (async function init(){
-  S = await api("/api/state"); drawTypes(); drawVault(); drawReview(); drawMarket(); $("go").onclick = run;
+  S = await api("/api/state"); drawTypes(); drawVault(); drawReview(); drawMarket(); drawHistory(); $("go").onclick = run;
 })();
 </script>
 </body>

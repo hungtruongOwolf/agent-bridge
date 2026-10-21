@@ -1,6 +1,6 @@
 # 05 Console polish
 
-Status: open
+Status: resolved (2026-10-20); narrow-screen CSS written but not visually verified at 390px
 Milestone: M1
 
 Run history list, an audit view that prints the hash-chained journal with a "verify" result, a clear empty/error state for every panel, keyboard and narrow-screen use, and a one-line "what happened" summary per run. Keep it a single static page with no external requests.
