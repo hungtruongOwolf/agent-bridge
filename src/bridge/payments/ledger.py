@@ -163,7 +163,8 @@ class Ledger:
             row = self._row(run_id)
             self._move(row, {"AWAITING_APPROVAL"}, "AUTHORIZED", now, "buyer approved the hold")
             try:
-                self._do(row, "confirm", lambda: self.provider.confirm(row.auth_id, f"{run_id}:confirm"))
+                # the provider may swap the order id for the real authorization id (PayPal does)
+                row.auth_id = self._do(row, "confirm", lambda: self.provider.confirm(row.auth_id, f"{run_id}:confirm")).auth_id
             except PendingError:
                 self._save()
                 raise
