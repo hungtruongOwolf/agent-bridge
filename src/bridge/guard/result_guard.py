@@ -80,7 +80,8 @@ class ResultGuard:
             return canary
         if len(text.encode()) > self._max_bytes:
             return GuardReport(Verdict.DENY, [f"result larger than {self._max_bytes} bytes"])
-        errs = [e.message for e in self._validator.iter_errors(result)]
-        if errs:
-            return GuardReport(Verdict.DENY, [f"schema: {m}" for m in errs])
+        errs = list(self._validator.iter_errors(result))
+        if errs:  # name the field and the rule only: an error message would repeat the offending value (your data)
+            return GuardReport(Verdict.DENY, ["schema: " + (".".join(map(str, e.path)) or "result") + " breaks " + str(e.validator)
+                                              for e in errs[:3]])
         return self.scan(result, canaries=[], lens_texts=lens_texts)

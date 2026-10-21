@@ -75,3 +75,10 @@ def test_longest_shared_run():
 def test_bad_schema_rejected_at_construction():
     with pytest.raises(Exception):
         ResultGuard({"type": "not-a-type"})
+
+
+def test_schema_denial_never_repeats_the_offending_value():
+    secret = "Bank account 000111222 balance 91000 " * 30
+    r = guard().check({"summary": secret, "risk": "low"}, canaries=[], lens_texts=[])
+    assert r.verdict is Verdict.DENY
+    assert "000111222" not in " ".join(r.reasons) and "summary breaks maxLength" in r.reasons[0]
