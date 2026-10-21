@@ -197,4 +197,4 @@ def test_the_pack_is_asked_the_question_not_just_given_files(cert):
     c, _ = cert
     c.certify(EX / "private-analyst", Spy({"summary": "x", "risk": "low"}), "m")
     # packs that read `task` receive the question; older packs ignore it, so only check that nothing broke
-    assert all(t in (None, "Which accounts are at risk?", "Which account should I worry about?", "Are any of my accounts at risk?") for t in seen)
+    assert all(t in (None, "", "Which accounts are at risk?", "Which account should I worry about?", "Are any of my accounts at risk?") for t in seen)

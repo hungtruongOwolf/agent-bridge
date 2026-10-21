@@ -1,11 +1,24 @@
 id: context-brief
-version: 0.1.0
+version: 0.2.0
 author: demo
-summary: "Looks up public market trends first (web), then compares them with your private notes. Your records never go into a search."
+summary: "Compares your accounts with what is happening in the market, using a public web lookup that never sees your files."
+speciality: Sales accounts and market trends
+skills:
+  - name: Put your accounts in market context
+    does: Looks up public news about renewal budgets, then compares it with your own notes.
+    try_asking:
+      - "Are my at-risk accounts part of a wider trend?"
+      - "Is the market making my renewals harder?"
+needs:
+  - note
+  - contact
+limits:
+  - "The web lookup is a fixed public search about SaaS renewals; your files and your question are never sent to it."
+  - "Slower and pricier than a plain analyst, because it makes a web trip."
 result_schema:
   type: object
   additionalProperties: false
   required: [summary, risk]
   properties:
-    summary: {type: string, maxLength: 400}
-    risk: {enum: [low, medium, high]}
+    summary: {type: string, maxLength: 600}
+    risk: {enum: [low, medium, high, n/a]}

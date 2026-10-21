@@ -15,11 +15,11 @@ import yaml
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 from ..pack import signing
+from .manifest import profile_fields, validate as validate_manifest
 from ..pack.caps import Version, capabilities, widening
 from ..pack.digest import tree_digest
 from ..pack.workflow import WorkflowError, parse
 
-REQUIRED = ("id", "version", "author", "summary", "result_schema")
 
 
 class RegistryError(Exception):
@@ -47,6 +47,10 @@ class PackRecord:
     starred_by: list[str] = field(default_factory=list)
     revoked: str | None = None
     caps: dict = field(default_factory=dict)  # what the pack can do; widening needs a major version
+    skills: list = field(default_factory=list)  # concrete skills the author claims, with example questions
+    speciality: str = ""
+    needs: list = field(default_factory=list)
+    limits: list = field(default_factory=list)
 
     @property
     def key(self) -> str:
@@ -76,14 +80,16 @@ class Registry:
             raise RegistryError(f"cannot read pack: {e}") from e
         except WorkflowError as e:
             raise RegistryError(f"invalid workflow: {'; '.join(e.problems)}") from e
-        missing = [f for f in REQUIRED if not (manifest or {}).get(f)]
-        if missing:
-            raise RegistryError(f"pack.yaml is missing: {', '.join(missing)}")
+        problems = validate_manifest(manifest)
+        if problems:
+            raise RegistryError("pack.yaml cannot be listed: " + "; ".join(problems))
         digest = tree_digest(pack_dir)
         signed = signing.sign(key, "publish", digest)
         rec = PackRecord(manifest["id"], str(manifest["version"]), digest, signed.public_key,
                          signed.signature, manifest["summary"], listing or Listing())
         rec.caps = capabilities(wf)
+        for k, v in profile_fields(manifest).items():
+            setattr(rec, k, v)
         try:
             new_v = Version.parse(rec.version)
         except ValueError as e:

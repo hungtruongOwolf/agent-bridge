@@ -2,7 +2,7 @@ name: quick-insights
 start: read
 budget: {tokens: 4000}
 steps:
-  - {id: read, kind: tool, tool: memory_search, tools: [memory_search], memory: lens, prompt: "sales accounts risk", next: crunch}
+  - {id: read, kind: tool, tool: memory_search, tools: [memory_search], memory: lens, prompt: "{task}", next: crunch}
   - id: crunch
     kind: code
     reads: [read]

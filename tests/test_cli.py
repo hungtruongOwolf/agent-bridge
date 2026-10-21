@@ -69,9 +69,9 @@ def test_improve_then_approve_publishes_a_better_version(tmp_path, monkeypatch, 
 
     assert cli.main(["approve", "private-analyst", "--state", str(state)]) == 0
     out = capsys.readouterr().out
-    assert "published" in out and "0.1.0:" in out and "0.1.1:" in out
+    assert "published" in out and "0.2.0:" in out and "0.2.1:" in out
     ids = sorted(r.version for r in open_world(state).registry.records.values())
-    assert ids == ["0.1.0", "0.1.1"]
+    assert ids == ["0.2.0", "0.2.1"]
 
 
 def test_approve_without_a_candidate_refuses(tmp_path, capsys):

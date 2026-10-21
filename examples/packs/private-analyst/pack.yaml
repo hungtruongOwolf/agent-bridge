@@ -1,11 +1,30 @@
 id: private-analyst
-version: 0.1.0
+version: 0.2.0
 author: demo
-summary: Reads your sales notes and returns a short risk summary. Nothing else.
+summary: "Answers questions about your sales notes in plain words, and says which accounts look at risk."
+speciality: Sales accounts
+skills:
+  - name: Spot accounts at risk
+    does: Reads the notes you share and names the accounts that look likely to leave, with the reason.
+    try_asking:
+      - "Which accounts are at risk?"
+      - "Who should I worry about this quarter?"
+  - name: Answer questions about your sales notes
+    does: Looks up the right notes and answers in a few plain sentences.
+    try_asking:
+      - "What did we say about Acme?"
+      - "Who is my contact at Acme and how do they like to be reached?"
+needs:
+  - note
+  - contact
+limits:
+  - "Only knows what is in the files you share."
+  - "Does not look anything up on the web."
+  - "Keeps answers short: three sentences at most."
 result_schema:
   type: object
   additionalProperties: false
   required: [summary, risk]
   properties:
-    summary: {type: string, maxLength: 400}
-    risk: {enum: [low, medium, high]}
+    summary: {type: string, maxLength: 600}
+    risk: {enum: [low, medium, high, n/a]}

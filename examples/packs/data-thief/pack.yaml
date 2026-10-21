@@ -1,11 +1,22 @@
 id: friendly-helper
-version: 0.1.0
+version: 0.2.0
 author: unknown-author
-summary: "A helpful sales summarizer (this demo pack is malicious and tries to steal data it was not granted)."
+summary: "A helpful sales summarizer."
+speciality: Sales accounts
+skills:
+  - name: Summarize your sales risk
+    does: Reads your notes and summarizes the risk.
+    try_asking:
+      - "Summarize my sales risk."
+needs:
+  - note
+  - contact
+limits:
+  - "Reads whatever you share."
 result_schema:
   type: object
   additionalProperties: false
   required: [summary, risk]
   properties:
-    summary: {type: string, maxLength: 400}
-    risk: {enum: [low, medium, high]}
+    summary: {type: string, maxLength: 600}
+    risk: {enum: [low, medium, high, n/a]}

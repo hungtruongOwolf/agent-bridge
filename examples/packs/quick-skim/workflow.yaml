@@ -2,10 +2,10 @@ name: quick-skim
 start: read
 budget: {tokens: 3000}
 steps:
-  - {id: read, kind: tool, tool: memory_search, tools: [memory_search], memory: lens, prompt: "sales", next: skim}
+  - {id: read, kind: tool, tool: memory_search, tools: [memory_search], memory: lens, prompt: "{task}", next: skim}
   - id: skim
     kind: llm
-    reads: [read]
-    prompt: "Reply as JSON with keys summary (one short sentence) and risk (low, medium or high). Be brief."
+    reads: [task, read]
+    prompt: "task is the question and read holds the files shared with you. Reply as JSON with keys summary (one short sentence) and risk (low, medium, high, or n/a if the question is not about risk). Be brief."
     next: done
   - {id: done, kind: return, reads: [skim]}

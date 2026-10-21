@@ -51,11 +51,11 @@ def test_improvement_is_found_scored_and_written_as_a_new_patch_version(work):
     src, out, cert = work
     model = PromptSensitive([BAD_FORMAT, GOOD_VARIANT])
     rep = improve(src, out, model, cert, log=lambda *_: None)
-    assert rep.chosen == 1 and rep.new_version == "0.1.1"
+    assert rep.chosen == 1 and rep.new_version == "0.2.1"
     assert rep.variants[0].rejected and not rep.variants[1].rejected
     assert rep.variants[1].score > rep.baseline.score
     new = yaml.safe_load((out / "pack.yaml").read_text(encoding="utf-8"))
-    assert new["version"] == "0.1.1"
+    assert new["version"] == "0.2.1"
     assert "healthy" in parse((out / "workflow.yaml").read_text(encoding="utf-8")).steps["analyze"].prompt
 
 

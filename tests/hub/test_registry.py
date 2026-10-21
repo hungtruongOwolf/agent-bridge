@@ -93,7 +93,7 @@ def test_persists_across_restarts(pack, key, tmp_path):
 
 
 def _bump(pack, version, edit=None):
-    text = (pack / "pack.yaml").read_bytes().decode().replace("version: 0.1.0", f"version: {version}")
+    text = (pack / "pack.yaml").read_bytes().decode().replace("version: 0.2.0", f"version: {version}")
     (pack / "pack.yaml").write_bytes(text.encode())
     if edit:
         wf = (pack / "workflow.yaml").read_bytes().decode()
@@ -103,14 +103,14 @@ def _bump(pack, version, edit=None):
 def test_prompt_only_update_is_accepted_as_a_minor_or_patch(pack, key):
     reg = Registry()
     reg.publish(pack, key)
-    _bump(pack, "0.1.1", lambda w: w.replace("Using only the records", "Using just the records"))
-    assert reg.publish(pack, key).version == "0.1.1"
+    _bump(pack, "0.2.1", lambda w: w.replace("Answer using only those files", "Answer using just those files"))
+    assert reg.publish(pack, key).version == "0.2.1"
 
 
 def test_widening_without_a_major_bump_is_refused(pack, key):
     reg = Registry()
     reg.publish(pack, key)
-    _bump(pack, "0.2.0", lambda w: w.replace("budget: {tokens: 6000}", "budget: {tokens: 60000}"))
+    _bump(pack, "0.3.0", lambda w: w.replace("budget: {tokens: 6000}", "budget: {tokens: 60000}"))
     with pytest.raises(RegistryError, match="major version"):
         reg.publish(pack, key)
 
@@ -131,5 +131,25 @@ def test_malformed_version_is_refused(pack, key):
 def test_other_publishers_versions_do_not_constrain_this_one(pack, key):
     reg = Registry()
     reg.publish(pack, signing.generate_key())
-    _bump(pack, "0.2.0", lambda w: w.replace("budget: {tokens: 6000}", "budget: {tokens: 60000}"))
-    assert reg.publish(pack, key).version == "0.2.0"
+    _bump(pack, "0.3.0", lambda w: w.replace("budget: {tokens: 6000}", "budget: {tokens: 60000}"))
+    assert reg.publish(pack, key).version == "0.3.0"
+
+
+def test_publishing_keeps_the_skills_the_author_claims(pack, key):
+    rec = Registry().publish(pack, key)
+    assert [s["name"] for s in rec.skills] == ["Spot accounts at risk", "Answer questions about your sales notes"]
+    assert rec.skills[0]["try_asking"][0] == "Which accounts are at risk?" and rec.needs == ["note", "contact"]
+
+
+def test_a_pack_without_concrete_skills_is_refused(pack, key):
+    text = (pack / "pack.yaml").read_bytes().decode()
+    cut = text[: text.index("skills:")] + text[text.index("needs:"):]
+    (pack / "pack.yaml").write_bytes(cut.encode())
+    with pytest.raises(RegistryError, match="skills"):
+        Registry().publish(pack, key)
+
+
+def test_skills_survive_a_restart(pack, key, tmp_path):
+    path = tmp_path / "registry.json"
+    rec = Registry(path).publish(pack, key)
+    assert Registry(path).records[rec.key].skills == rec.skills

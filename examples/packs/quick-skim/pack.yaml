@@ -1,11 +1,25 @@
 id: quick-skim
-version: 0.1.0
+version: 0.2.0
 author: demo
-summary: "Cheapest option: one quick pass, no self-check."
+summary: "The cheap option: one quick pass over your notes, short answers, no self-check."
+speciality: Sales accounts
+skills:
+  - name: Quick answers
+    does: Gives a one-line answer from your notes without double-checking it.
+    try_asking:
+      - "Anything risky in my accounts?"
+      - "What is going on with Acme?"
+needs:
+  - note
+  - contact
+limits:
+  - "No self-check, so it can miss things or raise a false alarm."
+  - "One short sentence per answer."
+  - "Does not look anything up on the web."
 result_schema:
   type: object
   additionalProperties: false
   required: [summary, risk]
   properties:
-    summary: {type: string, maxLength: 400}
-    risk: {enum: [low, medium, high]}
+    summary: {type: string, maxLength: 600}
+    risk: {enum: [low, medium, high, n/a]}
