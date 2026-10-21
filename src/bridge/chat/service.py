@@ -307,7 +307,7 @@ class ChatService:
             money = self.money(t)
             stalls.append({"id": t.id, "title": t.title, "agent": {"id": agent["id"], "name": agent["name"], "key": agent.get("key", ""), "status": agent["status"]},
                            "state": state, "line": line, "updated": t.updated, "messages": len(t.messages),
-                           "shelves": [pretty(p) for p in top][:4], "shelf_count": len(top), "files": sum(counts.get(p, 0) for p in top),
+                           "shelves": [pretty(p) for p in top][:4], "paths": top, "shelf_count": len(top), "files": sum(counts.get(p, 0) for p in top),
                            "spent": money["spent"], "held": money["held"], "limit": money["limit"]})
         return {"stalls": stalls, "guard": {"stopped": stopped, "last": last_stop}, "memory": {"total": overview["total"], "secret": overview["secret"]},
                 "working": sum(1 for s in stalls if s["state"] == "working")}

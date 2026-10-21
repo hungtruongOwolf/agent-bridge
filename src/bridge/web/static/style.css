@@ -340,3 +340,13 @@ details.more{margin-top:12px}
 details.more>summary{color:var(--ink-700);font-size:14px;margin:0 0 6px;cursor:pointer}
 .seesum{font-weight:600;margin-top:10px}
 .helplist{margin:0 0 12px;padding-left:20px;display:grid;gap:8px;font-size:15px}
+
+/* ===== memory map ===== */
+.mapwrap{margin-top:16px}
+.maptools{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+.maptools .btn{padding:4px 10px;font-size:13px}
+#memmap{display:block;font-family:var(--ui)}
+#memmap .mnode,#memmap .mchat{cursor:pointer}
+#memmap .mnode:hover rect{fill:#FFF8E7}
+#memmap .mnode.sel rect{filter:drop-shadow(3px 3px 0 rgba(26,19,32,.3))}
+.legend2{display:flex;gap:16px;flex-wrap:wrap;margin-top:8px}

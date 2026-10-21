@@ -44,27 +44,70 @@
     for (let p = s.parent; p; p = p.includes("/") ? p.slice(0, p.lastIndexOf("/")) : "") if (!expanded.has(p)) return false;
     return true;
   }
+  /* ---------- the map: shelves inside shelves, and which chats may look at each ---------- */
+  const NS = "http://www.w3.org/2000/svg", NW = 200, NH = 46, GX = 44, GY = 12;
+  const sv = (tag, attrs, text) => { const e = document.createElementNS(NS, tag); for (const k in attrs || {}) e.setAttribute(k, attrs[k]); if (text !== undefined) e.textContent = text; return e; };
+  const CHAT_COLORS = ["#CFE5E9", "#F3DACA", "#E0DAF2", "#F3E4BC", "#D2E7DA", "#F3D3CD"];
+  let stalls = [];
+
+  function nearestVisible(path) {  // a chat that opened a folded shelf points at the closest shelf you can see
+    const vis = new Set(rows.map((r) => r.path));
+    for (let p = path; p; p = p.includes("/") ? p.slice(0, p.lastIndexOf("/")) : "") if (vis.has(p)) return p;
+    return "";
+  }
+  let rows = [];
   function drawTree() {
-    const box = $("shelftree"); box.replaceChildren();
-    const m = B.state().memory, all = btn("Everything (" + m.total + ")", "shelfrow" + (sel === "" ? " on" : ""), () => select(""));
-    box.append(all);
-    if (!m.total) { box.append(el("p", "empty", "Your memory is empty. Add something on the right, or say yes to a helper's suggestion.")); return; }
-    const ul = el("ul", "shelves");
-    shelves().filter(visible).forEach((s) => {
-      const li = el("li"); li.style.paddingLeft = (s.depth * 16) + "px";
-      const tg = s.has_children ? btn(expanded.has(s.path) ? "▾" : "▸", "twist", () => { expanded.has(s.path) ? expanded.delete(s.path) : expanded.add(s.path); drawTree(); }) : el("span", "twist");
-      if (s.has_children) tg.setAttribute("aria-label", (expanded.has(s.path) ? "Fold " : "Unfold ") + s.name);
-      const row = btn("", "shelfrow" + (sel === s.path ? " on" : ""), () => select(s.path));
-      row.append(el("span", "sn", s.name), el("span", "cnt", String(s.count)));
-      if (s.secret) row.append(el("span", "tag wait", s.secret + " secret"));
-      li.append(tg, row);
-      if (s.label) li.append(el("div", "small muted shelfnote", s.label));
-      ul.append(li);
+    const svg = $("memmap"); svg.replaceChildren();
+    const m = B.state().memory;
+    if (!m.total) { svg.setAttribute("viewBox", "0 0 400 80"); svg.style.height = "80px"; svg.append(sv("text", { x: 16, y: 44, "font-size": 14, fill: "#6B5878" }, "Your memory is empty. Add something below, or say yes to a helper's suggestion.")); return; }
+    rows = shelves().filter(visible);
+    const row = {}; rows.forEach((s, i) => { row[s.path] = i; });
+    const maxDepth = Math.max(0, ...rows.map((s) => s.depth)), chatX = 48 + (maxDepth + 1) * (NW + GX) + 20, H = Math.max(rows.length * (NH + GY) + 70, 200);
+    const W = chatX + 200;
+    svg.setAttribute("viewBox", "0 0 " + W + " " + H); svg.style.minWidth = W + "px"; svg.style.height = H + "px";
+    const edges = sv("g"), nodes = sv("g"); svg.append(edges, nodes);
+    const y = (p) => 56 + row[p] * (NH + GY);
+    const xOf = (d) => 48 + d * (NW + GX);
+    // the root: everything
+    const root = sv("g", { class: "mnode" + (sel === "" ? " sel" : ""), tabindex: 0, role: "button", "aria-label": "Everything, " + m.total + " files" });
+    root.append(sv("rect", { x: 20, y: 6, width: NW, height: 36, rx: 8, fill: "#FFF8E7", stroke: "#1A1320", "stroke-width": sel === "" ? 4 : 2 }), sv("text", { x: 32, y: 29, "font-size": 14, "font-weight": 700 }, "All my memory · " + m.total));
+    root.onclick = () => select(""); root.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); select(""); } };
+    nodes.append(root);
+    const conn = (x1, y1, x2, y2, col, w, dash) => edges.append(sv("path", { d: "M" + x1 + "," + y1 + " C" + (x1 + 30) + "," + y1 + " " + (x2 - 30) + "," + y2 + " " + x2 + "," + y2, fill: "none", stroke: col, "stroke-width": w, "stroke-dasharray": dash || "" }));
+    rows.forEach((s) => {
+      const x = xOf(s.depth), yy = y(s.path), isSel = sel === s.path;
+      const spine = s.depth === 0 ? 34 : xOf(s.depth - 1) + 14, top = s.depth === 0 ? 42 : (row[s.parent] !== undefined ? y(s.parent) + NH : 42);  // an elbow from the shelf above, like a folder tree
+      edges.append(sv("path", { d: "M" + spine + "," + top + " V" + (yy + NH / 2) + " H" + x, fill: "none", stroke: "#A899B5", "stroke-width": 2 }));
+      const g = sv("g", { class: "mnode" + (isSel ? " sel" : ""), tabindex: 0, role: "button", "aria-label": s.name + ", " + s.count + " files" + (s.secret ? ", " + s.secret + " secret" : "") });
+      g.append(sv("title", {}, s.label || s.name));
+      g.append(sv("rect", { x, y: yy, width: NW, height: NH, rx: 8, fill: "#FFFDF5", stroke: "#1A1320", "stroke-width": isSel ? 4 : 2 }));
+      g.append(sv("text", { x: x + 12, y: yy + 19, "font-size": 13, "font-weight": 700 }, s.name.length > 18 ? s.name.slice(0, 17) + "…" : s.name));
+      g.append(sv("text", { x: x + NW - 12, y: yy + 19, "font-size": 12, "text-anchor": "end", fill: "#3D2E4A" }, s.count + (s.has_children ? (expanded.has(s.path) ? "  ▾" : "  ▸") : "")));
+      const bw = NW - 24, total = Math.max(m.total, 1), full = Math.max(8, Math.round(bw * Math.min(1, s.count / total * 3)));  // bar length: how big this shelf is
+      const sec = Math.round(full * (s.secret / Math.max(s.count, 1)));
+      g.append(sv("rect", { x: x + 12, y: yy + 28, width: full - sec, height: 8, fill: "#5CA97A", stroke: "#1A1320", "stroke-width": 1 }));
+      if (sec) g.append(sv("rect", { x: x + 12 + full - sec, y: yy + 28, width: sec, height: 8, fill: "#D96A62", stroke: "#1A1320", "stroke-width": 1 }));
+      if (s.label) g.append(sv("text", { x: x + 24 + full, y: yy + 36, "font-size": 10, fill: "#6B5878" }, s.label.length > 16 ? s.label.slice(0, 15) + "…" : s.label));
+      g.onclick = () => { if (s.has_children) { expanded.has(s.path) ? (isSel ? expanded.delete(s.path) : 0) : expanded.add(s.path); } select(s.path); };
+      g.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); g.onclick(); } };
+      nodes.append(g);
     });
-    box.append(ul);
+    // chats on the right, joined to the shelves they may look at
+    stalls.forEach((c, i) => {
+      const cy = 56 + i * 58, col = CHAT_COLORS[i % CHAT_COLORS.length];
+      const g = sv("g", { class: "mchat", tabindex: 0, role: "button", "aria-label": "Chat: " + c.title });
+      g.append(sv("rect", { x: chatX, y: cy, width: 170, height: 44, rx: 22, fill: col, stroke: "#1A1320", "stroke-width": 2 }));
+      g.append(sv("text", { x: chatX + 85, y: cy + 19, "text-anchor": "middle", "font-size": 12, "font-weight": 700 }, c.title.length > 20 ? c.title.slice(0, 19) + "…" : c.title));
+      g.append(sv("text", { x: chatX + 85, y: cy + 34, "text-anchor": "middle", "font-size": 10, fill: "#3D2E4A" }, c.agent.name));
+      g.onclick = () => window.ChatUI.open(c.id); g.onkeydown = (e) => { if (e.key === "Enter") window.ChatUI.open(c.id); };
+      nodes.append(g);
+      (c.paths || []).forEach((p) => { const v = nearestVisible(p); if (v !== "" && row[v] !== undefined) conn(xOf(rows[row[v]].depth) + NW, y(v) + NH / 2, chatX, cy + 22, "#4F9FAF", 3, "7 4"); });
+    });
+    if (stalls.length) nodes.append(sv("text", { x: chatX, y: 34, "font-size": 12, fill: "#6B5878" }, "Chats that may look"));
     const dl = $("shelfnames"); dl.replaceChildren();
     shelves().forEach((s) => { const o = document.createElement("option"); o.value = s.path; dl.append(o); });
   }
+  async function loadChats() { try { stalls = (await B.api("/api/office")).stalls; } catch (e) { stalls = []; } drawTree(); }
 
   async function select(path) {
     sel = path; offset = 0; if (path) for (let p = path; p.includes("/"); ) { p = p.slice(0, p.lastIndexOf("/")); expanded.add(p); }
@@ -187,11 +230,15 @@
     const m = B.state().memory;
     if (sel && !shelves().some((s) => s.path === sel)) sel = "";
     proposals($("suggest"));
-    drawTree(); drawShelfActions();
+    drawTree(); drawShelfActions(); loadChats();
     if (!$("view-memory").hidden) drawFiles(true);
     const np = $("notespanel"); if (np) { const n = proposals($("notes")); np.hidden = !n; }
   }
   function show() { redraw(); }
-  function mount(bridge) { B = bridge; setupForm(); setupImport(); redraw(); }
+  function mount(bridge) {
+    B = bridge; setupForm(); setupImport(); redraw();
+    $("mapexpand").onclick = () => { shelves().forEach((s) => { if (s.has_children) expanded.add(s.path); }); drawTree(); };
+    $("mapfold").onclick = () => { expanded.clear(); drawTree(); };
+  }
   window.MemoryUI = { mount, redraw, show, proposals, pretty };
 })();

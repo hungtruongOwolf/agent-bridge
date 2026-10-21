@@ -413,7 +413,7 @@ def test_the_office_shows_one_stall_per_chat_and_what_each_is_doing(srv):
     by = {s["id"]: s for s in off["stalls"]}
     assert set(by) == {b["id"]} or set(by) == {a["id"], b["id"]}  # a blank chat is replaced by the next new one
     st = by[b["id"]]
-    assert st["state"] == "idle" and st["agent"]["name"] == "Deal Brief" and st["files"] >= 1 and st["shelves"] == ["Note"]
+    assert st["paths"] == ["note"] and st["state"] == "idle" and st["agent"]["name"] == "Deal Brief" and st["files"] >= 1 and st["shelves"] == ["Note"]
     assert st["spent"] >= 0 and off["memory"]["total"] == 7 and off["guard"]["stopped"] == 0
 
 
