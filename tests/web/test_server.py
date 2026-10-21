@@ -418,7 +418,7 @@ def test_the_page_speaks_plain_language_with_no_developer_words(srv):
     visible = re.sub(r"<script.*?</script>|<style.*?</style>", "", html, flags=re.S)
     for word in JARGON:
         assert word not in visible, word
-    for needle in ("your market floor", "open a new stall", "what the helper sees", "my memory", "coins"):
+    for needle in ("your market floor", "who do you want to talk with", "what the helper sees", "my memory", "coins"):
         assert needle in visible
 
 
@@ -435,7 +435,7 @@ def test_the_floor_replays_the_run_record_and_says_so(srv):
     story = static_text(url, "story.js")
     for needle in ("step_started", "step_committed", "cell_run", "incident", "run_finished", "model_call"):
         assert needle in story
-    assert "real record" in static_text(url, "chat.js")
+    assert "office.play(report" in static_text(url, "chat.js")
 
 
 

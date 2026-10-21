@@ -10,8 +10,9 @@
 <header class="top">
   <div class="logo"><canvas id="logo" width="20" height="14" style="width:40px;height:28px" aria-hidden="true"></canvas><h1>Agent Bridge</h1></div>
   <form class="assistant" id="askform" autocomplete="off">
-    <input id="ask" type="text" placeholder="What do you need help with? For example: which accounts need attention?" aria-label="What do you need help with?">
+    <input id="ask" type="text" placeholder="Ask for help, like: which accounts need attention?" aria-label="What do you need help with?">
     <button class="btn go2" type="submit">Find a helper</button>
+    <button class="btn" id="helpbtn" type="button" title="How this works">? Help</button>
     <button class="btn mic" id="mic" type="button" aria-pressed="false" title="Speak to your assistant">Talk</button>
   </form>
   <div class="coins" title="No real money moves in this demo."><b id="coinlabel">Coins</b><span id="coinchip"></span></div>
@@ -26,6 +27,18 @@
 
 <!-- The market floor: one stall for every chat you have open, all in one picture. -->
 <section id="view-office" class="floorview" role="tabpanel">
+  <div class="panel welcome" id="welcome" hidden>
+    <div class="title">Welcome</div>
+    <div class="body">
+      <p class="big">Helpers answer questions using your own notes. You stay in control.</p>
+      <ol class="steps3">
+        <li><b>1</b><span>Pick a helper</span></li>
+        <li><b>2</b><span>Tick what it may look at</span></li>
+        <li><b>3</b><span>Ask your question</span></li>
+      </ol>
+      <div class="acts"><button class="btn go2 bigbtn" id="welcomego" type="button">Pick a helper</button><button class="linkbtn" id="welcomehide" type="button">Hide this</button></div>
+    </div>
+  </div>
   <div class="floorgrid">
     <div class="market panel">
       <div class="title">Your market floor</div>
@@ -34,7 +47,7 @@
     <aside class="square" id="square" aria-live="polite" aria-label="The market square"></aside>
   </div>
   <div class="panel hirepanel" id="hirepanel" hidden>
-    <div class="title">Open a new stall: who do you want to talk with?</div>
+    <div class="title">Who do you want to talk with?</div>
     <div class="body"><div id="picker" class="picker"></div></div>
   </div>
   <div class="panel" id="notespanel" hidden>
@@ -81,8 +94,8 @@
       <div class="threads" id="helperlist"></div>
       <form id="newform" class="memform" autocomplete="off">
         <h3 class="sub">Build a new helper</h3>
-        <label class="fld"><span class="small">Give it a name (letters, digits, dashes)</span><input id="newname" type="text" maxlength="41" placeholder="my-first-helper" required></label>
-        <label class="fld"><span class="small">Start from</span><select id="newtemplate"></select></label>
+        <label class="fld"><span class="small">Name (letters and dashes)</span><input id="newname" type="text" maxlength="41" placeholder="my-first-helper" required></label>
+        <label class="fld"><span class="small">Start with</span><select id="newtemplate"></select></label>
         <button class="btn go2" type="submit">Create it</button>
       </form>
       <p class="small warnline" id="studionote" role="status"></p>
@@ -90,8 +103,9 @@
   </aside>
   <div class="studiomid">
     <div class="panel" id="studioempty" hidden><div class="title">Your own helpers</div><div class="body">
-      <p>Anyone can build a helper and offer it on the market. A helper is a short list of steps, like: look through the files, think, check the answer, hand it over. You can see and change those steps as a picture, practise on your own files, then publish it. A tester checks it and tries to catch it cheating, and its trust score comes from that.</p>
-      <p>Start on the left by giving your first helper a name.</p>
+      <p class="big">Build your own helper and offer it to others.</p>
+      <ol class="steps3"><li><b>1</b><span>Name it</span></li><li><b>2</b><span>Practise on your notes</span></li><li><b>3</b><span>Publish it</span></li></ol>
+      <p class="small muted">Start on the left: give your helper a name and press Create.</p>
     </div></div>
     <div id="studiomain" hidden>
       <div class="panel"><div class="title" id="helpertitle">Helper</div><div class="body">
@@ -109,18 +123,18 @@
           <button class="btn" id="tidy" type="button">Tidy up</button>
         </div>
         <div class="graphwrap"><svg id="graph" role="img" aria-label="The steps this helper runs, as a picture. Use the panel on the right to change them without dragging."></svg></div>
-        <p class="small muted">Green arrow: what comes next. Red dashed arrow: where it goes if the check fails. Thin grey line: which earlier results a step reads.</p>
+        <details class="more"><summary>How to read this picture</summary><p class="small">Green dot: drag it onto the next step. Red dot: where to go if the check fails. Grey lines show what each step reads. 🔒 marks steps that hold your private notes.</p></details>
       </div></div>
     </div>
   </div>
   <aside class="studioright" id="studiopanel">
     <div class="panel"><div class="title">This helper</div><div class="body">
       <div class="ptabs" role="tablist">
-        <button id="ptab-steps" role="tab" type="button">A step</button>
-        <button id="ptab-about" role="tab" type="button">About</button>
-        <button id="ptab-try" role="tab" type="button">Try it</button>
+        <button id="ptab-steps" role="tab" type="button">Step</button>
+        <button id="ptab-about" role="tab" type="button">Describe</button>
+        <button id="ptab-try" role="tab" type="button">Practise</button>
         <button id="ptab-publish" role="tab" type="button">Publish</button>
-        <button id="ptab-text" role="tab" type="button">Edit as text</button>
+        <button id="ptab-text" role="tab" type="button">Advanced</button>
       </div>
       <div id="panelbody"></div>
     </div></div>
@@ -129,8 +143,8 @@
 
 <section id="view-memory" class="memview" role="tabpanel" hidden>
   <div class="panel memintro"><div class="title">My memory</div><div class="body">
-    <p>Everything a helper could ever be allowed to look at, kept on shelves like a small library. <b>Nothing is learned behind your back.</b>
-      Memory changes only when you write or fix something here, or when you say yes to a helper's suggestion. <b>Secret</b> files never leave this page: no helper can be given one, even if you ask.</p>
+    <p>Your notes, kept on shelves. Helpers only see the shelves you tick. <b>Secret</b> files are never shared.</p>
+    <details class="more"><summary>More about memory</summary><p class="small">Nothing is saved behind your back. Memory changes only when you write something here or say yes to a helper's suggestion.</p></details>
     <div id="suggest"></div>
     <p class="small warnline" id="memnote" role="status"></p>
   </div></div>
@@ -155,13 +169,25 @@
       </form>
       <div class="memform">
         <h3 class="sub">Or bring in a file</h3>
-        <p class="small muted">Pick a text file (.txt, .md or .csv). It is read in your browser and split into short notes. You choose which to keep and where they go.</p>
+        <p class="small muted">A .txt, .md or .csv file. You choose which notes to keep.</p>
         <input id="memfile" type="file" accept=".txt,.md,.csv,text/plain" aria-label="Choose a text file to import">
         <div id="importbox"></div>
       </div>
     </div></div>
   </div>
 </section>
+
+<dialog id="help" class="profile" aria-label="How this works">
+  <h2>How this works</h2>
+  <ol class="helplist">
+    <li><b>My office</b>: all your chats. Each one is a small stall with a helper.</li>
+    <li><b>My memory</b>: your notes on shelves. A helper only sees the shelves you tick.</li>
+    <li><b>My helpers</b>: build your own helper and put it on the market.</li>
+    <li><b>Secret</b> notes never leave. A guard checks every answer.</li>
+    <li><b>Coins</b> are demo money. Nothing real is charged.</li>
+  </ol>
+  <div class="acts"><button class="btn" id="helpclose" type="button">Got it</button></div>
+</dialog>
 
 <dialog id="profile" class="profile" aria-label="About this helper">
   <div id="profilebody"></div>

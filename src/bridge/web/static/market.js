@@ -94,7 +94,7 @@
   }
 
   function draw(d) {
-    bar(d);
+    bar(d); welcome(d.stalls.length);
     const box = $("stalls"); box.replaceChildren();
     d.stalls.forEach((s) => box.append(stallCard(s)));
     const add = el("button", "stall newstall"); add.type = "button";
@@ -129,31 +129,28 @@
   }
   function trustText(m) {
     if (m.status !== "certified") return "Not tested yet";
-    const ev = /^(\d+)\/(\d+)/.exec(m.evidence || "");
-    return "Trust " + Math.round(m.score * 100) + (ev ? ", passed " + ev[1] + " of " + ev[2] + " tests" : "");
+    return "Trust " + Math.round(m.score * 100) + " out of 100";
   }
   function drawPicker() {
     const S = B.state(), box = $("picker"); box.replaceChildren();
-    box.append(el("p", "small muted", "Pick who you want to talk with. Press “Meet” first to see what they can do and how they were tested."));
     const ok = S.market.filter((m) => m.status !== "flagged");
     if (!ok.length) box.append(el("p", "empty", "Nobody is available yet."));
     ok.forEach((m) => {
       const row = el("div", "pick"), cv = el("canvas"); cv.width = 22; cv.height = 26; cv.style.width = "44px"; cv.style.height = "52px"; portrait(cv, m);
       const who = el("div", "who"), nm = el("span", "name", B.niceName(m.id)); nm.append(el("span", "ver", " v" + m.version));
       who.append(nm, el("span", "blurb", m.summary));
-      if ((m.skills || []).length) who.append(el("span", "blurb skills", m.skills.join(" · ")));
       const tr = el("div", "trust"); tr.append(pips(m), el("span", null, trustText(m)));
       if (m.status === "certified") tr.append(el("span", "tag good", "#" + m.rank));
       who.append(tr);
       const acts = el("div", "acts");
-      acts.append(btn("Meet", "btn", () => window.ChatUI.profile(m.key)), btn("Chat, " + B.cents(Math.round(m.price_usd * 100)) + " per answer", "btn go2", () => window.ChatUI.startNew(m.key)));
+      acts.append(btn("Meet", "btn", () => window.ChatUI.profile(m.key)), btn("Chat · " + B.cents(Math.round(m.price_usd * 100)) + " each", "btn go2", () => window.ChatUI.startNew(m.key)));
       const fan = btn("♥ " + m.stars + " fans", "fan", async () => { try { const r = await B.api("/api/star", { key: m.key, user: "you" }); m.stars = r.stars; drawPicker(); } catch (e) { /* optional */ } });
       acts.append(fan);
       row.append(cv, who, acts); box.append(row);
     });
     const flagged = S.market.filter((m) => m.status === "flagged");
     if (flagged.length) {
-      box.append(el("p", "small muted", flagged.length + " helper(s) were caught cheating while we tested them and cannot be chatted with:"));
+      box.append(el("p", "small muted", flagged.length + " helper(s) were caught cheating in tests and are blocked:"));
       flagged.forEach((m) => {
         const reasons = [...new Set((m.violations || []).filter((v) => v !== "KILLED").map((v) => B.bad[v] || v))];
         box.append(el("p", "small", B.niceName(m.id) + " " + (reasons.length ? reasons.join(", and ") + "." : "was caught cheating.")));
@@ -161,6 +158,14 @@
     }
   }
 
-  function mount(bridge) { B = bridge; }
+  function welcome(n) {
+    let hidden = false; try { hidden = localStorage.getItem("ab-welcome") === "1"; } catch (e) { /* the card just shows again */ }
+    $("welcome").hidden = n > 0 || hidden;
+  }
+  function mount(bridge) {
+    B = bridge;
+    $("welcomego").onclick = () => { picking = true; $("hirepanel").hidden = false; drawPicker(); $("hirepanel").scrollIntoView({ block: "nearest" }); };
+    $("welcomehide").onclick = () => { try { localStorage.setItem("ab-welcome", "1"); } catch (e) { /* optional */ } $("welcome").hidden = true; };
+  }
   window.Market = { mount, start, stop, redraw: () => { if (!$("view-office").hidden) { last = ""; poll(); drawPicker(); } }, drawPicker };
 })();

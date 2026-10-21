@@ -9,6 +9,7 @@
   let office = null;     // the pixel office of the open chat
   let view = "office", pendingText = "", progressLines = [], progressTimer = null, ctxKey = "", sending = false, sendingId = null, draftTimer = null, pendingApproval = null;
   const sideOpen = new Set();
+  let moreOpen = false;
   const $ = (id) => document.getElementById(id);
   const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; };
   const btn = (text, cls, fn) => { const b = el("button", cls || "btn", text); b.type = "button"; if (fn) b.onclick = fn; return b; };
@@ -57,7 +58,7 @@
     if (!office || !cur) return;
     office.showIdle(agentInfo()); drawDrawers();
     $("officetitle").textContent = cur.agent.available ? cur.agent.name + "'s office" : "This chat's office";
-    caption(cur.messages.length ? "Everything the helper does for you is acted out here, from the real record of each answer." : "Say what you need. The helper only gets the shelves you open.");
+    caption(cur.messages.length ? "Here is what the helper just did." : "Waiting for your question.");
   }
   function drawDrawers() {
     if (!office) return;
@@ -88,7 +89,7 @@
     const acts = el("div", "acts");
     if (a.available) acts.append(btn("Meet " + a.name, "btn", () => profile(a.key)));
     head.append(title, acts);
-    if (!cur.messages.length) box.append(el("p", "empty", "Say what you need. For example: “Which of my accounts need attention this week?” Open a shelf on the left first if the helper should look at your files."));
+    if (!cur.messages.length) box.append(el("p", "empty", "Type your question below. Tick a shelf on the left if the helper should use your files."));
     cur.messages.forEach((m) => box.append(bubble(m)));
     if (pendingApproval && pendingApproval.threadId === cur.id) box.append(approvalCard());
     if (sending && sendingId === cur.id) {
@@ -152,7 +153,7 @@
 
   function drawBudget() {
     const b = cur.budget, n = $("budgetline");
-    n.textContent = "This chat has cost " + B.cents(b.spent) + (b.held ? " so far, and " + B.cents(b.held) + " is waiting for your decision" : "") + ". Limit: " + B.cents(b.limit) + ".";
+    n.textContent = "Spent so far: " + B.cents(b.spent) + (b.held ? " (+" + B.cents(b.held) + " on hold)" : "") + " of " + B.cents(b.limit) + ".";
   }
 
   /* ---------- sending ---------- */
@@ -228,9 +229,9 @@
   function drawHint() {
     const h = $("hint"); h.replaceChildren();
     if (!cur) return;
-    if (!cur.lens.shelves.length && !cur.lens.include.length) h.append(el("span", "small muted", "No shelves are open, so this helper will answer from your message alone."));
+    if (!cur.lens.shelves.length && !cur.lens.include.length) h.append(el("span", "small muted", "No shelf is ticked, so it will answer from your message alone."));
     (ctx.suggest || []).forEach((s) => {
-      const row = el("span", "suggestion"); row.append(el("span", "small", "Your message looks like it needs " + s.name + " (" + s.matches + " matching file" + (s.matches === 1 ? "" : "s") + "). "), btn("Open that shelf", "btn go2", () => openShelf(s.path)));
+      const row = el("span", "suggestion"); row.append(el("span", "small", "This may need “" + s.name + "”. "), btn("Tick it", "btn go2", () => openShelf(s.path)));
       h.append(row);
     });
   }
@@ -251,7 +252,7 @@
 
   function drawSide() {
     const box = $("sidebody"); box.replaceChildren();
-    box.append(el("p", "small", "Only the shelves ticked below, and the last few messages, can reach the helper. Everything else stays locked. Secret files can never be shared."));
+    box.append(el("p", "small", "Tick the shelves this helper may look at."));
 
     const tree = el("ul", "shelves sidetree");
     if (!ctx.shelves.length) tree.append(el("li", "empty", "Your memory is empty. Add notes in My memory."));
@@ -268,8 +269,11 @@
     });
     box.append(tree);
 
-    box.append(el("h3", "sub", "Files the helper can see (" + ctx.shared_count + ")"));
-    if (ctx.walk && ctx.walk.length) box.append(el("p", "small walk", "For your message it would open: " + ctx.walk.join(", ") + "."));
+    box.append(el("p", "seesum", ctx.shared_count ? "It can see " + ctx.shared_count + " file" + (ctx.shared_count === 1 ? "" : "s") + "." : "It can see nothing yet, so it answers from your message alone."));
+    if (ctx.walk && ctx.walk.length) box.append(el("p", "small walk", "For your message it would look in: " + ctx.walk.join(", ") + "."));
+    if (ctx.secret) box.append(el("p", "small muted", "🔒 " + ctx.secret + " secret file" + (ctx.secret === 1 ? " is" : "s are") + " never shared."));
+    const more = el("details", "more"); more.open = moreOpen; more.addEventListener("toggle", () => { moreOpen = more.open; }); more.append(el("summary", null, "More settings"));
+    more.append(el("h3", "sub", "Every file it can see (" + ctx.shared_count + ")"));
     const ul = el("ul", "filelist");
     ctx.shared.forEach((f) => {
       const li = el("li"), c = document.createElement("input"); c.type = "checkbox"; c.checked = true; c.setAttribute("aria-label", "Share: " + f.text);
@@ -280,35 +284,35 @@
     });
     if (!ctx.shared.length) ul.append(el("li", "empty", "Nothing. The helper will answer from your message alone."));
     if (ctx.shared_more) ul.append(el("li", "empty", "…and " + ctx.shared_more + " more."));
-    box.append(ul);
+    more.append(ul);
 
     if (ctx.held_back.length) {
-      box.append(el("h3", "sub", "You held these back (" + ctx.held_back.length + ")"));
+      more.append(el("h3", "sub", "You held these back (" + ctx.held_back.length + ")"));
       const lk = el("ul", "filelist locked");
       ctx.held_back.forEach((f) => {
         const li = el("li"), c = document.createElement("input"); c.type = "checkbox"; c.checked = false; c.setAttribute("aria-label", "Share again: " + f.text);
         c.onchange = () => setSettings({ exclude: cur.lens.exclude.filter((x) => x !== f.id) });
         li.append(c, el("span", null, f.shelf_name + ": " + f.text)); lk.append(li);
       });
-      box.append(lk);
+      more.append(lk);
     }
-    if (ctx.secret) box.append(el("p", "small muted", ctx.secret + " secret file" + (ctx.secret === 1 ? "" : "s") + " in your memory can never be shared."));
 
     const h = el("div", "setrow"); h.append(el("label", "small", "The helper remembers the last "));
     const num = document.createElement("input"); num.type = "number"; num.min = 0; num.max = 10; num.value = cur.history_turns; num.id = "histturns"; num.setAttribute("aria-label", "How many earlier messages the helper is shown");
     num.onchange = () => setSettings({ history_turns: parseInt(num.value, 10) }); h.append(num, el("span", "small", " messages of this chat."));
-    box.append(h);
-    box.append(el("p", "small muted", ctx.history.length ? "Right now it would see " + ctx.history.length + " earlier message(s)." : "Right now it would see no earlier messages."));
+    more.append(h);
+    more.append(el("p", "small muted", ctx.history.length ? "Right now it would see " + ctx.history.length + " earlier message(s)." : "Right now it would see no earlier messages."));
 
     const bd = el("div", "setrow"); bd.append(el("label", "small", "Most this chat may spend (cents) "));
     const lim = document.createElement("input"); lim.type = "number"; lim.min = 0; lim.max = 10000; lim.step = 10; lim.value = cur.budget.limit; lim.setAttribute("aria-label", "Spending limit in cents");
-    lim.onchange = () => setSettings({ budget_cents: parseInt(lim.value, 10) }); bd.append(lim); box.append(bd);
+    lim.onchange = () => setSettings({ budget_cents: parseInt(lim.value, 10) }); bd.append(lim); more.append(bd);
 
-    box.append(el("p", "small muted", ctx.goes_to_the_brain));
+    more.append(el("p", "small muted", ctx.goes_to_the_brain));
     const dng = el("div", "acts");
     dng.append(btn("Clear this chat", "btn", (e) => confirmTwice(e.target, "Really clear?", () => act("/api/thread/clear", { id: cur.id }))),
       btn("Delete this chat", "btn warn", (e) => confirmTwice(e.target, "Really delete?", async () => { try { await B.api("/api/thread/delete", { id: cur.id }); await B.refresh(); back(); } catch (er) { say(er.message); } })));
-    box.append(dng);
+    more.append(dng);
+    box.append(more);
   }
 
   function confirmTwice(b, label, fn) {
@@ -334,7 +338,7 @@
     if (p.speciality) body.append(el("p", "muted", "Best at: " + p.speciality));
     body.append(el("p", "small", B.cents(p.price_cents) + " per answer · " + p.stars + " fans · version " + p.version));
 
-    body.append(el("h3", "sub", "What it says it can do"), el("p", "small muted", "These are the author's own words. The test results further down show whether they hold up."));
+    body.append(el("h3", "sub", "What it can do"));
     p.author_says.skills.forEach((s) => {
       const d = el("div", "skill"); d.append(el("div", "name", s.name), el("div", null, s.does));
       const q = el("div", "small muted"); q.append("Try asking: ");
@@ -345,12 +349,11 @@
       body.append(el("h3", "sub", "Good to know"));
       const ul = el("ul"); p.author_says.good_to_know.forEach((t) => ul.append(el("li", null, t))); body.append(ul);
     }
-    body.append(el("h3", "sub", "What it touches (we check this ourselves)"));
-    const w = el("ul"); p.works_with.forEach((x) => w.append(el("li", null, x.text))); body.append(w);
-    body.append(el("h3", "sub", "What it can never do"));
-    const c = el("ul"); p.cannot.forEach((x) => c.append(el("li", null, x))); body.append(c);
+    const safety = el("details", "more"); safety.append(el("summary", null, "What it touches and what it can never do"));
+    const w = el("ul"); p.works_with.forEach((x) => w.append(el("li", null, x.text))); safety.append(w);
+    const c = el("ul"); p.cannot.forEach((x) => c.append(el("li", null, x))); safety.append(c); body.append(safety);
 
-    body.append(el("h3", "sub", "What was actually measured"));
+    body.append(el("h3", "sub", "How well it did in tests"));
     const m = p.measured;
     if (!m.tested) body.append(el("p", null, m.note));
     else if (m.violations) body.append(el("p", "tag bad", "Caught cheating during testing: " + m.violations.map((v) => (B.blocked[v] || v)).join("; ")));

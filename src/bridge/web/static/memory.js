@@ -59,7 +59,6 @@
       if (s.secret) row.append(el("span", "tag wait", s.secret + " secret"));
       li.append(tg, row);
       if (s.label) li.append(el("div", "small muted shelfnote", s.label));
-      else if (s.keywords.length) li.append(el("div", "small muted shelfnote", s.keywords.slice(0, 4).join(", ")));
       ul.append(li);
     });
     box.append(ul);

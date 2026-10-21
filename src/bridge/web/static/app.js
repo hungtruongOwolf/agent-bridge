@@ -79,6 +79,7 @@
       drawCoins();
       $("askform").onsubmit = (e) => { e.preventDefault(); voiceOn = false; ask($("ask").value, false); $("ask").select(); };
       setupVoice();
+      $("helpbtn").onclick = () => $("help").showModal(); $("helpclose").onclick = () => $("help").close();
       window.Bridge = { api, el, state: () => S, refresh, cents, niceName: window.niceName, blocked: S.blocked_phrases, bad: BAD };
       window.Market.mount(window.Bridge); window.MemoryUI.mount(window.Bridge); window.Studio.mount(window.Bridge); window.ChatUI.mount(window.Bridge);
       const logo = $("logo"), c = logo.getContext("2d"); c.imageSmoothingEnabled = false; c.fillStyle = "#FFF8E7"; c.fillRect(0, 0, 20, 14);
