@@ -37,3 +37,13 @@ sent to the author. That shrinks the problem to a short list of exits. Everythin
   capabilities both use it.
 - A cheating pack that skips the declaration still parses (the Certifier must be able to run and catch it) but can no
   longer smuggle records into a public step.
+
+## Done the same day
+
+- Exit 2: every model call journals the files sent, the amount of text and the provider; emails, phone numbers and long
+  account numbers are replaced by placeholders (`engine/mask.py`) and restored in the reply. Names are not hidden.
+- Exit 3: a helper cannot be listed unless every answer field is bounded (`guard.unbounded`, checked in `hub/manifest.py`).
+- Repeat offenders: a killed live run with hard evidence (bait read, canary in the answer, sealed room probed) revokes the
+  helper at once (`RunService`); a run that only simulates a compromised model does not.
+- Not built, on purpose: per-user honeytoken records. No path lets a helper read outside its staged set, and the broker's
+  decoys already catch an attempt; a honeytoken inside the lens would only risk surfacing in honest answers.
