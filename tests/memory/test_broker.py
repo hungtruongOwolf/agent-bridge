@@ -112,3 +112,29 @@ def test_max_records_caps_staging(vault):
 def test_bad_sensitivity_rejected():
     with pytest.raises(ValueError):
         Lens(types=frozenset({"note"}), max_sensitivity="top-secret")
+
+
+def test_search_ignores_filler_words_and_matches_word_stems(vault):
+    b = broker(vault)
+    ids = [r["id"] for r in b.search("What does Maria prefer?").records]
+    assert ids[0] == "c1"  # 'prefer' finds 'prefers', and 'what does' count for nothing
+
+
+def test_a_vague_question_gets_nothing_unless_fallback_is_asked_for(vault):
+    b = broker(vault)
+    assert b.search("anything new?").records == []
+    got = b.search("anything new?", fallback=True)
+    assert {r["id"] for r in got.records} <= {"n1", "n2", "c1"} and got.records  # the shared records, never the locked ones
+
+
+def test_fallback_never_reaches_outside_the_lens(vault):
+    b = broker(vault)
+    ids = {r["id"] for r in b.search("zzz qqq", fallback=True).records}
+    assert "n3" not in ids and "f1" not in ids
+
+
+def test_fallback_still_counts_against_the_read_budget(vault):
+    b = broker(vault, max_reads=1)
+    first = b.search("nothing matches", fallback=True)
+    assert len(first.records) == 1
+    assert b.search("again nothing", fallback=True).verdict is Verdict.DENY

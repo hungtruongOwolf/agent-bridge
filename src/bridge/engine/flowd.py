@@ -184,7 +184,7 @@ class Engine:
             return self._web(step, inputs)
         query = (step.prompt or "").replace("{task}", self.task)
         if name == "memory_search":
-            res = self.broker.search(query, type=step.type)
+            res = self.broker.search(query, type=step.type, fallback="{task}" in (step.prompt or ""))
         elif name == "memory_read":
             res = self.broker.read(query)
         else:

@@ -55,8 +55,21 @@ class Result:
     records: list[dict] = field(default_factory=list)
 
 
+STOPWORDS = frozenset("""a an and are as at be been but by can could did do does for from had has have how i if in into is it its
+me my of on or our please should so tell that the their them then there these they this to up us was we were what when where which who
+whom why will with would you your about any anything give show""".split())
+
+
+def _stem(w: str) -> str:
+    for suffix in ("ing", "ed", "es", "s"):
+        if len(w) > len(suffix) + 2 and w.endswith(suffix):
+            return w[: -len(suffix)]
+    return w
+
+
 def _tokens(s: str) -> set[str]:
-    return set(re.findall(r"[a-z0-9]+", s.lower()))
+    """Lower-case words, without filler words, reduced to a rough stem so 'prefer' finds 'prefers'."""
+    return {_stem(w) for w in re.findall(r"[a-z0-9]+", s.lower()) if w not in STOPWORDS}
 
 
 class MemoryBroker:
@@ -82,7 +95,11 @@ class MemoryBroker:
         return {"count": len(self._staged), "by_type": by_type, "reads_left": self._lens.max_reads - self._served}
 
     # -- what the pack can call ------------------------------------------------------------
-    def search(self, query: str, *, type: str | None = None) -> Result:
+    def search(self, query: str, *, type: str | None = None, fallback: bool = False) -> Result:
+        """Find shared records that match the words of `query`.
+
+        With `fallback`, a question that matches nothing (a vague "anything new?") gets the shared records
+        themselves, still capped per query and still only what the lens allows."""
         if self._killed:
             return Result(Verdict.KILL)
         if type is not None and type not in self._lens.types:
@@ -90,8 +107,10 @@ class MemoryBroker:
         q = _tokens(query)
         pool = [r for r in self._staged.values() if type is None or r.type == type]
         scored = sorted(((len(q & _tokens(r.text + " " + r.type)), r.id, r) for r in pool), key=lambda t: (-t[0], t[1]))
-        hits = [r for score, _, r in scored if score > 0][: self._lens.max_results_per_query]
-        return self._serve(hits)
+        hits = [r for score, _, r in scored if score > 0]
+        if not hits and fallback:
+            hits = [r for _, _, r in scored]
+        return self._serve(hits[: self._lens.max_results_per_query])
 
     def read(self, record_id: str) -> Result:
         if self._killed:
