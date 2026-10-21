@@ -46,12 +46,12 @@ a{color:inherit}
 .coins b{font:10px/14px var(--display);font-weight:400}
 .mic.on{background:var(--coral);animation:blink 1s steps(2) infinite}
 
-.tabs,.view{width:100%;max-width:var(--page);margin:0 auto}
-.tabs{position:relative;display:flex;flex-wrap:wrap;gap:6px;padding:12px var(--gap) 0}
-.tabs::after{content:"";position:absolute;left:var(--gap);right:var(--gap);bottom:0;height:2px;background:var(--ink-900)}  /* the line the tabs stand on */
-.tabs a{position:relative;z-index:1;background:var(--cream-200);border:2px solid var(--ink-900);padding:8px 18px;font-weight:600;color:var(--ink-900);text-decoration:none}
-.tabs a:hover{background:var(--cream-50)}
-.tabs a[aria-current="page"]{z-index:2;background:var(--cream-100);border-bottom-color:var(--cream-100)}
+.view{width:100%;max-width:var(--page);margin:0 auto}
+/* the navigation bar: full width like the top bar, the current screen marked with a thick green underline */
+.tabs{display:flex;flex-wrap:wrap;gap:4px;padding:0 max(var(--gap),calc((100% - var(--page)) / 2 + var(--gap)));background:var(--cream-200);border-bottom:2px solid var(--ink-900)}
+.tabs a{padding:11px 20px 7px;border-bottom:4px solid transparent;font-weight:600;color:var(--ink-700);text-decoration:none}
+.tabs a:hover{background:var(--cream-100);color:var(--ink-900)}
+.tabs a[aria-current="page"]{background:var(--cream-100);color:var(--ink-900);font-weight:700;border-bottom-color:var(--mint)}
 .view{padding:var(--gap)}
 .view>*+*{margin-top:var(--gap)}
 .view.cols>*+*{margin-top:0}
@@ -351,4 +351,4 @@ button.twist:hover{color:var(--ink-900)}
   .pick{grid-template-columns:44px 1fr}
   .pick .acts{grid-column:1 / -1;flex-direction:row}
 }
-@media (max-width:480px){.tabs a{padding:8px 12px}.walletsum{grid-template-columns:1fr}}
+@media (max-width:480px){.tabs a{padding:10px 12px 6px}.walletsum{grid-template-columns:1fr}}
