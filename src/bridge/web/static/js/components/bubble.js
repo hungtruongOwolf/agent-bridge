@@ -18,8 +18,9 @@ function filesDetails(m) {
     if (!f.open || f.dataset.done) return;
     f.dataset.done = "1";
     try {
-      const got = (await get(url("/api/memory", { limit: 100, ids: m.files.slice(0, 50).join(",") }))).items, by = new Map(got.map((r) => [r.id, r]));
-      m.files.forEach((id) => {
+      const units = [...new Set(m.files.map((id) => id.replace(/\.\d+$/, "")))].slice(0, 50);  // a long note is used passage by passage (doc1.2): show the note once
+      const got = (await get(url("/api/memory", { limit: 100, ids: units.join(",") }))).items, by = new Map(got.map((r) => [r.id, r]));
+      units.forEach((id) => {
         const r = by.get(id);
         f.append(el("div", "small", r ? r.shelf_name + ": " + (r.long ? "“" + r.title + "” (long note)" : r.text) : "A file you have since deleted"));
       });

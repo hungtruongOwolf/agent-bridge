@@ -79,9 +79,10 @@ function drawLogo() {
 }
 
 async function start() {
+  let state0;
   try {
-    const state = await refresh();
-    drawCoins(state);
+    state0 = await refresh();
+    drawCoins(state0);
   } catch (e) {
     $("stalls").replaceChildren(el("p", "empty", "The console could not load: " + e.message + " Reload this page in a moment."));
     return;
@@ -89,12 +90,14 @@ async function start() {
   VIEWS.forEach((v) => v.mount && v.mount());
   setupFrontDoor();
   drawLogo();
-  subscribe((state) => {
+  const onState = (state) => {
     drawCoins(state);
     [officeView, chatView, memoryView].forEach((v) => v.redraw && v.redraw());
     const np = $("notespanel");
     np.hidden = !drawProposals($("notes"));
-  });
+  };
+  subscribe(onState);
+  onState(state0);  // the state was loaded before anyone was listening: draw what is waiting (such as a helper's suggestion) now, not after the next change
   const router = new Router(ROUTES, (m, q, o) => onRoute(m, q, o).catch((e) => { console.error(e); toast("Something went wrong on this screen. Please try again.", true); }));
   bindRouter(router);
   router.start();

@@ -106,6 +106,15 @@ export function noteCard(r, opts) {
       } });
     } catch (er) { say(er.message); }
   })));
+  if (r.source === "helper" && r.from_run) {  // a helper's suggestion can be taken back together with everything else that answer added
+    acts.append(btn("Undo what that answer added", "btn", async () => {
+      try {
+        const out = await post("/api/revert", { run_id: r.from_run });
+        await refresh();
+        say(`Undone: ${plural(out.removed_from_vault, "note")} removed` + (out.kept_because_edited ? `, ${out.kept_because_edited} kept because you changed ${out.kept_because_edited === 1 ? "it" : "them"}.` : "."));
+      } catch (er) { say(er.message); }
+    }));
+  }
   c.append(acts);
   return c;
 }
