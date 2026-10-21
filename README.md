@@ -128,6 +128,19 @@ socket, a file handle or the model key. Anything it wants goes through the Broke
 | You are not charged for a result you never got | Floor fee only when a result exists; outage or crash voids the hold | `tests/payments/test_ledger.py` |
 | Another website cannot start runs | Local bind, host check, per-process token | `tests/web/test_server.py` |
 
+## Where your data can go (and what closes each door)
+
+In Pull mode the helper runs on your machine and its author receives nothing, so the exits are few. Full table: `docs/adr/0003-data-exits.md`.
+
+| Exit | Control |
+|---|---|
+| Web search | A web step is public by construction: it cannot read memory or anything derived from it (checked when the helper is published; a step that touches memory is private whether it says so or not). |
+| The model service | Only the steps' declared inputs go; emails, phone numbers and long account numbers are swapped for placeholders first and restored in the answer on your machine. Every call records which files went, how much text, and to whom. Names and company facts are not hidden. |
+| The answer | Fixed schema, every field bounded, size cap, canary and copy scan. The console shows answers as plain text. |
+| Memory suggestions | Quarantine: nothing is saved until you say yes; undo per answer. |
+| Code | Sealed container, no network; a probe ends the run. |
+| A repeat offender | Hard evidence in a live run (bait touched, canary in the answer, sealed room probed) takes the helper off the market at once. |
+
 ## Honest limits
 
 - **Pull mode has no fair exchange.** The requester's machine runs the pack and could keep the output
@@ -136,6 +149,7 @@ socket, a file handle or the model key. Anything it wants goes through the Broke
   of the sandbox, run through the real client code and shown with an approval page and receipts), and the PayPal sandbox client. The
   client has been tested against the practice server only; it has **not been run against the live sandbox yet** (see `docs/paypal-setup.md`
   for what the owner needs to provide). Nothing real moves in any mode.
+- **The model service reads what a helper's steps send it** (minus the placeholders above). Information already shown to a helper cannot be taken back.
 - **Detection is evidence, not proof.** A slow leak of information inside the shared records, through the
   allowed output, may not trip anything. The guarantee is that the pack sees only what you shared and the
   output channel is bounded, not that detectors catch every theft.
