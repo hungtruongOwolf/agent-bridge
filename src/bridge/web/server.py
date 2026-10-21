@@ -61,7 +61,7 @@ class LazySearch:
 
 class App:
     def __init__(self, world: World, packs_dir: Path, vault_path: Path, env_file: Path, cell=None,
-                 model_factory=None, web=None, ledger=None, clock=None):
+                 model_factory=None, web=None, ledger=None, clock=None, demo_author_email: str = ""):
         self.world, self.vault_path, self.env_file, self.cell = world, Path(vault_path), Path(env_file), cell
         self.web = web or LazySearch(lambda: TavilySearch(load_tavily_key(self.env_file)))
         self.model_factory = model_factory or (lambda: NebiusModel(load_api_key(self.env_file)))
@@ -76,6 +76,8 @@ class App:
         self.quarantine = Quarantine()
         self.clock = clock or time.time
         self.requester = "you"
+        self.demo_author_email = demo_author_email
+        self.pending: dict[str, dict] = {}  # runs waiting for the buyer to approve the hold
         # money is TEST money: a fake provider now, the PayPal sandbox client when credentials exist
         self.ledger = ledger or Ledger(FakeProvider(path=self.world.state / "provider.json"),
                                        path=self.world.state / "ledger.json", holdback_s=0)
@@ -113,21 +115,39 @@ class App:
         sens = body.get("max_sensitivity", "medium")
         if sens not in ("low", "medium", "high"):
             raise ValueError("bad sensitivity")
-        if body.get("model") == "leak":
-            model = LeakyModel()
-        else:
-            model = LazyModel(self.model_factory)
         self.runs += 1
         run_id = f"run-{self.runs}-{secrets.token_hex(3)}"
         price = max(1, round(rec.listing.price_usd * 100))
         now = self.clock()
-        try:  # order of events: authorize the cap last before starting, never charge before a result exists
-            self.ledger.hire(run_id, rec.key, rec.publisher_key[:8], self.requester, price, now)
-            self.ledger.start(run_id, now)
+        try:  # order of events: the hold comes last before starting, nothing is charged before a result exists
+            row = self.ledger.hire(run_id, rec.key, self.author_payee(rec), self.requester, price, now)
         except ProviderError as e:
             raise ValueError(f"payment could not be authorized: {e}") from e
+        params = {"rec": rec, "pack_dir": pack_dir, "types": types, "sens": sens, "simulate": body.get("model") == "leak"}
+        if row.state == "AWAITING_APPROVAL":  # the buyer must approve the hold on the provider's page first
+            self.pending[run_id] = params
+            return {"needs_approval": True, "run_id": run_id, "approve_url": row.approve_url, "price": price,
+                    "test_money": True}
+        return self._execute(run_id, params)
+
+    def continue_run(self, body: dict) -> dict:
+        run_id = str(body.get("run_id", ""))
+        params = self.pending.get(run_id)
+        if params is None:
+            raise ValueError("no run is waiting for approval under that id")
         try:
-            rep = run_pack(pack_dir, self.vault(), Lens(types=types, max_sensitivity=sens), model,
+            self.ledger.confirm_approval(run_id, self.clock())
+        except ProviderError as e:
+            raise ValueError(f"the hold is not approved yet: {e}") from e
+        del self.pending[run_id]
+        return self._execute(run_id, params)
+
+    def _execute(self, run_id: str, params: dict) -> dict:
+        rec, pack_dir = params["rec"], params["pack_dir"]
+        model = LeakyModel() if params["simulate"] else LazyModel(self.model_factory)
+        try:
+            self.ledger.start(run_id, self.clock())
+            rep = run_pack(pack_dir, self.vault(), Lens(types=params["types"], max_sensitivity=params["sens"]), model,
                            seed=run_id, cell=self.cell, expected_digest=rec.digest, run_id=run_id, web=self.web)
         except Exception:
             self.ledger.fail_infra(run_id, self.clock(), "run crashed before a result")
@@ -143,6 +163,10 @@ class App:
         self.history.append({"run_id": run_id, "pack": f"{rep.pack_id} v{rep.version}", "outcome": rep.outcome,
                              "summary": rep.summary, "n": self.runs})
         return out
+
+    def author_payee(self, rec) -> str:
+        """Where this author is paid: their listing email, else the demo author email, else a key prefix."""
+        return rec.listing.payout_email or self.demo_author_email or rec.publisher_key[:8]
 
     # -- money ------------------------------------------------------------------------------------
     def _settle_outcome(self, rec, run_id: str, rep) -> None:
@@ -244,6 +268,12 @@ def make_handler(app: App):
                 return self._send(200, html.encode(), "text/html; charset=utf-8")
             if self.path == "/api/state":
                 return self._json(200, app.state())
+            if self.path.split("?")[0] in ("/paypal/return", "/paypal/cancel"):
+                note = ("You approved the hold. Go back to the agent-bridge tab and press the continue button."
+                        if self.path.startswith("/paypal/return") else "You cancelled. Nothing was held or charged.")
+                return self._send(200, ("<!doctype html><meta charset=utf-8><title>agent-bridge</title>"
+                                        "<body style='font:16px system-ui;padding:40px'>" + note + "</body>").encode(),
+                                  "text/html; charset=utf-8")
             if self.path.startswith("/api/report/"):
                 rep = app.reports.get(self.path.rsplit("/", 1)[1])
                 return self._json(200, rep) if rep else self._json(404, {"error": "unknown run"})
@@ -273,6 +303,8 @@ def make_handler(app: App):
                     return self._json(200, app.run(body))
                 if self.path == "/api/proposal":
                     return self._json(200, app.decide(body))
+                if self.path == "/api/run/continue":
+                    return self._json(200, app.continue_run(body))
                 if self.path == "/api/settle":
                     return self._json(200, app.settle(body))
                 if self.path == "/api/revert":

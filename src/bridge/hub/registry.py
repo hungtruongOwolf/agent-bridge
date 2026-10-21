@@ -31,6 +31,7 @@ class Listing:
     price_usd: float = 0.0
     unit: str = "task"  # "task" | "hour"
     speciality: str = "general"
+    payout_email: str = ""  # where the author is paid (a PayPal email for real payouts)
 
 
 @dataclass

@@ -316,3 +316,64 @@ def test_page_labels_money_as_test_money_and_wires_the_settle_endpoint(srv):
     app, url = srv
     html = call(url + "/")[1].decode()
     assert "TEST MONEY" in html and "/api/settle" in html and "Accept result" in html
+
+
+# ---- PayPal-style approval: the run waits until the buyer approves the hold ---------------------------
+
+@pytest.fixture
+def approval_app(tmp_path):
+    from bridge.payments.ledger import Ledger
+    from bridge.payments.provider import FakeProvider
+    world = open_world(tmp_path / "state")
+    seed(world, EX / "packs", Fixed(), "fixed", cell=FakeCell(), web=FakeWeb(), log=lambda *_: None)
+    provider = FakeProvider(require_approval=True)
+    app = server.App(world, EX / "packs", EX / "vault.json", tmp_path / ".env", model_factory=Briefer,
+                     cell=FakeCell(), web=FakeWeb(), ledger=Ledger(provider), demo_author_email="author@example.com")
+    httpd = server.serve(app, port=0)
+    threading.Thread(target=httpd.serve_forever, daemon=True).start()
+    yield app, f"http://127.0.0.1:{httpd.server_address[1]}", provider
+    httpd.shutdown()
+
+
+def test_the_run_does_not_start_until_the_buyer_approves(approval_app):
+    app, url, provider = approval_app
+    code, out = call(url + "/api/run", {"key": key_of(app, "deal-brief"), "types": ["note", "contact"]}, app.token)
+    assert code == 200 and out["needs_approval"] is True and out["approve_url"].startswith("https://sandbox.fake/approve/")
+    assert app.ledger.rows[out["run_id"]].state == "AWAITING_APPROVAL"
+    assert app.history == [] and provider.captured_total() == 0  # nothing ran, nothing was charged
+
+
+def test_continuing_before_approving_is_refused_and_the_run_stays_pending(approval_app):
+    app, url, provider = approval_app
+    out = call(url + "/api/run", {"key": key_of(app, "deal-brief"), "types": ["note"]}, app.token)[1]
+    code, err = call(url + "/api/run/continue", {"run_id": out["run_id"]}, app.token)
+    assert code == 400 and "not approved" in err["error"]
+    assert out["run_id"] in app.pending
+
+
+def test_after_approval_the_run_executes_and_is_paid_as_usual(approval_app):
+    app, url, provider = approval_app
+    out = call(url + "/api/run", {"key": key_of(app, "deal-brief"), "types": ["note", "contact"]}, app.token)[1]
+    provider.buyer_approves(app.ledger.rows[out["run_id"]].auth_id)
+    code, rep = call(url + "/api/run/continue", {"run_id": out["run_id"]}, app.token)
+    assert code == 200 and rep["outcome"] == "COMPLETE" and rep["payment"]["state"] == "RESULT_READY"
+    assert rep["payment"]["captured"] == 15
+    assert call(url + "/api/run/continue", {"run_id": out["run_id"]}, app.token)[0] == 400  # not twice
+
+
+def test_unknown_run_cannot_be_continued_and_the_endpoint_needs_the_token(approval_app):
+    app, url, _ = approval_app
+    assert call(url + "/api/run/continue", {"run_id": "nope"}, app.token)[0] == 400
+    assert call(url + "/api/run/continue", {"run_id": "nope"})[0] == 403
+
+
+def test_return_pages_are_plain_and_need_no_token(approval_app):
+    app, url, _ = approval_app
+    assert b"approved the hold" in call(url + "/paypal/return?token=X")[1]
+    assert b"cancelled" in call(url + "/paypal/cancel")[1]
+
+
+def test_the_author_is_paid_at_their_listing_email_or_the_demo_email(approval_app):
+    app, url, provider = approval_app
+    out = call(url + "/api/run", {"key": key_of(app, "deal-brief"), "types": ["note"]}, app.token)[1]
+    assert app.ledger.rows[out["run_id"]].author == "author@example.com"
