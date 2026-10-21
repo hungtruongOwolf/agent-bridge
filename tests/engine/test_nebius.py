@@ -68,3 +68,39 @@ def test_load_api_key(tmp_path):
 def test_missing_env_file_is_a_model_error(tmp_path):
     with pytest.raises(ModelError, match="no .env"):
         load_api_key(tmp_path / "absent.env")
+
+
+def seq(*replies):
+    items = list(replies)
+
+    def post(url, headers, body):
+        r = items.pop(0)
+        if isinstance(r, Exception):
+            raise r
+        return r
+    return post, items
+
+
+def test_empty_or_non_json_replies_are_retried_and_tokens_summed():
+    post, left = seq(reply("", 10), reply("sorry, no json", 20), reply('{"ok": true}', 30))
+    r = NebiusModel("K", post=post).complete("t", {})
+    assert r.content == {"ok": True} and r.tokens == 60 and left == []
+
+
+def test_a_transient_network_error_is_retried():
+    post, _ = seq(TimeoutError("slow"), reply('{"a": 1}'))
+    assert NebiusModel("K", post=post).complete("t", {}).content == {"a": 1}
+
+
+def test_gives_up_after_the_bounded_number_of_attempts():
+    post, left = seq(reply(""), reply(""), reply(""), reply('{"a": 1}'))
+    with pytest.raises(ModelError):
+        NebiusModel("K", post=post).complete("t", {})
+    assert len(left) == 1  # the fourth reply was never requested
+
+
+def test_retries_never_leak_the_key():
+    post, _ = seq(*[RuntimeError("Bearer SECRETKEY rejected")] * 3)
+    with pytest.raises(ModelError) as e:
+        NebiusModel("SECRETKEY", post=post).complete("t", {})
+    assert "SECRETKEY" not in str(e.value)

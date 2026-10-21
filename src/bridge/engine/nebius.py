@@ -63,8 +63,9 @@ def _http_post(url: str, headers: dict, body: dict) -> dict:
 
 class NebiusModel:
     def __init__(self, api_key: str, model: str = DEFAULT_MODEL, *, post: Callable[..., dict] = _http_post,
-                 max_tokens: int = 800):
+                 max_tokens: int = 1200, attempts: int = 3):
         self._key, self.model, self._post, self._max = api_key, model, post, max_tokens
+        self._attempts = attempts  # bounded retries: the proxy, not the pack, owns them
 
     def complete(self, prompt: str, inputs: dict[str, Any]) -> ModelReply:
         user = f"TASK: {prompt}\n\nINPUTS:\n{json.dumps(inputs, ensure_ascii=False)}"
@@ -73,12 +74,16 @@ class NebiusModel:
             "messages": [{"role": "system", "content": SYSTEM}, {"role": "user", "content": user}],
         }
         headers = {"Authorization": f"Bearer {self._key}", "Content-Type": "application/json"}
-        try:
-            out = self._post(f"{BASE_URL}/chat/completions", headers, body)
-            text = out["choices"][0]["message"]["content"] or ""
-            tokens = int(out.get("usage", {}).get("total_tokens", 0))
-        except ModelError:
-            raise
-        except Exception as e:  # network, HTTP, shape: report the type only, never the key
-            raise ModelError(f"model call failed: {type(e).__name__}") from e
-        return ModelReply(extract_json(text), tokens=tokens)
+        last: Exception | None = None
+        tokens_total = 0
+        for _ in range(self._attempts):
+            try:
+                out = self._post(f"{BASE_URL}/chat/completions", headers, body)
+                tokens_total += int(out.get("usage", {}).get("total_tokens", 0))
+                text = out["choices"][0]["message"]["content"] or ""
+                return ModelReply(extract_json(text), tokens=tokens_total)
+            except ModelError as e:  # empty or non-JSON reply: ask again
+                last = e
+            except Exception as e:  # network, HTTP, shape: report the type only, never the key
+                last = ModelError(f"model call failed: {type(e).__name__}")
+        raise last
