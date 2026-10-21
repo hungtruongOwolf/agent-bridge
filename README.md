@@ -63,6 +63,7 @@ Other commands:
 
 ```bash
 bridge run examples/packs/private-analyst --vault examples/vault.json --types note,contact
+bridge demo-data --fresh       # a full demo: seven chats, every payment state, a monthly plan, trash, history (then: bridge serve --state .bridge-demo --vault examples/vault-library.json)
 bridge improve deal-brief      # propose better instructions, measured on a public dev suite
 bridge approve deal-brief      # owner approval: publish the candidate, certify it on the held-out suite
 bridge paypal-check            # optional: verify PayPal sandbox credentials (creates one uncharged test order)

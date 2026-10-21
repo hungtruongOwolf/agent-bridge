@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import re
 import time
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from typing import Callable
 
 from .vault import Record, Vault
@@ -69,6 +69,19 @@ class Quarantine:
     max_pending: int = 20
     items: dict[str, Proposal] = field(default_factory=dict)
     _n: int = 0
+    docs: object = None  # a collection in the memory database: suggestions waiting for an answer survive a restart
+
+    def attach(self, docs) -> None:
+        """Keep suggestions in the database: load what is there and store every change from now on."""
+        self.docs = docs
+        for _, raw in docs.items():
+            p = Proposal(**raw)
+            self.items[p.id] = p
+            self._n = max(self._n, int(p.id[1:]) if p.id[1:].isdigit() else 0)
+
+    def _persist(self, *ps: Proposal) -> None:
+        if self.docs is not None and ps:
+            self.docs.write({p.id: asdict(p) for p in ps})
 
     def add(self, run_id: str, pack_digest: str, raw) -> tuple[list[Proposal], list[str]]:
         good, problems = validate(raw)
@@ -81,6 +94,7 @@ class Quarantine:
             p = Proposal(f"p{self._n}", g["type"], g["text"], run_id, pack_digest, self.clock())
             self.items[p.id] = p
             added.append(p)
+        self._persist(*added)
         return added, problems
 
     def pending(self) -> list[Proposal]:
@@ -89,9 +103,10 @@ class Quarantine:
 
     def _expire(self) -> None:
         now = self.clock()
-        for p in self.items.values():
-            if p.status == "pending" and now - p.created > self.ttl_s:
-                p.status = "expired"
+        gone = [p for p in self.items.values() if p.status == "pending" and now - p.created > self.ttl_s]
+        for p in gone:
+            p.status = "expired"
+        self._persist(*gone)
 
     def accept(self, proposal_id: str, vault: Vault) -> Record:
         p = self._get_pending(proposal_id)
@@ -101,14 +116,18 @@ class Quarantine:
         )
         vault.add(rec)
         p.status, p.record_id = "accepted", rec.id
+        self._persist(p)
         return rec
 
     def reject(self, proposal_id: str) -> None:
-        self._get_pending(proposal_id).status = "rejected"
+        p = self._get_pending(proposal_id)
+        p.status = "rejected"
+        self._persist(p)
 
     def revert_run(self, run_id: str, vault: Vault) -> dict:
         """Undo one run: drop its pending items and remove vault records that came from it."""
         dropped = removed = kept = 0
+        touched = []
         for p in self.items.values():
             if p.run_id == run_id and p.status in ("pending", "accepted"):
                 rec = vault.get(p.record_id) if p.record_id else None
@@ -119,6 +138,8 @@ class Quarantine:
                 elif p.status == "pending":
                     dropped += 1
                 p.status = "reverted"
+                touched.append(p)
+        self._persist(*touched)
         return {"dropped_pending": dropped, "removed_from_vault": removed, "kept_because_edited": kept}
 
     def _get_pending(self, proposal_id: str) -> Proposal:

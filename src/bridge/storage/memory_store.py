@@ -15,6 +15,7 @@ class MemoryStore:
         self.db = db
         self.notes, self._trash = db.collection("notes"), db.collection("trash")
         self._history, self._labels = db.collection("history"), db.collection("labels")
+        self.proposals = db.collection("proposals")  # suggestions from helpers that wait for a yes or no
 
     # -- the notes -------------------------------------------------------------------------------
     def is_empty(self) -> bool:

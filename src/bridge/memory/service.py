@@ -42,6 +42,7 @@ class MemoryService(SafetyNet):
         if self.store.is_empty() and seed is not None and Path(seed).exists():
             self.store.write_changes({}, {r.id: r for r in Vault.load(seed).all()})
         self.store.mark_seeded()
+        self.quarantine.attach(self.store.proposals)
         self._vault, self._overview = self.store.load_vault(), None  # the notes stay in memory; a change writes only the rows it touches
 
     # -- the shelf notes -------------------------------------------------------------------------

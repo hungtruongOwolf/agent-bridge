@@ -138,6 +138,13 @@ def serve_cmd(args) -> int:
     return 0
 
 
+def demo_data_cmd(args) -> int:
+    from .demo_data import build
+
+    build(Path(args.state), Path(args.packs), Path(args.vault), Path(args.env), source=Path(args.source) if args.source else None, fresh=args.fresh)
+    return 0
+
+
 def _model_and_tools(args, pack: Path):
     model = NebiusModel(load_api_key(args.env))
     uses_web = "web_search" in (pack / "workflow.yaml").read_text(encoding="utf-8")
@@ -263,6 +270,14 @@ def main(argv: list[str] | None = None) -> int:
                     help="test = fake money kept in a file; paypal = PayPal sandbox (needs credentials in .env); "
                          "paypal-mock = a local practice server that behaves like the sandbox, with an approval page")
     sv.set_defaults(fn=serve_cmd)
+    dd = sub.add_parser("demo-data", help="fill a state folder with every case the application handles, for a demo")
+    dd.add_argument("--state", default=".bridge-demo")
+    dd.add_argument("--packs", default="examples/packs")
+    dd.add_argument("--vault", default="examples/vault-library.json")
+    dd.add_argument("--env", default=".env")
+    dd.add_argument("--source", default=".bridge", help="a state folder whose helpers were already tested; saves testing them again")
+    dd.add_argument("--fresh", action="store_true", help="start over: delete the state folder first")
+    dd.set_defaults(fn=demo_data_cmd)
     pm = sub.add_parser("paypal-mock", help="run the local PayPal practice server on its own")
     pm.add_argument("--port", type=int, default=9797)
     pm.add_argument("--state", default=".bridge")

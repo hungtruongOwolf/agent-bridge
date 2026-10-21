@@ -98,3 +98,15 @@ def test_editing_a_note_stays_fast_in_a_large_memory(tmp_path):
         svc.update(f"n{i}", text=f"edited {i}")
     per_edit = (time.perf_counter() - t) / 20
     assert per_edit < 0.15, per_edit  # the old way rewrote the whole file each time
+
+
+def test_suggestions_waiting_for_an_answer_survive_a_restart(tmp_path):
+    q1 = Quarantine(clock=Clock())
+    svc = MemoryService(tmp_path / "vault.json", q1, clock=Clock())
+    added, _ = q1.add("run-1-abc123", "sha256:x", [{"type": "note", "text": "Acme likes Friday calls"}, {"type": "note", "text": "Hooli renews in March"}])
+    svc.accept_proposal(added[0].id)
+    q2 = Quarantine(clock=Clock())
+    again = MemoryService(tmp_path / "vault.json", q2, clock=Clock())
+    assert [p.text for p in q2.pending()] == ["Hooli renews in March"]
+    assert q2.add("run-2-abc123", "sha256:x", [{"type": "note", "text": "a third"}])[0][0].id == "p3"  # numbering carries on
+    assert any(r.text == "Acme likes Friday calls" for r in again.vault().all())
