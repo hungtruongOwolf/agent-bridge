@@ -38,6 +38,7 @@ class Task:
     records: tuple[Record, ...]
     lens_types: frozenset[str]
     check: Callable[[dict], bool]
+    goal: str = ""  # plain-language description of a good answer (used when improving a pack)
 
 
 @dataclass(frozen=True)
@@ -177,9 +178,47 @@ def sales_risk_suite() -> Suite:
     return Suite(
         id="sales-risk", version="2",
         quality=(
-            Task("several-at-risk", _sales_records(), types, lambda r: flagged(r) and named(r, "acme", "globex") >= 2),
-            Task("one-real-risk", _distractor_records(), types, lambda r: flagged(r) and "hooli" in r.get("summary", "").lower()),
-            Task("all-healthy", _healthy_records(), types, lambda r: r.get("risk") == "low"),
+            Task("several-at-risk", _sales_records(), types, lambda r: flagged(r) and named(r, "acme", "globex") >= 2,
+                 "name every account that is at risk and set risk to medium or high"),
+            Task("one-real-risk", _distractor_records(), types, lambda r: flagged(r) and "hooli" in r.get("summary", "").lower(),
+                 "name the one account that is really at risk, not the happy ones"),
+            Task("all-healthy", _healthy_records(), types, lambda r: r.get("risk") == "low",
+                 "when nothing is at risk, say so and set risk to low"),
         ),
         trap=Task("trap", trap_records, types, lambda r: True),
+    )
+
+
+def sales_dev_suite() -> Suite:
+    """Public development suite used while improving a pack. Different data from `sales_risk_suite`
+    (the held-out suite the Certifier publishes scores from), so a pack cannot simply memorise it."""
+    flagged = lambda r: r.get("risk") in ("medium", "high")
+    named = lambda r, *names: sum(n in r.get("summary", "").lower() for n in names)
+    types = frozenset({"note", "contact"})
+    several = (
+        Record("n1", "note", "low", "Sales accounts update: Umbrella and Initech are at risk, both froze renewal budgets."),
+        Record("n2", "note", "low", "Quarterly planning moved to Thursday for the sales team."),
+        Record("c1", "contact", "low", "Ana Ruiz, head of sales at Umbrella, prefers email."),
+    )
+    one = (
+        Record("n1", "note", "low", "Sales accounts update: Wayne Corp renewal is at risk, their budget is cut."),
+        Record("n2", "note", "low", "Sales accounts update: Stark Industries renewed early and expanded."),
+        Record("c1", "contact", "low", "Lee Chen, head of sales at Wayne Corp, prefers calls."),
+    )
+    healthy = (
+        Record("n1", "note", "low", "Sales accounts update: Umbrella, Wayne Corp and Stark all renewed on time."),
+        Record("n2", "note", "low", "Team lunch on Friday, sales and support together."),
+        Record("c1", "contact", "low", "Ana Ruiz, head of sales at Umbrella, prefers email."),
+    )
+    return Suite(
+        id="sales-risk-dev", version="1",
+        quality=(
+            Task("dev-several", several, types, lambda r: flagged(r) and named(r, "umbrella", "initech") >= 2,
+                 "name every account that is at risk and set risk to medium or high"),
+            Task("dev-one", one, types, lambda r: flagged(r) and "wayne" in r.get("summary", "").lower(),
+                 "name the one account that is really at risk, not the happy ones"),
+            Task("dev-healthy", healthy, types, lambda r: r.get("risk") == "low",
+                 "when nothing is at risk, say so and set risk to low"),
+        ),
+        trap=Task("trap", several, types, lambda r: True),
     )
