@@ -66,6 +66,13 @@ code{font:12px ui-monospace,Consolas,monospace;background:var(--chip);padding:1p
 .facts{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;font-size:12px;margin-top:12px;color:var(--muted)}
 .facts b{color:var(--ink);font-weight:600;overflow-wrap:anywhere}
 .empty{color:var(--muted);font-size:13px;padding:10px 0}
+.badge-test{background:var(--warnbg);color:var(--warn);border:1px solid var(--warn);padding:3px 10px;border-radius:999px;font-size:11px;font-weight:800;letter-spacing:.06em}
+.wallet{font-size:12px;color:var(--muted)}
+.pay{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-top:12px;font-size:13px}
+.pay .ptitle{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700;margin-bottom:6px}
+.pay .prow{display:flex;justify-content:space-between;gap:10px;padding:2px 0}
+.pay .pend{margin-top:8px;padding-top:8px;border-top:1px solid var(--line)}
+.pay .acts{display:flex;gap:8px;margin-top:8px}
 .audit{margin-top:12px;font-size:12px;border:1px solid var(--line);border-radius:8px;padding:8px 10px}
 .audit summary{cursor:pointer;font-weight:600}
 .arow{display:grid;grid-template-columns:34px 110px 1fr;gap:6px;padding:3px 0;border-top:1px solid var(--line);overflow-wrap:anywhere}
@@ -83,6 +90,8 @@ code{font:12px ui-monospace,Consolas,monospace;background:var(--chip);padding:1p
 <header>
   <h1>agent-bridge</h1>
   <span class="tag">Rent a stronger agent. Keep your data.</span>
+  <span class="badge-test" title="No real money moves. A fake provider stands in until the PayPal sandbox is connected.">TEST MONEY</span>
+  <span class="wallet" id="wallet"></span>
   <span class="mode"><span class="dot"></span>Pull mode: the pack runs here, with no network</span>
 </header>
 <main>
@@ -131,7 +140,7 @@ function drawMarket(){
   const box = $("market"); box.replaceChildren();
   S.market.forEach(p => {
     const c = el("div", "pack" + (selected === p.key ? " sel" : ""));
-    c.onclick = () => { selected = p.key; drawMarket(); $("go").disabled = running; $("go").textContent = "Run " + p.id + " v" + p.version + " on my data"; };
+    c.onclick = () => { selected = p.key; drawMarket(); $("go").disabled = running; $("go").textContent = "Run " + p.id + " v" + p.version + " · up to " + fmt(Math.round(p.price_usd * 100)); };
     const top = el("div","row"); const nm = el("span","name",p.id); nm.append(el("span","meta"," v" + p.version)); top.append(nm);
     const price = el("span","meta","$" + p.price_usd.toFixed(2) + " / " + p.unit); top.append(price); c.append(top);
     c.append(el("div","sum",p.summary));
@@ -178,7 +187,8 @@ function drawReview(){
     a.append(ok,no); c.append(a); box.append(c);
   });
 }
-async function refresh(){ S = await api("/api/state"); drawTypes(true); drawVault(); drawReview(); drawMarket(); drawHistory(); }
+function drawWallet(){ const w = S.payments; if (!w) return; $("wallet").textContent = "captured " + fmt(w.captured) + " · paid to authors " + fmt(w.paid_out) + " · held " + fmt(w.held); }
+async function refresh(){ S = await api("/api/state"); drawWallet(); drawTypes(true); drawVault(); drawReview(); drawMarket(); drawHistory(); }
 
 function drawTypes(keep){
   const types = [...new Set(S.vault.map(r => r.type))];
@@ -199,6 +209,35 @@ const WHY = {
 };
 
 const DESC = {tool:"reads memory through the broker", llm:"asks the model", gate:"checks its own result", "return":"returns a result", code:"runs code in a sealed cell"};
+
+const fmt = (c) => "$" + (c / 100).toFixed(2);
+
+function renderPayment(rep, out){
+  const p = rep.payment; if (!p) return;
+  const box = el("div","pay"); box.id = "paybox";
+  box.append(el("div","ptitle","Payment · test money"));
+  const row = (k, v) => { const r = el("div","prow"); r.append(el("span",null,k), el("b",null,v)); box.append(r); };
+  row("Hold placed (your cap)", fmt(p.price));
+  const floorTaken = Math.min(p.floor, p.captured + p.refunded);
+  if (floorTaken > 0) row("Floor fee captured", fmt(floorTaken));
+  if (p.captured + p.refunded > p.floor) row("Outcome fee captured", fmt(p.captured + p.refunded - p.floor));
+  if (p.refunded > 0) row("Refunded to you", fmt(p.refunded));
+  const end = el("div","pend");
+  const say = (t) => end.append(el("div",null,t));
+  if (p.state === "RESULT_READY") {
+    say("Your decision: accept to pay the rest, or reject to pay only the floor fee. If you do nothing it is accepted automatically at " + new Date(p.accept_by * 1000).toLocaleString() + ".");
+    const a = el("div","acts"); const ok = el("button","btn pri","Accept result"); const no = el("button","btn","Reject");
+    const go = async (action) => { ok.disabled = no.disabled = true; try { rep.payment = await api("/api/settle",{run_id:rep.run_id, action}); } catch(e) { say(String(e.message)); return; } box.replaceWith(renderPaymentBox(rep)); await refresh(); };
+    ok.onclick = () => go("accept"); no.onclick = () => go("reject"); a.append(ok, no); end.append(a);
+  } else if (p.state === "SETTLED") say("Settled. The author is paid " + fmt(p.payout.amount) + " after a 10% platform fee (" + p.payout.status + "). Demo holdback 0 s; a real hub would hold it for days.");
+  else if (p.state === "SETTLED_REJECTED") say("Rejected. Only the floor fee was kept; the rest of the hold was released. The author is paid " + fmt(p.payout.amount) + ".");
+  else if (p.state === "DISPUTE_HOLD") say("Held for review. Nothing more is captured until the claim is resolved.");
+  else if (p.state === "DISPUTE_UPHELD") say("Claim upheld: the Certifier independently reproduced this violation. Everything is refunded and the author earns nothing.");
+  else if (p.state === "VOIDED") say("No charge. The hold was released because no usable result was produced.");
+  box.append(end);
+  return box;
+}
+function renderPaymentBox(rep){ return renderPayment(rep); }
 
 async function play(rep, animate){
   const pause = (ms) => animate ? sleep(ms) : Promise.resolve();
@@ -228,6 +267,7 @@ async function play(rep, animate){
   add("tokens", String(rep.tokens));
   add("pack digest", rep.digest.slice(0,26) + "…");
   out.append(f);
+  const pb = renderPayment(rep); if (pb) out.append(pb);
 
   const det = el("details","audit"); det.append(el("summary",null,"Audit log · " + rep.journal_entries + " entries · hash chain verified"));
   (rep.journal || []).forEach(e => { const row = el("div","arow"); row.append(el("span","meta","#" + e.seq), el("code",null,e.kind), el("span","meta",e.hash + " " + JSON.stringify(e.data).slice(0,110))); det.append(row); });
@@ -267,7 +307,7 @@ function drawHistory(){
 }
 
 (async function init(){
-  S = await api("/api/state"); drawTypes(); drawVault(); drawReview(); drawMarket(); drawHistory(); $("go").onclick = run;
+  S = await api("/api/state"); drawWallet(); drawTypes(); drawVault(); drawReview(); drawMarket(); drawHistory(); $("go").onclick = run;
 })();
 </script>
 </body>

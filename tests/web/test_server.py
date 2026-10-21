@@ -310,3 +310,9 @@ def test_money_state_persists_across_a_restart(mem_app):
     assert again.ledger.rows[rid].state == "RESULT_READY" and again.ledger.provider.captured_total() == 15
     again.settle({"run_id": rid, "action": "accept"})
     assert again.ledger.provider.captured_total() == 60
+
+
+def test_page_labels_money_as_test_money_and_wires_the_settle_endpoint(srv):
+    app, url = srv
+    html = call(url + "/")[1].decode()
+    assert "TEST MONEY" in html and "/api/settle" in html and "Accept result" in html
