@@ -119,3 +119,99 @@ def test_two_requests_at_once_cannot_overwrite_each_other(svc):
     [t.join() for t in ts]
     items = svc.list()
     assert len(items) == 27 and len({i["id"] for i in items}) == 27  # nothing lost, no duplicate ids
+
+
+from longtext import LONG  # noqa: E402
+
+# ---- the safety net: trash, history, near duplicates, many at once, backup ----------------------------------
+
+def test_a_deleted_note_waits_in_the_trash_and_can_be_put_back(svc):
+    svc.delete("n1")
+    assert svc.vault().get("n1") is None
+    t = svc.trash()
+    assert [x["unit"] for x in t] == ["n1"] and t[0]["preview"].startswith("Sales pipeline") and t[0]["days_left"] == 30
+    assert svc.restore("n1")["id"] == "n1" and svc.vault().get("n1").text == "Sales pipeline review"
+    assert svc.trash() == []
+    with pytest.raises(MemoryChangeError, match="no longer in the trash"):
+        svc.restore("n1")
+
+
+def test_a_long_note_comes_back_whole_and_ids_taken_meanwhile_are_not_stolen(svc):
+    doc = svc.add("note", LONG, "low", "work")["id"]
+    svc.delete(doc)
+    other = svc.add("note", LONG.replace("Acme", "Zeta"), "low", "work")["id"]  # takes the freed doc number
+    back = svc.restore(doc)["id"]
+    assert back != other and len(svc.vault().parts(back)) == len(svc.vault().parts(other))
+    assert svc.list(ids=[back])[0]["title"] == "Acme account plan"
+    svc.delete("n1")
+    n = svc.add("note", "A brand new note about something else entirely", "low")["id"]
+    assert svc.restore("n1")["id"] != n
+
+
+def test_the_trash_forgets_after_thirty_days_and_can_be_emptied(svc):
+    svc.delete("n1")
+    svc.clock.t += 31 * 86400
+    assert svc.trash() == []
+    svc.delete("c1")
+    assert svc.empty_trash()["emptied"] == 1 and svc.trash() == []
+
+
+def test_every_change_of_text_keeps_the_old_text_and_can_be_undone(svc):
+    svc.update("n1", text="Sales pipeline review, second draft")
+    svc.update("n1", text="Sales pipeline review, third draft")
+    h = svc.history("n1")
+    assert [v["text"] for v in h] == ["Sales pipeline review, second draft", "Sales pipeline review"]
+    svc.restore_version("n1", h[1]["index"])
+    assert svc.vault().get("n1").text == "Sales pipeline review"
+    assert svc.history("n1")[0]["text"] == "Sales pipeline review, third draft"  # undoing is itself kept
+    with pytest.raises(MemoryChangeError):
+        svc.restore_version("n1", 99)
+    for i in range(15):
+        svc.update("n1", text=f"version {i}")
+    assert len(svc.history("n1")) == 10
+
+
+def test_history_follows_a_note_that_grows_into_a_long_note(svc):
+    out = svc.update("n1", text="Sales pipeline review. " + "More detail about every account. " * 80)
+    assert out["id"].startswith("doc") and [v["text"] for v in svc.history(out["id"])] == ["Sales pipeline review"]
+
+
+def test_saving_something_that_repeats_a_note_says_so_but_still_saves(svc):
+    out = svc.add("note", "Sales pipeline review", "low")
+    assert out["similar"] == [] and out["id"]  # the same words as n1 but too short to compare
+    svc.add("note", "Acme wants invoices on the first of every month in euros", "low")
+    twin = svc.add("note", "Acme wants invoices on the first of every month, in euros.", "low")
+    assert len(twin["similar"]) == 1 and "euros" in twin["similar"][0]["text"] and twin["id"]
+    assert svc.add("note", "A completely different idea about the weekly digest email", "low")["similar"] == []
+
+
+def test_many_notes_can_be_moved_made_secret_or_deleted_in_one_step(svc):
+    a = svc.add("note", "First note about the offsite budget for the whole team", "low", "work")["id"]
+    b = svc.add("note", "Second note about the offsite venue in Santa Fe", "low", "work")["id"]
+    assert svc.bulk([a, b], "move", shelf="work/offsite") == {"changed": 2}
+    assert {svc.vault().get(i).shelf for i in (a, b)} == {"work/offsite"}
+    svc.bulk([a, b], "level", level="high")
+    assert {svc.vault().get(i).sensitivity for i in (a, b)} == {"high"}
+    with pytest.raises(MemoryChangeError, match="no longer"):
+        svc.bulk([a, "nope"], "delete")
+    assert svc.vault().get(a) is not None  # all or nothing
+    assert svc.bulk([a, b], "delete") == {"changed": 2}
+    assert {x["unit"] for x in svc.trash()} == {a, b}
+    for bad in (([], "move"), (["n1"], "burn"), (["n1"], "move"), (["x"] * 201, "delete")):
+        with pytest.raises(MemoryChangeError):
+            svc.bulk(*bad)
+
+
+def test_a_backup_round_trips_and_never_overwrites_what_is_there_now(svc, tmp_path):
+    doc = svc.add("note", LONG, "low", "work")["id"]
+    svc.set_label("work", "Everything about the job")
+    backup = svc.export_backup()
+    assert backup["format"] == "agent-bridge-memory" and backup["notes"] == 3 and backup["shelf_notes"] == {"work": "Everything about the job"}
+    other = MemoryService(tmp_path / "other.json", Quarantine(clock=Clock()), clock=Clock())
+    Vault([Record("n1", "note", "low", "A different note that owns the id n1")]).save(tmp_path / "other.json")
+    out = other.restore_backup(backup)
+    assert out == {"added": 2, "skipped": 1}  # n1 was already taken, so it was left alone
+    assert other.vault().get("n1").text.startswith("A different") and other.vault().parts(doc) and other.labels() == {"work": "Everything about the job"}
+    for bad in (None, {"format": "x"}, {"format": "agent-bridge-memory", "records": [{"id": "z"}]}, {"format": "agent-bridge-memory", "records": "no"}):
+        with pytest.raises(MemoryChangeError):
+            other.restore_backup(bad)

@@ -14,6 +14,7 @@ from typing import Callable
 
 from .chunking import MAX_DOC, MAX_PARTS, SHORT, guess_title, join_document, split_document
 from .quarantine import Quarantine, QuarantineError
+from .safety_net import SafetyNet
 from .tree import MemoryTree, pretty
 from .vault import Record, Vault, clean_path, under
 from .words import tokens
@@ -26,7 +27,9 @@ class MemoryChangeError(ValueError):
     """The change cannot be made; the message says why in plain words."""
 
 
-class MemoryService:
+class MemoryService(SafetyNet):
+    Error = MemoryChangeError
+
     def __init__(self, vault_file: Path, quarantine: Quarantine, *, threads=None, registry=None,
                  clock: Callable[[], float], lock: threading.RLock | None = None):
         self.file, self.quarantine, self.threads, self.registry, self.clock = Path(vault_file), quarantine, threads, registry, clock
@@ -167,7 +170,12 @@ class MemoryService:
                                 "own": len({recs_by_id[i].unit for i in tree.nodes[o["path"]].own})})
                 walk(o["path"], depth + 1)
         walk("", 0)
-        out = {"total": len({r.unit for r in recs}), "secret": len(seen_secret), "shelves": shelves}
+        units = {r.unit for r in recs}
+        stamps = [r.created for r in recs if r.created]
+        out = {"total": len(units), "secret": len(seen_secret), "long": len({r.doc for r in recs if r.doc}),
+               "contacts": len({r.unit for r in recs if r.type == "contact"}),
+               "oldest": min(stamps) if stamps else 0, "newest": max(max((r.updated or r.created) for r in recs), 0) if recs else 0,
+               "shelves": shelves}
         self._overview = (self._cache[0] if self._cache else None, out)
         return out
 
@@ -246,7 +254,8 @@ class MemoryService:
         now = self.clock()
         sensitivity, path = self._level(sensitivity), self._path(path)
         taken = self._referenced()
-        return {"id": self._mutate(lambda v: self._make(v, type, text, sensitivity, path, title, now, taken))}
+        twins = self.similar(text) if isinstance(text, str) else []  # looked for before saving, so the new note does not match itself
+        return {"id": self._mutate(lambda v: self._make(v, type, text, sensitivity, path, title, now, taken)), "similar": twins}
 
     def add_many(self, items: list, sensitivity: str, type: str, path: str = "") -> dict:
         """Save several notes at once (for example from an imported file), all or nothing."""
@@ -282,6 +291,10 @@ class MemoryService:
             if not parts:
                 raise MemoryChangeError("that file is no longer in your memory")
             first = parts[0]
+            if text is not None:
+                old = join_document([p.text for p in parts]) if first.doc else first.text
+                if old != text.strip():
+                    self._push_history(first.unit, old, first.title, now)
             try:
                 if text is not None and (first.doc or len(text.strip()) > SHORT):
                     for p in parts:  # the note is written again from the new text, keeping who wrote it and when
@@ -289,6 +302,7 @@ class MemoryService:
                     new = self._make(v, type or first.type, text, sensitivity or first.sensitivity, first.path if path is None else path,
                                (title if title is not None else first.title), now, taken - {first.doc, first.id}, doc=first.doc,
                                created=first.created, edited=True, origin=first.origin, trust=3)
+                    self._move_history(first.unit, new)
                     return new, True
                 for p in parts:
                     v.update(p.id, now=now, text=None if text is None else text.strip(), sensitivity=sensitivity, type=type, path=path)
@@ -332,26 +346,32 @@ class MemoryService:
                     self.threads.save()
         return {"moved": n}
 
-    def delete(self, record_id: str) -> dict:
-        gone: set = set()
-
-        def go(v: Vault):
-            unit = v.unit_of(record_id)
-            members = v.parts(unit) if unit and v.parts(unit) else ([v.get(unit)] if unit and v.get(unit) else [])
-            if not members:
-                raise MemoryChangeError("that file is no longer in your memory")
-            for p in members:
-                v.remove(p.id)
-                gone.add(p.id)
-            gone.add(unit)
-        self._mutate(go)
+    def _forget_in_chats(self, gone: set) -> None:
         if self.threads is not None:  # it can no longer be shared, so every chat forgets it was ever picked
             with self.threads.lock:
                 for t in self.threads.threads.values():
                     t.lens.include = [i for i in t.lens.include if i not in gone]
                     t.lens.exclude = [i for i in t.lens.exclude if i not in gone]
                 self.threads.save()
-        return {"deleted": record_id}
+
+    def delete(self, record_id: str) -> dict:
+        """Delete a note. It goes to the trash for 30 days first, so a slip can be undone."""
+        gone: set = set()
+        now = self.clock()
+
+        def go(v: Vault):
+            unit = v.unit_of(record_id)
+            members = v.parts(unit) if unit and v.parts(unit) else ([v.get(unit)] if unit and v.get(unit) else [])
+            if not members:
+                raise MemoryChangeError("that file is no longer in your memory")
+            self._to_trash(members, now)
+            for p in members:
+                v.remove(p.id)
+                gone.add(p.id)
+            gone.add(unit)
+        self._mutate(go)
+        self._forget_in_chats(gone)
+        return {"deleted": record_id, "undo": True}
 
     # -- suggestions from helpers ------------------------------------------------------------------
     def accept_proposal(self, proposal_id: str) -> dict:

@@ -3,7 +3,7 @@
    stays fast. Plain language only; every string from the server is inserted with textContent. */
 (function () {
   "use strict";
-  let B = null, sel = "", expanded = new Set(), offset = 0, query = "", queryTimer = null;
+  let B = null, sel = "", expanded = new Set(), offset = 0, query = "", queryTimer = null, selectMode = false, picked = new Set(), trashView = false;
   const PAGE = 30;
   const $ = (id) => document.getElementById(id);
   const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; };
@@ -237,6 +237,7 @@
 
   /* ---------- the files on a shelf ---------- */
   async function drawFiles(reset) {
+    if (trashView) return drawTrash();
     const box = $("memlist"), more = $("memmore");
     if (reset) { box.replaceChildren(); offset = 0; }
     if (reset && selFile) {  // a file picked on the map is shown in full at the top
@@ -251,7 +252,12 @@
   }
 
   function card(r) {
-    const c = el("div", "mem" + (r.long ? " longnote" : ""));
+    const c = el("div", "mem" + (r.long ? " longnote" : "") + (picked.has(r.id) ? " chosen" : ""));
+    if (selectMode) {
+      const l = el("label", "pickrow small"), cb = document.createElement("input"); cb.type = "checkbox"; cb.checked = picked.has(r.id); cb.setAttribute("aria-label", "Select this note");
+      cb.onchange = () => { cb.checked ? picked.add(r.id) : picked.delete(r.id); c.classList.toggle("chosen", cb.checked); drawBulk(); };
+      l.append(cb, " Select"); c.append(l);
+    }
     if (r.long) {
       c.append(el("div", "notetitle", "📄 " + r.title));
       const body = el("div", "memtext", r.text.length > 420 ? r.text.slice(0, 420).trimEnd() + "…" : r.text);
@@ -269,14 +275,31 @@
     meta.append((r.source === "helper" ? "Suggested by " + r.helper + ", saved because you said yes" : "Written by you") + (r.created ? " on " + when(r.created) : "") + ". ");
     meta.append(el("span", "tag " + (r.sensitivity === "low" ? "good" : "wait"), r.sensitivity === "low" ? "Everyday" : "Secret"), " ", r.shelf_name + ".");
     if (r.long) meta.append(" Kept whole, stored as " + r.parts + " passages so a helper reads only the part it needs.");
-    if (r.edited) meta.append(" You corrected it later.");
+    if (r.edited) { meta.append(" You corrected it later. "); meta.append(btn("See earlier versions", "linkbtn", () => versions(c, r))); }
     c.append(meta);
     c.append(el("div", "small muted", r.used.answers ? "Helped write " + window.plural(r.used.answers, "answer") + "; last in “" + r.used.last_chat + "”." : "Not used in any answer yet."));
     const a = el("div", "acts");
     a.append(btn("Edit", "btn", () => edit(c, r)), btn("Delete", "btn warn", (e) => confirmTwice(e.target, "Really delete?", async () => {
-      try { await B.api("/api/memory", { action: "delete", id: r.id }); await B.refresh(); } catch (er) { note(er.message); }
+      try {
+        await B.api("/api/memory", { action: "delete", id: r.id }); await B.refresh();
+        B.toast("Moved to the trash. It stays there for 30 days.", false, { label: "Undo", fn: async () => { try { await B.api("/api/memory", { action: "restore", id: r.id }); await B.refresh(); note("Saved: it is back."); } catch (e) { note(e.message); } } });
+      } catch (er) { note(er.message); }
     })));
     c.append(a); return c;
+  }
+
+  async function versions(c, r) {
+    let box = c.querySelector(".versions"); if (box) { box.remove(); return; }
+    box = el("div", "versions"); c.append(box);
+    try {
+      const list = (await B.api("/api/memory/history?id=" + encodeURIComponent(r.id))).versions;
+      if (!list.length) { box.append(el("p", "small muted", "No earlier versions were kept.")); return; }
+      list.forEach((v) => {
+        const row = el("div", "vrow"); row.append(el("div", "small muted", when(v.at) + " · " + v.chars.toLocaleString() + " characters"), el("div", "small vtext", v.text.length > 220 ? v.text.slice(0, 220) + "…" : v.text));
+        row.append(btn("Put this version back", "linkbtn", async () => { try { await B.api("/api/memory", { action: "restore_version", id: r.id, index: v.index }); await B.refresh(); note("Saved: the earlier version is back."); } catch (e) { note(e.message); } }));
+        box.append(row);
+      });
+    } catch (e) { box.append(el("p", "small warnline", e.message)); }
   }
 
   function edit(c, r) {
@@ -293,6 +316,38 @@
     c.append(el("label", "small fieldrow", "Shelf "), sh, lv, a);
   }
 
+  /* ---------- several at once ---------- */
+  function drawBulk() {
+    const bar = $("bulkbar"); bar.replaceChildren(); bar.hidden = !selectMode;
+    if (!selectMode) return;
+    const n = picked.size;
+    bar.append(el("div", "small", n ? window.plural(n, "note") + " selected." : "Tick the notes you want to change."));
+    if (!n) return;
+    const run = async (body, done) => { try { await B.api("/api/memory", Object.assign({ action: "bulk", ids: [...picked] }, body)); picked.clear(); await B.refresh(); note("Saved: " + done); } catch (e) { note(e.message); } };
+    const shelf = document.createElement("input"); shelf.type = "text"; shelf.setAttribute("list", "shelfnames"); shelf.placeholder = "shelf, like work/clients"; shelf.maxLength = 200; shelf.setAttribute("aria-label", "Move them to this shelf");
+    const acts = el("div", "acts");
+    acts.append(shelf, btn("Move", "btn", () => run({ op: "move", shelf: shelf.value }, "moved " + window.plural(n, "note") + ".")),
+      btn("Make secret", "btn", () => run({ op: "level", level: "high" }, window.plural(n, "note") + " now secret.")),
+      btn("Make everyday", "btn", () => run({ op: "level", level: "low" }, window.plural(n, "note") + " now everyday.")),
+      btn("Delete", "btn warn", (e) => confirmTwice(e.target, "Really delete " + n + "?", () => run({ op: "delete" }, window.plural(n, "note") + " moved to the trash."))));
+    bar.append(acts);
+  }
+
+  /* ---------- the trash ---------- */
+  async function drawTrash() {
+    const box = $("memlist"), more = $("memmore"); box.replaceChildren(); more.hidden = true; $("bulkbar").hidden = true;
+    $("shelftitle").textContent = "Trash";
+    let items; try { items = (await B.api("/api/memory/trash")).items; } catch (e) { note(e.message); return; }
+    box.append(btn("← Back to my notes", "linkbtn", () => { trashView = false; select(sel); }));
+    if (!items.length) { box.append(el("p", "empty", "The trash is empty. Deleted notes stay here for 30 days.")); return; }
+    items.forEach((t) => {
+      const c = el("div", "mem"); c.append(el("div", "memtext", (t.long ? "📄 " + t.title + ": " : "") + t.preview));
+      c.append(el("div", "small muted", t.shelf_name + " · " + (t.level === "low" ? "Everyday" : "Secret") + " · gone for good in " + window.plural(t.days_left, "day")));
+      const a = el("div", "acts"); a.append(btn("Put it back", "btn go2", async () => { try { await B.api("/api/memory", { action: "restore", id: t.unit }); await B.refresh(); note("Saved: it is back."); drawTrash(); } catch (e) { note(e.message); } })); c.append(a); box.append(c);
+    });
+    box.append(btn("Empty the trash", "btn warn", (e) => confirmTwice(e.target, "Really empty it?", async () => { try { await B.api("/api/memory", { action: "empty_trash" }); drawTrash(); } catch (er) { note(er.message); } })));
+  }
+
   /* ---------- adding and importing ---------- */
   function setupForm() {
     const f = $("memform"), lv = levelSelect("low"); lv.id = "memlevel"; $("memlevelslot").replaceChildren(lv);
@@ -300,7 +355,9 @@
       e.preventDefault();
       try {
         const r = await B.api("/api/memory", { action: "add", type: $("memkind").value, text: $("memtext").value, sensitivity: lv.value, shelf: $("memshelf").value, title: $("memtitle").value });
-        $("memtext").value = ""; $("memtitle").value = ""; countChars(); note(r.id.startsWith("doc") ? "Saved as one long note." : "Saved."); await B.refresh();
+        $("memtext").value = ""; $("memtitle").value = ""; countChars();
+        note(r.similar && r.similar.length ? "Saved. You already have a very similar note: “" + r.similar[0].text.slice(0, 80) + "” (" + r.similar[0].shelf_name + ")." : r.id.startsWith("doc") ? "Saved as one long note." : "Saved.");
+        await B.refresh();
       } catch (er) { note(er.message); }
     };
     $("memtext").oninput = countChars; countChars();
@@ -363,11 +420,16 @@
     };
   }
 
+  function stats() {
+    const m = B.state().memory, d = (t) => new Date(t * 1000).toLocaleDateString([], { month: "short", year: "numeric" });
+    const parts = [window.plural(m.total, "note")]; if (m.long) parts.push(m.long + " long"); if (m.contacts) parts.push(window.plural(m.contacts, "person", "people")); if (m.secret) parts.push(m.secret + " secret");
+    $("memstats").textContent = parts.join(" · ") + (m.oldest ? " · written " + d(m.oldest) + " to " + d(m.newest) : "") + ". Scroll to zoom, drag the background to move.";
+  }
   function redraw() {
     const m = B.state().memory;
     if (sel && !shelves().some((s) => s.path === sel)) sel = "";
     proposals($("suggest"));
-    drawTree(); drawShelfActions(); loadChats();
+    stats(); drawTree(); drawShelfActions(); drawBulk(); loadChats();
     if (!$("view-memory").hidden) drawFiles(true);
     const np = $("notespanel"); if (np) { const n = proposals($("notes")); np.hidden = !n; }
   }
@@ -375,6 +437,22 @@
   function mount(bridge) {
     B = bridge; setupForm(); setupImport(); redraw();
     setupView();
+    $("selectmode").onclick = () => { selectMode = !selectMode; picked.clear(); $("selectmode").textContent = selectMode ? "Done selecting" : "Select several"; drawBulk(); drawFiles(true); };
+    $("opentrash").onclick = () => { trashView = true; drawTrash(); };
+    $("memexport").onclick = async () => {
+      try {
+        const data = await B.api("/api/memory/export"), blob = new Blob([JSON.stringify(data, null, 1)], { type: "application/json" });
+        const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "my-memory-backup.json"; document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+        note("Saved: a backup with " + window.plural(data.notes, "note") + " was downloaded.");
+      } catch (e) { note(e.message); }
+    };
+    $("memrestore").onchange = async (ev) => {
+      const f = ev.target.files[0]; if (!f) return;
+      if (f.size > 380000) { note("That file is too big to put back here (the limit is 380 KB)."); return; }
+      try { const out = await B.api("/api/memory", { action: "restore_backup", backup: JSON.parse(await f.text()) }); note("Saved: " + window.plural(out.added, "note") + " put back" + (out.skipped ? ", " + out.skipped + " already here were left alone." : ".")); await B.refresh(); }
+      catch (e) { note(e instanceof SyntaxError ? "That file is not a backup." : e.message); }
+      ev.target.value = "";
+    };
     $("mapexpand").onclick = () => { shelves().forEach((s) => { if (s.has_children) expanded.add(s.path); }); fitNext = true; drawTree(); };
     $("mapfold").onclick = () => { expanded.clear(); fitNext = true; drawTree(); };
   }

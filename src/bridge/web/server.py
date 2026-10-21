@@ -337,11 +337,21 @@ class App:
             return self.memory.update(str(body.get("id", "")), text=body.get("text"), sensitivity=body.get("sensitivity"), type=body.get("type"), path=body.get("shelf"), title=body.get("title"))
         if action == "delete":
             return self.memory.delete(str(body.get("id", "")))
+        if action == "restore":
+            return self.memory.restore(str(body.get("id", "")))
+        if action == "empty_trash":
+            return self.memory.empty_trash()
+        if action == "restore_version":
+            return self.memory.restore_version(str(body.get("id", "")), body.get("index"))
+        if action == "bulk":
+            return self.memory.bulk(body.get("ids"), str(body.get("op", "")), shelf=body.get("shelf"), level=body.get("level"))
+        if action == "restore_backup":
+            return self.memory.restore_backup(body.get("backup"))
         if action == "move_shelf":
             return self.memory.move_shelf(str(body.get("from", "")), str(body.get("to", "")))
         if action == "shelf_note":
             return self.memory.set_label(str(body.get("shelf", "")), body.get("text", ""))
-        raise ValueError("action must be add, add_many, update, delete, move_shelf or shelf_note")
+        raise ValueError("that is not something memory can do")
 
 
 POST_ROUTES = {
@@ -455,6 +465,14 @@ def make_handler(app: App):
                     ids = [x for x in q.get("ids", "").split(",") if x][:100] if "ids" in q else None
                     return self._json(200, {"items": app.memory.list(shelf=q.get("shelf") or None, ids=ids, q=q.get("q", "")[:200],
                                                                      offset=int(q.get("offset", "0") or 0), limit=int(q.get("limit", "30") or 30))})
+                if route == "/api/memory/trash":
+                    return self._json(200, {"items": app.memory.trash()})
+                if route == "/api/memory/history":
+                    return self._json(200, {"versions": app.memory.history(q.get("id", ""))})
+                if route == "/api/memory/export":
+                    if self.headers.get("X-Bridge-Token") != app.token:  # a backup holds secret notes, so it needs the page's own token
+                        return self._json(403, {"error": "forbidden"})
+                    return self._json(200, app.memory.export_backup())
                 if route == "/api/memory/tree":
                     return self._json(200, app.memory.overview())
             except (ThreadError, ValueError) as e:

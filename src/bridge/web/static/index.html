@@ -154,7 +154,7 @@
   <div class="memtop">
   <div class="panel mapwrap"><div class="title">Map of my memory</div><div class="body">
     <div class="maptools">
-      <span class="small muted">Click a shelf to see its files. Scroll to zoom, drag the background to move.</span>
+      <span class="small muted" id="memstats"></span>
       <span class="gspace"></span>
       <button class="btn" id="mapzoomout" type="button" aria-label="Zoom out" title="Zoom out">−</button>
       <button class="btn" id="mapzoomin" type="button" aria-label="Zoom in" title="Zoom in">+</button>
@@ -172,6 +172,8 @@
     <div class="panel inspector"><div class="title" id="shelftitle">Files</div><div class="body">
       <div class="memsearch"><input id="memq" type="search" placeholder="Search your memory" aria-label="Search your memory"></div>
       <div id="shelfactions" class="acts"></div>
+      <div class="acts"><button class="btn" id="selectmode" type="button">Select several</button><button class="btn" id="opentrash" type="button">Trash</button></div>
+      <div id="bulkbar" class="bulkbar" hidden></div>
       <div id="memlist"></div>
       <button class="btn" id="memmore" type="button" hidden>Show more</button>
     </div></div>
@@ -190,6 +192,12 @@
           <button class="btn go2" type="submit">Save to memory</button>
         </div>
       </form>
+      <div class="memform">
+        <h3 class="sub">Backup</h3>
+        <p class="small muted">Everything in memory, secret notes included, as one file only you keep.</p>
+        <div class="acts"><button class="btn" id="memexport" type="button">Download a backup</button></div>
+        <label class="small fieldrow">Put one back <input id="memrestore" type="file" accept=".json,application/json" aria-label="Choose a backup file"></label>
+      </div>
       <div class="memform">
         <h3 class="sub">Or bring in a file</h3>
         <p class="small muted">A .txt, .md or .csv file, up to 300 KB. Keep it as one long note, or split it into short notes.</p>

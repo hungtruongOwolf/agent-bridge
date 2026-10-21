@@ -13,10 +13,12 @@
   window.plural = (n, one, many) => n + " " + (n === 1 ? one : many || one + "s");
   let toastTimer = null;
   /* a short message that appears where you are looking, whatever screen you are on */
-  function toast(text, bad) {
+  function toast(text, bad, action) {
     let t = $("toast"); if (!t) { t = el("div"); t.id = "toast"; t.setAttribute("role", "status"); t.setAttribute("aria-live", "polite"); document.body.append(t); }
-    t.textContent = text || ""; t.className = text ? (bad ? "bad on" : "on") : ""; clearTimeout(toastTimer);
-    if (text) toastTimer = setTimeout(() => { t.className = ""; }, bad ? 6000 : 3500);
+    t.replaceChildren(el("span", null, text || ""));
+    if (text && action) { const b = el("button", "toastbtn", action.label); b.type = "button"; b.onclick = () => { t.className = ""; action.fn(); }; t.append(b); }
+    t.className = text ? (bad ? "bad on" : "on") : ""; clearTimeout(toastTimer);
+    if (text) toastTimer = setTimeout(() => { t.className = ""; }, action ? 9000 : bad ? 6000 : 3500);
   }
 
   const KNOWN = /spending limit|still working|write a message|characters|full|exist|no longer|shelf|shelves|type|text|secret|everyday|name|hold is not approved|payment could not|not helpful|already|limit|remember|choose|file|levels|add between/i;
@@ -28,7 +30,7 @@
   }
 
   async function api(path, body) {
-    const r = await fetch(path, body ? { method: "POST", headers: { "X-Bridge-Token": TOKEN, "Content-Type": "application/json" }, body: JSON.stringify(body) } : {});
+    const r = await fetch(path, body ? { method: "POST", headers: { "X-Bridge-Token": TOKEN, "Content-Type": "application/json" }, body: JSON.stringify(body) } : { headers: { "X-Bridge-Token": TOKEN } });
     const j = await r.json();
     if (!r.ok) throw new Error(friendly(j.error, r.status));
     return j;

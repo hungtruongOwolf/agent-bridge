@@ -466,3 +466,27 @@ def test_deleting_a_chat_settles_its_last_answer_so_no_money_is_left_hanging(srv
     assert call(url + "/api/thread/delete", {"id": t["id"]}, app.token)[0] == 200
     assert app.ledger.rows[rid].state == "SETTLED"
     assert call(url + "/api/state")[1]["payments"]["on_hold"] == 0
+
+
+def test_the_safety_net_is_reachable_over_http(srv):
+    app, url, _ = srv
+    mem = lambda body: call(url + "/api/memory", body, app.token)
+    nid = mem({"action": "add", "type": "note", "text": "Offsite budget is fourteen thousand dollars", "sensitivity": "low", "shelf": "work"})[1]["id"]
+    assert mem({"action": "delete", "id": nid})[1]["undo"] is True
+    assert [t["unit"] for t in call(url + "/api/memory/trash")[1]["items"]] == [nid]
+    assert mem({"action": "restore", "id": nid})[0] == 200 and call(url + "/api/memory/trash")[1]["items"] == []
+    mem({"action": "update", "id": nid, "text": "Offsite budget is fifteen thousand dollars"})
+    v = call(url + "/api/memory/history?id=" + nid)[1]["versions"]
+    assert v[0]["text"].endswith("fourteen thousand dollars")
+    assert mem({"action": "restore_version", "id": nid, "index": v[0]["index"]})[0] == 200
+    twin = mem({"action": "add", "type": "note", "text": "Offsite budget is fourteen thousand dollars", "sensitivity": "low"})[1]
+    assert twin["similar"]
+    assert mem({"action": "bulk", "ids": [nid, twin["id"]], "op": "move", "shelf": "work/offsite"})[1] == {"changed": 2}
+    assert mem({"action": "bulk", "ids": [nid], "op": "level", "level": "high"})[0] == 200
+    assert call(url + "/api/memory/export")[0] == 403  # a backup holds secrets: the page's token is needed
+    code, backup = call(url + "/api/memory/export", None, app.token)
+    assert code == 200 and backup["format"] == "agent-bridge-memory" and any(r["sensitivity"] == "high" for r in backup["records"])
+    out = mem({"action": "restore_backup", "backup": backup})
+    assert out[0] == 200 and out[1]["added"] == 0 and out[1]["skipped"] >= 7
+    assert mem({"action": "restore_backup", "backup": {"format": "nope"}})[0] == 400
+    assert mem({"action": "empty_trash"})[0] == 200
