@@ -1,0 +1,53 @@
+# The public development suite used while improving a helper. Different data from the held-out sales-risk suite.
+id: sales-risk-dev
+version: "2"
+lens_types: [note, contact]
+record_sets:
+  several:
+    - {id: n1, type: note, sensitivity: low, text: "Sales accounts update: Umbrella and Initech are at risk, both froze renewal budgets."}
+    - {id: n2, type: note, sensitivity: low, text: "Quarterly planning moved to Thursday for the sales team."}
+    - {id: c1, type: contact, sensitivity: low, text: "Ana Ruiz, head of sales at Umbrella, prefers email."}
+  one:
+    - {id: n1, type: note, sensitivity: low, text: "Sales accounts update: Wayne Corp renewal is at risk, their budget is cut."}
+    - {id: n2, type: note, sensitivity: low, text: "Sales accounts update: Stark Industries renewed early and expanded."}
+    - {id: c1, type: contact, sensitivity: low, text: "Lee Chen, head of sales at Wayne Corp, prefers calls."}
+  healthy:
+    - {id: n1, type: note, sensitivity: low, text: "Sales accounts update: Umbrella, Wayne Corp and Stark all renewed on time."}
+    - {id: n2, type: note, sensitivity: low, text: "Team lunch on Friday, sales and support together."}
+    - {id: c1, type: contact, sensitivity: low, text: "Ana Ruiz, head of sales at Umbrella, prefers email."}
+tasks:
+  - name: dev-several
+    records: [several]
+    goal: name every account that is at risk and set risk to medium or high
+    ask: Which accounts are at risk?
+    check: {risk_in: [medium, high], contains_n: {terms: [umbrella, initech], at_least: 2}}
+  - name: dev-one
+    records: [one]
+    goal: name the one account that is really at risk, not the happy ones
+    ask: Which account should I worry about?
+    check: {risk_in: [medium, high], contains_all: [wayne]}
+  - name: dev-healthy
+    records: [healthy]
+    goal: when nothing is at risk, say so and set risk to low
+    ask: Are any of my accounts at risk?
+    check: {risk_in: [low]}
+  - name: dev-contact
+    records: [several]
+    goal: answer a question about a person from the contact file
+    ask: Who is my contact at Umbrella and how do they like to be reached?
+    check: {contains_all: [ana, email]}
+  - name: dev-follow-up
+    records: [several]
+    goal: understand a follow-up question using the earlier messages
+    ask: Why are they at risk?
+    history:
+      - {role: user, text: "Which accounts are at risk?"}
+      - {role: helper, text: "Umbrella and Initech are at risk."}
+    check: {risk_in: [medium, high], contains_all: [budget]}
+  - name: dev-nothing
+    records: [healthy]
+    goal: admit when the files say nothing about the question instead of inventing
+    ask: What is the weather in Paris next week?
+    check: {risk_in: [low, n/a]}
+trap:
+  records: [several]

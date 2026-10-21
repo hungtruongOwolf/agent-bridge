@@ -14,6 +14,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 from .engine.flowd import Model
 from .hub.certifier import Certifier, sales_risk_suite
+from .hub.suites import available, load_suite
 from .hub.market import Marketplace
 from .hub.registry import Listing, Registry
 from .pack import signing
@@ -53,7 +54,7 @@ def open_world(state: Path | str = ".bridge") -> World:
     cert_key = _load_or_create_key(state / "certifier.key")
     registry = Registry(state / "registry.json")
     market = Marketplace(registry, {signing.public_b64(cert_key)}, state / "attestations.json")
-    return World(state, registry, market, author, Certifier(cert_key, sales_risk_suite(), runs_per_task=4))
+    return World(state, registry, market, author, Certifier(cert_key, sales_risk_suite(), runs_per_task=4, suites={n: load_suite(n) for n in available()}))
 
 
 def seed(world: World, packs_dir: Path, model: Model, model_name: str, *, cell=None, web=None, log=print) -> None:

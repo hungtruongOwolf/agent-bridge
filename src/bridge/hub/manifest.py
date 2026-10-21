@@ -23,6 +23,8 @@ def validate(manifest) -> list[str]:
     problems = [f"pack.yaml is missing {f}" for f in REQUIRED if not manifest.get(f)]
     if not _text(manifest.get("summary"), *LIMITS["summary"]) and manifest.get("summary"):
         problems.append("summary must be 10 to 200 characters of plain words")
+    if manifest.get("suite") is not None and not (isinstance(manifest["suite"], str) and 2 <= len(manifest["suite"]) <= 60):
+        problems.append("suite must be the name of a test suite")
     if manifest.get("speciality") is not None and not _text(manifest["speciality"], *LIMITS["speciality"]):
         problems.append("speciality must be 2 to 60 characters")
     skills = manifest.get("skills")
