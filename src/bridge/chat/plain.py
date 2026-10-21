@@ -1,5 +1,7 @@
 """Plain-language wording shared by the server and the page, so no technical term reaches a person."""
 
+from ..memory.tree import pretty
+
 BLOCKED = {
     "OFF_LENS_QUERY": "asked for files you keep locked",
     "UNKNOWN_ID": "tried to open a file it was never given",
@@ -62,7 +64,9 @@ def how_made(steps: list[dict], vault_texts: dict[str, str] | None = None) -> li
             kind_of[sid] = e.get("kind", "")
         elif ev == "step_committed" and "records" in e:
             n = len(e["records"])
-            out.append(f"Looked through the files you share and read {n} of them." if n else "Looked through the files you share and found nothing that matches.")
+            shelves = " and ".join(pretty(p) for p in e.get("shelves", [])[:3])
+            out.append((f"Looked through the files you share and read {n} of them, from " + shelves + "." if shelves else f"Looked through the files you share and read {n} of them.")
+                       if n else "Looked through the files you share and found nothing that matches.")
             if e.get("blocked"):
                 out.append("It also " + blocked_phrase(e["blocked"]) + ", which the guard refused.")
         elif ev == "model_call":

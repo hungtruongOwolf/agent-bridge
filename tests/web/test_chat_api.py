@@ -55,6 +55,7 @@ def key_of(app, pid):
 
 
 def new_chat(app, url, pid="private-analyst", **kw):
+    kw.setdefault("shelves", ["note", "contact"])
     code, t = call(url + "/api/threads", {"agent_key": key_of(app, pid), **kw}, app.token)
     assert code == 200, t
     return t
@@ -141,19 +142,71 @@ def test_a_snooping_helper_is_stopped_with_a_plain_message_and_no_charge(srv):
     assert last["payment"]["captured"] == 0 and "CANARY" not in json.dumps(out["thread"])
 
 
-def test_context_preview_shows_shared_locked_files_and_why(srv):
+def test_a_new_chat_shares_nothing_until_a_shelf_is_opened(srv):
+    app, url, _ = srv
+    t = new_chat(app, url, shelves=[])
+    code, ctx = call(url + "/api/thread/context?id=" + t["id"] + "&draft=Acme+renewal")
+    assert code == 200 and ctx["shared"] == [] and ctx["shared_count"] == 0 and ctx["likely"] == []
+    assert {s["state"] for s in ctx["shelves"]} == {"closed"}
+    call(url + "/api/thread/settings", {"id": t["id"], "shelves": ["note"]}, app.token)
+    ctx = call(url + "/api/thread/context?id=" + t["id"] + "&draft=Acme+renewal")[1]
+    assert ctx["shared_count"] >= 1 and ctx["likely"] and ctx["walk"] == ["Note"]
+    assert next(s for s in ctx["shelves"] if s["path"] == "note")["state"] == "open"
+
+
+def test_context_preview_shows_shared_files_and_the_ones_held_back(srv):
     app, url, _ = srv
     t = new_chat(app, url)
-    call(url + "/api/thread/settings", {"id": t["id"], "max_sensitivity": "low"}, app.token)
-    vault = app.memory.list()
-    held = vault[0]["id"]
+    held = next(v["id"] for v in app.memory.list() if v["shelf"] == "note" and v["sensitivity"] == "low")
     call(url + "/api/thread/settings", {"id": t["id"], "exclude": [held]}, app.token)
-    code, ctx = call(url + "/api/thread/context?id=" + t["id"] + "&draft=Acme+renewal")
-    assert code == 200
-    ids = {s["id"] for s in ctx["shared"]}
-    locked = {x["id"]: x["why"] for x in ctx["locked"]}
-    assert held not in ids and locked[held] == "You held this one back."
-    assert all("text" not in x for x in ctx["locked"]) and ids | set(locked) == {v["id"] for v in vault}
+    ctx = call(url + "/api/thread/context?id=" + t["id"] + "&draft=Acme+renewal")[1]
+    assert held not in {s["id"] for s in ctx["shared"]} and [h["id"] for h in ctx["held_back"]] == [held]
+    assert ctx["secret"] >= 1 and all(s["id"] != "n3" for s in ctx["shared"])  # the salary table is secret: never shared
+
+
+def test_a_secret_file_cannot_be_shared_even_by_ticking_it(srv):
+    app, url, _ = srv
+    t = new_chat(app, url)
+    call(url + "/api/thread/settings", {"id": t["id"], "include": ["n3", "f1"]}, app.token)
+    ctx = call(url + "/api/thread/context?id=" + t["id"])[1]
+    assert not {"n3", "f1"} & {s["id"] for s in ctx["shared"]}
+
+
+def test_the_memory_tree_is_listed_without_any_file_text_and_pages_through_files(srv):
+    app, url, _ = srv
+    tree = call(url + "/api/memory/tree")[1]
+    assert tree["total"] == 7 and tree["secret"] >= 1 and {s["path"] for s in tree["shelves"]} >= {"note", "contact"}
+    assert "text" not in json.dumps(tree["shelves"])
+    page = call(url + "/api/memory?shelf=note&limit=2")[1]["items"]
+    rest = call(url + "/api/memory?shelf=note&limit=2&offset=2")[1]["items"]
+    assert len(page) == 2 and not {p["id"] for p in page} & {r["id"] for r in rest}
+    assert [i["id"] for i in call(url + "/api/memory?ids=n1,n2")[1]["items"]] == ["n1", "n2"] or len(call(url + "/api/memory?ids=n1,n2")[1]["items"]) == 2
+
+
+def test_files_can_be_put_on_shelves_and_a_shelf_can_be_renamed_with_its_chats(srv):
+    app, url, _ = srv
+    out = call(url + "/api/memory", {"action": "add", "type": "note", "text": "Acme asked about pricing", "sensitivity": "low", "shelf": "Work / Clients"}, app.token)[1]
+    assert app.memory.vault().get(out["id"]).shelf == "work/clients"
+    t = new_chat(app, url, shelves=["work/clients"])
+    assert call(url + "/api/memory", {"action": "shelf_note", "shelf": "work/clients", "text": "Everyone we sell to"}, app.token)[0] == 200
+    assert call(url + "/api/memory", {"action": "move_shelf", "from": "work", "to": "business"}, app.token)[1]["moved"] == 1
+    assert app.memory.vault().get(out["id"]).shelf == "business/clients"
+    assert call(url + "/api/thread?id=" + t["id"])[1]["lens"]["shelves"] == ["business/clients"]
+    assert app.memory.labels() == {"business/clients": "Everyone we sell to"}
+    for bad in ({"action": "move_shelf", "from": "business", "to": "business/inside"}, {"action": "move_shelf", "from": "nope", "to": "x"},
+                {"action": "shelf_note", "shelf": "nope", "text": "x"}, {"action": "add", "type": "note", "text": "x", "shelf": "../up"},
+                {"action": "add", "type": "note", "text": "x", "sensitivity": "maybe"}):
+        assert call(url + "/api/memory", bad, app.token)[0] == 400
+
+
+def test_old_privacy_levels_are_gone_and_personal_counts_as_secret(srv):
+    app, url, _ = srv
+    mid = call(url + "/api/memory", {"action": "add", "type": "note", "text": "Therapy on Thursdays", "sensitivity": "medium"}, app.token)[1]["id"]
+    assert app.memory.vault().get(mid).sensitivity == "high"
+    t = new_chat(app, url)
+    assert "max_sensitivity" not in t["lens"]
+    ctx = call(url + "/api/thread/context?id=" + t["id"])[1]
+    assert mid not in {s["id"] for s in ctx["shared"]}
 
 
 def test_files_used_in_an_answer_are_recorded_and_counted_in_memory(srv):

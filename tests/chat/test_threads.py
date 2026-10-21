@@ -19,7 +19,7 @@ def store(tmp_path):
 
 def test_a_new_chat_has_sensible_defaults(store):
     t = store.create("k1")
-    assert t.title == "New chat" and t.lens.types == ["note", "contact"] and t.lens.max_sensitivity == "medium"
+    assert t.title == "New chat" and t.lens.shelves == [] and not t.lens.include
     assert t.history_turns == 4 and t.budget_cents == 200 and t.messages == [] and not t.busy
 
 
@@ -76,14 +76,14 @@ def test_settings_are_validated_with_plain_messages(store):
     t = store.create("k1")
     for kw, msg in (({"title": "  "}, "needs a name"), ({"history_turns": 11}, "between 0 and 10"), ({"history_turns": True}, "between 0 and 10"),
                     ({"budget_cents": -1}, "spending limit"), ({"budget_cents": 10_001}, "spending limit"),
-                    ({"max_sensitivity": "top"}, "how private"), ({"types": ["Not A Type"]}, "drawers"), ({"include": "n1"}, "not valid")):
+                    ({"shelves": ["Not/A/../Shelf!"]}, "shelf name"), ({"shelves": "note"}, "choose shelves"), ({"include": "n1"}, "not valid")):
         with pytest.raises(ThreadError, match=msg):
             store.settings(t.id, **kw)
     assert store.get(t.id).history_turns == 4  # nothing half-applied
 
 
 def test_saying_no_to_a_file_beats_saying_yes():
-    lens = clean_lens(["note"], "medium", ["n1", "n2"], ["n2", "n3"])
+    lens = clean_lens(["note"], ["n1", "n2"], ["n2", "n3"])
     assert lens.include == ["n1"] and lens.exclude == ["n2", "n3"]
 
 

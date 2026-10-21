@@ -12,6 +12,8 @@ from __future__ import annotations
 from ..engine.limits import clean_history
 from ..memory.broker import Lens as RunLens
 from ..memory.broker import MemoryBroker
+from ..memory.tree import pretty
+from ..memory.vault import under
 from ..payments.ledger import TERMINAL, PendingError, StateError
 from ..payments.provider import ProviderError
 from .plain import answer_text, failure_message, how_made, stopped_message
@@ -30,7 +32,7 @@ class ChatService:
 
     # ---- helpers --------------------------------------------------------------------------------
     def run_lens(self, t) -> RunLens:
-        return RunLens(types=frozenset(t.lens.types), max_sensitivity=t.lens.max_sensitivity,
+        return RunLens(types=frozenset(), shelves=frozenset(t.lens.shelves),
                        include=frozenset(t.lens.include), exclude=frozenset(t.lens.exclude))
 
     def _agent(self, t) -> dict:
@@ -77,7 +79,7 @@ class ChatService:
                 "can_reject": row.state == "RESULT_READY", "accept_by": row.accept_by}
             msgs.append(d)
         return {"id": t.id, "title": t.title, "agent": self._agent(t), "lens": {
-                    "types": t.lens.types, "max_sensitivity": t.lens.max_sensitivity, "include": t.lens.include, "exclude": t.lens.exclude},
+                    "shelves": t.lens.shelves, "include": t.lens.include, "exclude": t.lens.exclude},
                 "history_turns": t.history_turns, "budget": self.money(t), "messages": msgs, "busy": t.busy}
 
     def history(self, t) -> list[dict]:
@@ -94,9 +96,8 @@ class ChatService:
         key = str(body.get("agent_key", ""))
         self.app.resolve_agent(key)  # refuses helpers that are gone or revoked
         lens = None
-        if any(k in body for k in ("types", "max_sensitivity", "include", "exclude")):
-            lens = clean_lens(body.get("types", ["note", "contact"]), body.get("max_sensitivity", "medium"),
-                              body.get("include", []), body.get("exclude", []))
+        if any(k in body for k in ("shelves", "include", "exclude")):
+            lens = clean_lens(body.get("shelves", []), body.get("include", []), body.get("exclude", []))
         t = self.store.create(key, str(body.get("title", "")), lens)
         return self.view(t.id)
 
@@ -107,7 +108,7 @@ class ChatService:
                 waiting = any(p.get("thread_id") == tid for p in self.app.pending.values())
             if not waiting and not self.running.get(tid):
                 self.store.end(tid)
-        keys = ("title", "types", "max_sensitivity", "include", "exclude", "history_turns", "budget_cents")
+        keys = ("title", "shelves", "include", "exclude", "history_turns", "budget_cents")
         self.store.settings(str(body.get("id", "")), **{k: body[k] for k in keys if k in body})
         return self.view(str(body["id"]))
 
@@ -131,25 +132,38 @@ class ChatService:
 
     # ---- what the helper will see ----------------------------------------------------------------
     def context(self, thread_id: str, draft: str = "") -> dict:
+        """What the helper would see right now, drawn as the memory tree: which shelves are open, and which file it would reach for."""
         t = self.store.get(thread_id)
         vault = self.app.memory.vault()
         lens = self.run_lens(t)
         broker = MemoryBroker(vault, lens, run_seed="preview")
         shared_ids = set(broker.manifest)
-        shared, locked = [], []
-        for r in vault.all():
-            item = {"id": r.id, "type": r.type, "sensitivity": r.sensitivity, "text": r.text}
-            if r.id in shared_ids:
-                shared.append(item)
-            else:
-                item["why"] = ("You held this one back." if r.id in lens.exclude else
-                               "Its drawer is closed." if r.type not in lens.types else
-                               "Too private for the level you chose." if r.sensitivity != "low" else "Not shared.")
-                item.pop("text")
-                locked.append(item)
-        likely = [x["id"] for x in broker.search(draft, fallback=True).records] if draft.strip() else []
+        everything = self.app.memory.overview()
+        open_paths = set(t.lens.shelves)
+        by_shelf_shared: dict[str, int] = {}
+        for rid in shared_ids:
+            p = vault.get(rid).shelf
+            while True:
+                by_shelf_shared[p] = by_shelf_shared.get(p, 0) + 1
+                if "/" not in p:
+                    break
+                p = p.rsplit("/", 1)[0]
+        shelves = []
+        for sh in everything["shelves"]:
+            p = sh["path"]
+            inside = any(under(p, o) for o in open_paths)
+            state = "open" if inside else ("partly" if by_shelf_shared.get(p) else "closed")
+            shelves.append({**sh, "state": state, "shared": by_shelf_shared.get(p, 0)})
+        shared = [{"id": r.id, "type": r.type, "text": r.text, "shelf": r.shelf, "shelf_name": pretty(r.shelf)}
+                  for r in sorted((vault.get(i) for i in shared_ids), key=lambda r: (r.shelf, r.id))]
+        held_back = [{"id": r.id, "text": r.text, "shelf": r.shelf, "shelf_name": pretty(r.shelf)} for r in vault.all() if r.id in lens.exclude]
+        res = broker.search(draft, fallback=True) if draft.strip() else None
+        likely = [x["id"] for x in res.records] if res else []
+        walk = broker.walks[-1]["opened"][1:] if res and broker.walks else []
         hist = self.history(t)
-        return {"thread": t.id, "helper": self._agent(t), "shared": shared, "locked": locked, "likely": likely,
+        return {"thread": t.id, "helper": self._agent(t), "shelves": shelves, "total": everything["total"],
+                "secret": everything["secret"], "shared_count": len(shared), "shared": shared[:40], "shared_more": max(0, len(shared) - 40),
+                "held_back": held_back, "likely": likely, "walk": [pretty(p) for p in walk],
                 "history": hist, "history_turns": t.history_turns, "budget": self.money(t),
                 "goes_to_the_brain": ("To write an answer, your message, the files that match it and the last " + str(t.history_turns) +
                                       " messages of this chat are sent to the thinking service (Nemotron on Nebius), through your own assistant. "

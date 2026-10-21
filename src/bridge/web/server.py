@@ -153,7 +153,7 @@ class App:
     def state(self) -> dict:
         return {
             "market": self.world.market.ranked(),
-            "vault": self.memory.list(),
+            "memory": self.memory.overview(),
             "threads": self.threads.summaries(),
             "blocked_phrases": BLOCKED,
             "proposals": self._proposals(),
@@ -170,13 +170,10 @@ class App:
         types = frozenset(t for t in body.get("types", []) if isinstance(t, str))
         if not types:
             raise ValueError("choose at least one record type to share")
-        sens = body.get("max_sensitivity", "medium")
-        if sens not in ("low", "medium", "high"):
-            raise ValueError("bad sensitivity")
         task = str(body.get("task", ""))[:1000]
         run_id = self.new_run_id()
         row = self.hire(rec, run_id)
-        params = {"rec": rec, "pack_dir": pack_dir, "lens": Lens(types=types, max_sensitivity=sens), "task": task,
+        params = {"rec": rec, "pack_dir": pack_dir, "lens": Lens(types=types), "task": task,
                   "history": [], "simulate": body.get("model") == "leak", "thread_id": None}
         if row.state == "AWAITING_APPROVAL":  # the buyer must approve the hold on the provider's page first
             with self.lock:
@@ -328,14 +325,18 @@ class App:
     def memory_change(self, body: dict) -> dict:
         action = body.get("action")
         if action == "add":
-            return self.memory.add(str(body.get("type", "")), str(body.get("text", "")), str(body.get("sensitivity", "low")))
+            return self.memory.add(str(body.get("type", "note")), str(body.get("text", "")), str(body.get("sensitivity", "low")), str(body.get("shelf", "")))
         if action == "add_many":
-            return self.memory.add_many(body.get("items"), str(body.get("sensitivity", "low")), str(body.get("type", "note")))
+            return self.memory.add_many(body.get("items"), str(body.get("sensitivity", "low")), str(body.get("type", "note")), str(body.get("shelf", "")))
         if action == "update":
-            return self.memory.update(str(body.get("id", "")), text=body.get("text"), sensitivity=body.get("sensitivity"), type=body.get("type"))
+            return self.memory.update(str(body.get("id", "")), text=body.get("text"), sensitivity=body.get("sensitivity"), type=body.get("type"), path=body.get("shelf"))
         if action == "delete":
             return self.memory.delete(str(body.get("id", "")))
-        raise ValueError("action must be add, add_many, update or delete")
+        if action == "move_shelf":
+            return self.memory.move_shelf(str(body.get("from", "")), str(body.get("to", "")))
+        if action == "shelf_note":
+            return self.memory.set_label(str(body.get("shelf", "")), body.get("text", ""))
+        raise ValueError("action must be add, add_many, update, delete, move_shelf or shelf_note")
 
 
 POST_ROUTES = {
@@ -432,7 +433,11 @@ def make_handler(app: App):
                 if route == "/api/match":
                     return self._json(200, {"matches": app.world.market.match(q.get("q", "")[:300])})
                 if route == "/api/memory":
-                    return self._json(200, {"items": app.memory.list()})
+                    ids = [x for x in q.get("ids", "").split(",") if x][:100] if "ids" in q else None
+                    return self._json(200, {"items": app.memory.list(shelf=q.get("shelf") or None, ids=ids, q=q.get("q", "")[:200],
+                                                                     offset=int(q.get("offset", "0") or 0), limit=int(q.get("limit", "30") or 30))})
+                if route == "/api/memory/tree":
+                    return self._json(200, app.memory.overview())
             except (ThreadError, ValueError) as e:
                 return self._json(404, {"error": str(e)})
             self._json(404, {"error": "not found"})

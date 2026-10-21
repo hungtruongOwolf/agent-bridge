@@ -1,8 +1,8 @@
 """Conversations with a hired helper.
 
 A thread is one continuous chat with one helper. It owns the settings that decide what that helper can see:
-which file types and which single files are shared, how private is too private, how many earlier messages the
-helper is shown, and how much the chat may spend. Messages record which files each answer used, so you can always
+which shelves of the memory tree and which single files are shared (a secret file is never shared, and a new chat
+shares nothing until you open a shelf), how many earlier messages the helper is shown, and how much the chat may spend. Messages record which files each answer used, so you can always
 see where an answer came from. The store keeps everything in one JSON file, written atomically.
 """
 from __future__ import annotations
@@ -15,7 +15,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 from ..engine.limits import MAX_HISTORY_TURNS, MAX_TASK_CHARS
-from ..memory.vault import SENSITIVITY, TYPE_RE
+from ..memory.vault import clean_path
 
 MAX_THREADS = 200
 MAX_MESSAGES = 400
@@ -47,8 +47,7 @@ class Message:
 
 @dataclass
 class Lens:
-    types: list = field(default_factory=lambda: ["note", "contact"])
-    max_sensitivity: str = "medium"
+    shelves: list = field(default_factory=list)  # nothing is shared until a shelf is opened
     include: list = field(default_factory=list)
     exclude: list = field(default_factory=list)
 
@@ -68,18 +67,22 @@ class Thread:
     runs: list = field(default_factory=list)  # every paid run of this chat; never shrinks, so deleting messages cannot hide spending
 
 
-def clean_lens(types, max_sensitivity, include, exclude) -> Lens:
-    if not isinstance(types, (list, tuple)) or not all(isinstance(t, str) and TYPE_RE.match(t) for t in types):
-        raise ThreadError("choose file types from the drawers")
-    if max_sensitivity not in SENSITIVITY:
-        raise ThreadError("choose how private the files may be: everyday, personal or secret")
+def clean_lens(shelves, include, exclude) -> Lens:
+    if not isinstance(shelves, (list, tuple)) or len(shelves) > 200:
+        raise ThreadError("choose shelves from your memory")
+    try:
+        paths = sorted({clean_path(x) for x in shelves if isinstance(x, str)})
+    except ValueError as e:
+        raise ThreadError(str(e)) from e
+    if len(paths) != len({x for x in shelves if isinstance(x, str)}) or "" in paths:
+        raise ThreadError("choose shelves from your memory")
     ids = []
     for name, v in (("include", include), ("exclude", exclude)):
         if not isinstance(v, (list, tuple)) or not all(isinstance(i, str) and 0 < len(i) <= 40 for i in v) or len(v) > 200:
             raise ThreadError(f"the list of files to {name} is not valid")
         ids.append(sorted(set(v)))
     include, exclude = ids  # a file named in both lists is held back: saying no always wins
-    return Lens(sorted(set(types)), max_sensitivity, [i for i in include if i not in exclude], exclude)
+    return Lens(paths, [i for i in include if i not in exclude], exclude)
 
 
 class ThreadStore:
@@ -91,7 +94,8 @@ class ThreadStore:
         self.threads: dict[str, Thread] = {}
         if self.path and self.path.exists():
             for raw in json.loads(self.path.read_text(encoding="utf-8")):
-                raw["lens"] = Lens(**raw["lens"])
+                old = raw["lens"]  # older chats stored drawers and a privacy level; those become "nothing shared yet"
+                raw["lens"] = Lens(shelves=old.get("shelves", []), include=old.get("include", []), exclude=old.get("exclude", []))
                 raw["messages"] = [Message(**m) for m in raw["messages"]]
                 raw["busy"] = False  # nothing can be mid-answer after a restart
                 self.threads[raw["id"]] = Thread(**raw)
@@ -127,27 +131,26 @@ class ThreadStore:
             return [{"id": t.id, "title": t.title, "agent_key": t.agent_key, "updated": t.updated, "messages": len(t.messages),
                      "last": next((m.text[:80] for m in reversed(t.messages) if m.role != "system"), "")} for t in rows]
 
-    def settings(self, thread_id: str, *, title=None, types=None, max_sensitivity=None, include=None, exclude=None,
+    def settings(self, thread_id: str, *, title=None, shelves=None, include=None, exclude=None,
                  history_turns=None, budget_cents=None) -> Thread:
         with self.lock:
             t = self.get(thread_id)
             import copy
             backup = copy.deepcopy(t)
             try:
-                return self._apply(t, title, types, max_sensitivity, include, exclude, history_turns, budget_cents)
+                return self._apply(t, title, shelves, include, exclude, history_turns, budget_cents)
             except ThreadError:
                 t.__dict__.update(backup.__dict__)  # a refused request changes nothing
                 raise
 
-    def _apply(self, t, title, types, max_sensitivity, include, exclude, history_turns, budget_cents) -> Thread:
+    def _apply(self, t, title, shelves, include, exclude, history_turns, budget_cents) -> Thread:
         if True:
             if title is not None:
                 if not isinstance(title, str) or not title.strip():
                     raise ThreadError("a chat needs a name")
                 t.title = title.strip()[:MAX_TITLE]
-            if any(x is not None for x in (types, max_sensitivity, include, exclude)):
-                t.lens = clean_lens(t.lens.types if types is None else types,
-                                    t.lens.max_sensitivity if max_sensitivity is None else max_sensitivity,
+            if any(x is not None for x in (shelves, include, exclude)):
+                t.lens = clean_lens(t.lens.shelves if shelves is None else shelves,
                                     t.lens.include if include is None else include,
                                     t.lens.exclude if exclude is None else exclude)
             if history_turns is not None:
