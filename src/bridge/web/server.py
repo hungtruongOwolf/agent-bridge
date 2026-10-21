@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import re
 import secrets
+import threading
 import time
 import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -18,8 +19,13 @@ from ..engine.flowd import ModelReply
 from ..engine.nebius import NebiusModel, load_api_key
 from ..engine.tavily import TavilySearch, load_tavily_key
 from ..memory.broker import Lens
-from ..memory.quarantine import Quarantine, QuarantineError
+from ..memory.quarantine import Quarantine
+from ..memory.service import MemoryChangeError, MemoryService
 from ..memory.vault import Vault
+from ..chat.plain import BLOCKED
+from ..chat.service import ChatBusy, ChatService
+from ..chat.threads import ThreadError, ThreadStore
+from ..engine.limits import clean_history
 from ..payments.ledger import Ledger, PendingError, StateError
 from ..payments.provider import FakeProvider, ProviderError
 from ..pack.digest import tree_digest
@@ -31,6 +37,7 @@ STATIC = Path(__file__).parent / "static"
 STATIC_TYPES = {".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".woff2": "font/woff2",
                 ".txt": "text/plain; charset=utf-8", ".svg": "image/svg+xml", ".png": "image/png"}
 STATIC_PATH = re.compile(r"^/static/((?:fonts/)?[a-z0-9][a-z0-9_.-]*)$")
+HOST_RE = re.compile(r"^(\[[0-9a-f:]+\]|[a-z0-9.-]+)(?::[0-9]{1,5})?$")
 LOCAL_HOSTS = {"127.0.0.1", "localhost", "[::1]"}
 
 
@@ -75,6 +82,7 @@ class App:
         self.token = secrets.token_urlsafe(16)
         roots = [Path(packs_dir), self.world.state / "candidates"]  # approved improvements live in candidates
         self.dirs = {tree_digest(d): d for r in roots if r.exists() for d in sorted(r.iterdir()) if (d / "pack.yaml").exists()}
+        self.lock = threading.RLock()  # guards counters, reports, history and pending approvals
         self.runs = 0
         # the live vault is a copy in the state dir, so accepted memories survive restarts
         self.vault_file = self.world.state / "vault.json"
@@ -82,6 +90,9 @@ class App:
             Vault.load(self.vault_path).save(self.vault_file)
         self.quarantine = Quarantine()
         self.clock = clock or time.time
+        self.threads = ThreadStore(self.world.state / "threads.json", clock=self.clock)
+        self.memory = MemoryService(self.vault_file, self.quarantine, threads=self.threads,
+                                    registry=self.world.registry, clock=self.clock)
         self.requester = "you"
         self.demo_author_email = demo_author_email
         self.payments_mode = payments_mode
@@ -91,19 +102,42 @@ class App:
                                        path=self.world.state / "ledger.json", holdback_s=0)
         self.reports: dict[str, dict] = {}  # run_id -> full report (this session)
         self.history: list[dict] = []
+        self.chat = ChatService(self)
 
     def vault(self) -> Vault:
-        return Vault.load(self.vault_file)
+        return self.memory.vault()
+
+    def new_run_id(self) -> str:
+        with self.lock:
+            self.runs += 1
+            return f"run-{self.runs}-{secrets.token_hex(3)}"
+
+    def resolve_agent(self, key: str):
+        rec = self.world.registry.records.get(key)
+        if rec is None or rec not in self.world.registry.installable():
+            raise ValueError("unknown or revoked pack")
+        pack_dir = self.dirs.get(rec.digest)
+        if pack_dir is None:
+            raise ValueError("pack files on disk do not match the registered digest")
+        return rec, pack_dir
+
+    def hire(self, rec, run_id: str):
+        price = max(1, round(rec.listing.price_usd * 100))
+        try:  # the hold comes last before starting; nothing is charged before a result exists
+            with self.lock:
+                return self.ledger.hire(run_id, rec.key, self.author_payee(rec), self.requester, price, self.clock())
+        except ProviderError as e:
+            raise ValueError(f"payment could not be authorized: {e}") from e
 
     def _proposals(self) -> list[dict]:
         return [{"id": p.id, "type": p.type, "text": p.text, "run_id": p.run_id} for p in self.quarantine.pending()]
 
     def state(self) -> dict:
-        v = self.vault()
         return {
             "market": self.world.market.ranked(),
-            "vault": [{"id": r.id, "type": r.type, "sensitivity": r.sensitivity, "text": r.text,
-                       "trust": r.trust_tier, "from_run": (r.origin or {}).get("run_id")} for r in v.all()],
+            "vault": self.memory.list(),
+            "threads": self.threads.summaries(),
+            "blocked_phrases": BLOCKED,
             "proposals": self._proposals(),
             "history": list(reversed(self.history[-20:])),
             "payments": self._payments_summary(),
@@ -111,65 +145,73 @@ class App:
         }
 
     def run(self, body: dict) -> dict:
-        rec = self.world.registry.records.get(body.get("key", ""))
-        if rec is None or rec not in self.world.registry.installable():
-            raise ValueError("unknown or revoked pack")
-        pack_dir = self.dirs.get(rec.digest)
-        if pack_dir is None:
-            raise ValueError("pack files on disk do not match the registered digest")
+        """One-off run (the office's quick hire): no conversation, the lens comes from the request."""
+        rec, pack_dir = self.resolve_agent(body.get("key", ""))
         types = frozenset(t for t in body.get("types", []) if isinstance(t, str))
         if not types:
             raise ValueError("choose at least one record type to share")
         sens = body.get("max_sensitivity", "medium")
         if sens not in ("low", "medium", "high"):
             raise ValueError("bad sensitivity")
-        self.runs += 1
-        run_id = f"run-{self.runs}-{secrets.token_hex(3)}"
-        price = max(1, round(rec.listing.price_usd * 100))
-        now = self.clock()
-        try:  # order of events: the hold comes last before starting, nothing is charged before a result exists
-            row = self.ledger.hire(run_id, rec.key, self.author_payee(rec), self.requester, price, now)
-        except ProviderError as e:
-            raise ValueError(f"payment could not be authorized: {e}") from e
-        params = {"rec": rec, "pack_dir": pack_dir, "types": types, "sens": sens, "simulate": body.get("model") == "leak"}
+        task = str(body.get("task", ""))[:1000]
+        run_id = self.new_run_id()
+        row = self.hire(rec, run_id)
+        params = {"rec": rec, "pack_dir": pack_dir, "lens": Lens(types=types, max_sensitivity=sens), "task": task,
+                  "history": [], "simulate": body.get("model") == "leak", "thread_id": None}
         if row.state == "AWAITING_APPROVAL":  # the buyer must approve the hold on the provider's page first
-            self.pending[run_id] = params
-            return {"needs_approval": True, "run_id": run_id, "approve_url": row.approve_url, "price": price,
-                    "test_money": True}
-        return self._execute(run_id, params)
+            with self.lock:
+                self.pending[run_id] = params
+            return {"needs_approval": True, "run_id": run_id, "approve_url": row.approve_url,
+                    "price": row.price, "test_money": True}
+        return self.job(run_id, params)
 
     def continue_run(self, body: dict) -> dict:
+        """Called after the buyer approved the hold, for both one-off runs and chat messages."""
         run_id = str(body.get("run_id", ""))
-        params = self.pending.get(run_id)
+        with self.lock:
+            params = self.pending.get(run_id)
         if params is None:
             raise ValueError("no run is waiting for approval under that id")
         try:
-            self.ledger.confirm_approval(run_id, self.clock())
+            with self.lock:
+                self.ledger.confirm_approval(run_id, self.clock())
         except ProviderError as e:
             raise ValueError(f"the hold is not approved yet: {e}") from e
-        del self.pending[run_id]
-        return self._execute(run_id, params)
+        with self.lock:
+            if self.pending.pop(run_id, None) is None:  # a second click while the first is running
+                raise ValueError("this run was already started")
+        if params.get("thread_id"):
+            return self.chat.finish_turn(run_id, params)
+        return self.job(run_id, params)
 
-    def _execute(self, run_id: str, params: dict) -> dict:
+    def job(self, run_id: str, params: dict) -> dict:
+        """Run the pack and settle the money for what happened. Never leaves a hold open."""
         rec, pack_dir = params["rec"], params["pack_dir"]
         model = LeakyModel() if params["simulate"] else LazyModel(self.model_factory)
         try:
-            self.ledger.start(run_id, self.clock())
-            rep = run_pack(pack_dir, self.vault(), Lens(types=params["types"], max_sensitivity=params["sens"]), model,
-                           seed=run_id, cell=self.cell, expected_digest=rec.digest, run_id=run_id, web=self.web)
+            with self.lock:
+                self.ledger.start(run_id, self.clock())
+            rep = run_pack(pack_dir, self.vault(), params["lens"], model, seed=run_id, cell=self.cell,
+                           expected_digest=rec.digest, run_id=run_id, web=self.web,
+                           task=params["task"], history=params["history"])
         except Exception:
-            self.ledger.fail_infra(run_id, self.clock(), "run crashed before a result")
+            with self.lock:
+                try:
+                    self.ledger.fail_infra(run_id, self.clock(), "run crashed before a result")
+                except StateError:
+                    pass
             raise
-        self._settle_outcome(rec, run_id, rep)
-        out = dict(rep.__dict__)
-        raw = out.pop("proposals_raw")
-        added, problems = self.quarantine.add(run_id, rep.digest, raw) if rep.outcome == "COMPLETE" else ([], [])
-        out["proposals"] = [{"id": p.id, "type": p.type, "text": p.text} for p in added]
-        out["proposal_problems"] = problems
-        out["payment"] = self.payment(run_id)
-        self.reports[run_id] = out
-        self.history.append({"run_id": run_id, "pack": f"{rep.pack_id} v{rep.version}", "outcome": rep.outcome,
-                             "summary": rep.summary, "n": self.runs})
+        with self.lock:
+            self._settle_outcome(rec, run_id, rep)
+            out = dict(rep.__dict__)
+            raw = out.pop("proposals_raw")
+            added, problems = self.quarantine.add(run_id, rep.digest, raw) if rep.outcome == "COMPLETE" else ([], [])
+            out["proposals"] = [{"id": p.id, "type": p.type, "text": p.text} for p in added]
+            out["proposal_problems"] = problems
+            out["payment"] = self.payment(run_id)
+            self.reports[run_id] = out
+            self.history.append({"run_id": run_id, "pack": f"{rep.pack_id} v{rep.version}", "outcome": rep.outcome,
+                                 "summary": rep.summary, "n": self.runs})
         return out
 
     def author_payee(self, rec) -> str:
@@ -200,48 +242,69 @@ class App:
         }
 
     def _payments_summary(self) -> dict:
-        self.ledger.tick(self.clock())
-        self.ledger.release_payouts(self.clock())
-        return {**self.ledger.summary(), "test_money": True, "provider": self.payments_mode, "holdback": "demo holdback 0 s; production would hold for days"}
+        with self.lock:
+            self.ledger.tick(self.clock())
+            self.ledger.release_payouts(self.clock())
+            summary = self.ledger.summary()
+        return {**summary, "test_money": True, "provider": self.payments_mode, "holdback": "demo holdback 0 s; production would hold for days"}
 
     def settle(self, body: dict) -> dict:
         run_id, action, now = str(body.get("run_id", "")), body.get("action"), self.clock()
-        if run_id not in self.ledger.rows:
-            raise ValueError("unknown run")
-        try:
-            if action == "accept":
-                self.ledger.accept(run_id, now)
-            elif action == "reject":
-                self.ledger.reject(run_id, now, str(body.get("reason", "rejected"))[:80])
-            else:
-                raise ValueError("action must be accept or reject")
-        except StateError as e:
-            raise ValueError(str(e)) from e
-        self.ledger.release_payouts(now)
-        pay = self.payment(run_id)
-        if run_id in self.reports:
-            self.reports[run_id]["payment"] = pay
-        return pay
+        with self.lock:
+            if run_id not in self.ledger.rows:
+                raise ValueError("unknown run")
+            try:
+                if action == "accept":
+                    self.ledger.accept(run_id, now)
+                elif action == "reject":
+                    self.ledger.reject(run_id, now, str(body.get("reason", "rejected"))[:80])
+                else:
+                    raise ValueError("action must be accept or reject")
+            except StateError as e:
+                raise ValueError(str(e)) from e
+            self.ledger.release_payouts(now)
+            pay = self.payment(run_id)
+            if run_id in self.reports:
+                self.reports[run_id]["payment"] = pay
+            return pay
 
     def decide(self, body: dict) -> dict:
-        try:
-            if body.get("action") == "accept":
-                v = self.vault()
-                rec = self.quarantine.accept(body.get("id", ""), v)
-                v.save(self.vault_file)
-                return {"accepted": rec.id}
-            if body.get("action") == "reject":
-                self.quarantine.reject(body.get("id", ""))
-                return {"rejected": body.get("id")}
-        except QuarantineError as e:
-            raise ValueError(str(e)) from e
+        if body.get("action") == "accept":
+            return self.memory.accept_proposal(str(body.get("id", "")))
+        if body.get("action") == "reject":
+            return self.memory.reject_proposal(str(body.get("id", "")))
         raise ValueError("action must be accept or reject")
 
     def revert(self, body: dict) -> dict:
-        v = self.vault()
-        out = self.quarantine.revert_run(str(body.get("run_id", "")), v)
-        v.save(self.vault_file)
-        return out
+        return self.memory.revert_run(str(body.get("run_id", "")))
+
+    def memory_change(self, body: dict) -> dict:
+        action = body.get("action")
+        if action == "add":
+            return self.memory.add(str(body.get("type", "")), str(body.get("text", "")), str(body.get("sensitivity", "low")))
+        if action == "update":
+            return self.memory.update(str(body.get("id", "")), text=body.get("text"), sensitivity=body.get("sensitivity"), type=body.get("type"))
+        if action == "delete":
+            return self.memory.delete(str(body.get("id", "")))
+        raise ValueError("action must be add, update or delete")
+
+
+POST_ROUTES = {
+    "/api/run": lambda a, b: a.run(b),
+    "/api/run/continue": lambda a, b: a.continue_run(b),
+    "/api/proposal": lambda a, b: a.decide(b),
+    "/api/settle": lambda a, b: a.settle(b),
+    "/api/revert": lambda a, b: a.revert(b),
+    "/api/memory": lambda a, b: a.memory_change(b),
+    "/api/threads": lambda a, b: a.chat.create(b),
+    "/api/thread/settings": lambda a, b: a.chat.settings(b),
+    "/api/thread/send": lambda a, b: a.chat.send(b),
+    "/api/thread/cancel": lambda a, b: a.chat.cancel_pending(b),
+    "/api/thread/reject": lambda a, b: a.chat.reject(b),
+    "/api/thread/forget": lambda a, b: a.chat.forget(b),
+    "/api/thread/clear": lambda a, b: a.chat.clear(b),
+    "/api/thread/delete": lambda a, b: a.chat.delete(b),
+}
 
 
 def make_handler(app: App):
@@ -250,9 +313,8 @@ def make_handler(app: App):
             pass
 
         def _host_ok(self) -> bool:
-            host = (self.headers.get("Host") or "").rsplit(":", 1)[0] if not (self.headers.get("Host") or "").startswith("[") \
-                else "[::1]"
-            return host in LOCAL_HOSTS
+            m = HOST_RE.match((self.headers.get("Host") or "").strip().lower())
+            return bool(m) and m.group(1) in LOCAL_HOSTS
 
         def _send(self, code: int, body: bytes, ctype: str):
             self.send_response(code)
@@ -295,8 +357,22 @@ def make_handler(app: App):
                 except MarketError as e:
                     return self._json(404, {"error": str(e)})
             if self.path.startswith("/api/report/"):
-                rep = app.reports.get(self.path.rsplit("/", 1)[1])
+                with app.lock:
+                    rep = app.reports.get(self.path.rsplit("/", 1)[1])
                 return self._json(200, rep) if rep else self._json(404, {"error": "unknown run"})
+            route = self.path.split("?")[0]
+            q = {k: v[0] for k, v in urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query).items()}
+            try:
+                if route == "/api/threads":
+                    return self._json(200, {"threads": app.threads.summaries()})
+                if route == "/api/thread":
+                    return self._json(200, app.chat.view(q.get("id", "")))
+                if route == "/api/thread/context":
+                    return self._json(200, app.chat.context(q.get("id", ""), q.get("draft", "")[:1000]))
+                if route == "/api/memory":
+                    return self._json(200, {"items": app.memory.list()})
+            except (ThreadError, ValueError) as e:
+                return self._json(404, {"error": str(e)})
             self._json(404, {"error": "not found"})
 
         def do_POST(self):
@@ -319,21 +395,16 @@ def make_handler(app: App):
                 return self._json(403, {"error": "forbidden"})
             try:
                 body = json.loads(raw or b"{}")
-                if self.path == "/api/run":
-                    return self._json(200, app.run(body))
-                if self.path == "/api/proposal":
-                    return self._json(200, app.decide(body))
-                if self.path == "/api/run/continue":
-                    return self._json(200, app.continue_run(body))
-                if self.path == "/api/settle":
-                    return self._json(200, app.settle(body))
-                if self.path == "/api/revert":
-                    return self._json(200, app.revert(body))
                 if self.path == "/api/star":
                     stars = app.world.registry.star(body["key"], str(body.get("user", "you"))[:40])
                     return self._json(200, {"stars": stars})
+                fn = POST_ROUTES.get(self.path)
+                if fn is not None:
+                    return self._json(200, fn(app, body))
                 self._json(404, {"error": "not found"})
-            except (ValueError, KeyError) as e:
+            except ChatBusy as e:
+                self._json(409, {"error": str(e)})
+            except (ValueError, KeyError) as e:  # includes ThreadError and MemoryChangeError
                 self._json(400, {"error": str(e)})
             except PendingError as e:
                 self._json(503, {"error": "the payment provider has not confirmed yet; try again shortly"})
