@@ -236,5 +236,75 @@
     "sensitivity": "high",
     "text": "Monthly budget: rent 1800, food 600, travel 300, savings 700.",
     "path": "money"
+  },
+  {
+    "id": "doc1.1",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "# Acme account plan, Q4\n\n## Where we stand\nAcme has been a customer for three years and is our second largest account. Usage grew 18 percent last year, mostly from the support team. The renewal is due on December 1 and the budget owner, Maria Lopez, told us in October that finance cut every tools budget by about a third.",
+    "path": "work/accounts/acme",
+    "doc": "doc1",
+    "title": "Acme account plan, Q4",
+    "part": 1
+  },
+  {
+    "id": "doc1.2",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "## What Maria cares about\nMaria cares about two things: predictable cost and fewer tools to manage. She prefers email on Mondays and does not like surprise invoices. Last year a billing mistake delayed the renewal by six weeks, so any change in price needs to be explained in writing before it reaches her inbox.",
+    "path": "work/accounts/acme",
+    "doc": "doc1",
+    "title": "Acme account plan, Q4",
+    "part": 2
+  },
+  {
+    "id": "doc1.3",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "## Risks\nThe main risk is the budget cut. A second risk is the champion on the product side, who is moving to another team in January. If the new owner has not met us before the renewal call, we should expect a slower decision. The third risk is the security questionnaire Acme's compliance team sends every year; last year it took us nine days to answer.",
+    "path": "work/accounts/acme",
+    "doc": "doc1",
+    "title": "Acme account plan, Q4",
+    "part": 3
+  },
+  {
+    "id": "doc1.4",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "## Options we discussed\nOption one is a two-year deal at a ten percent discount with annual billing. Option two is a smaller plan with fewer seats, which keeps the price flat but removes the analytics add-on. Priya prefers option one because it locks the account in; Sam prefers option two because it keeps the margin healthy. We agreed to prepare both and let Maria choose.",
+    "path": "work/accounts/acme",
+    "doc": "doc1",
+    "title": "Acme account plan, Q4",
+    "part": 4
+  },
+  {
+    "id": "doc1.5",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "## Next steps\nPriya prepares both quotes by Friday. Sam answers the security questionnaire early, before the renewal call. Lee books an introduction between the new product owner and our team in the first week of December. Everyone reviews the plan on Thursday.",
+    "path": "work/accounts/acme",
+    "doc": "doc1",
+    "title": "Acme account plan, Q4",
+    "part": 5
+  },
+  {
+    "id": "doc2.1",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "# Lisbon trip notes\n\nFlight lands at 9:40 on November 20. Take the metro red line to Alameda, then the green line to Baixa. The hotel is a ten minute walk from there, on a steep street, so pack light.\n\n## Food\nTomás recommends the small place near Alfama for grilled fish, and a bakery on the way to the castle for pastel de nata in the morning. Reserve dinner for Friday, the restaurants fill up fast.",
+    "path": "personal/travel",
+    "doc": "doc2",
+    "title": "Lisbon trip notes",
+    "part": 1
+  },
+  {
+    "id": "doc2.2",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "## Things to remember\nBring the adapter and a rain jacket. The tram 28 is crowded, walk instead. Buy the transport card at the airport, it works on trams and the metro. Call the dentist before leaving to move the appointment to the week after the trip.",
+    "path": "personal/travel",
+    "doc": "doc2",
+    "title": "Lisbon trip notes",
+    "part": 2
   }
 ]

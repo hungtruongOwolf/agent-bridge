@@ -46,7 +46,7 @@ def test_adding_a_note_gets_a_fresh_id_and_a_timestamp(svc):
 
 
 @pytest.mark.parametrize("args,msg", [(("note", "", "low"), "some text"), (("note", "x", "top"), "everyday or secret"),
-                                      (("Bad Type", "x", "low"), "type must be"), (("note", "x" * 2001, "low"), "at most")])
+                                      (("Bad Type", "x", "low"), "type must be"), (("note", "x" * 80001, "low"), "up to 80,000")])
 def test_bad_notes_are_refused_with_a_plain_reason(svc, args, msg):
     with pytest.raises(MemoryChangeError, match=msg):
         svc.add(*args)

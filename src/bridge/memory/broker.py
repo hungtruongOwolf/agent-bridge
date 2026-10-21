@@ -32,7 +32,7 @@ class Verdict(str, Enum):
 class Lens:
     types: frozenset[str]  # whole drawers by kind of file (used by the command line and the tests)
     max_sensitivity: str = "low"  # only everyday files are ever shareable; there is no dial to raise it
-    max_records: int = 50
+    max_records: int = 20000  # the closed set can be big; what a helper may read is limited by max_reads
     max_reads: int = 30  # total records returned over the whole run
     max_results_per_query: int = 5
     include: frozenset[str] = frozenset()  # record ids shared even though their shelf or type would not allow it (never a secret one)
@@ -44,9 +44,9 @@ class Lens:
             raise ValueError(f"unknown sensitivity {self.max_sensitivity!r}")
 
     def allows(self, r: Record) -> bool:
-        if r.id in self.exclude or SENSITIVITY[r.sensitivity] > SENSITIVITY[self.max_sensitivity]:
+        if r.id in self.exclude or (r.doc and r.doc in self.exclude) or SENSITIVITY[r.sensitivity] > SENSITIVITY[self.max_sensitivity]:
             return False  # a secret file stays home even if someone ticked it
-        if r.id in self.include:
+        if r.id in self.include or (r.doc and r.doc in self.include):
             return True
         return r.type in self.types or any(under(r.shelf, s) for s in self.shelves)
 
@@ -136,8 +136,10 @@ class MemoryBroker:
                 return Result(Verdict.DENY, out)
             self._served += 1
             self.reads.append(r.id)
-            out.append({"id": r.id, "type": r.type, "text": r.text,
-                        "trust": "user" if r.trust_tier == 3 else "endorsed-foreign"})
+            item = {"id": r.id, "type": r.type, "text": r.text, "trust": "user" if r.trust_tier == 3 else "endorsed-foreign"}
+            if r.doc:  # a passage of a longer note: say which note and which part, so the helper can tell
+                item["note"], item["part"] = r.title, r.part
+            out.append(item)
         return Result(Verdict.ALLOW, out)
 
     def _bait(self, type: str) -> Result:

@@ -18,6 +18,7 @@ TYPE_RE = re.compile(r"^[a-z][a-z0-9-]{1,19}$")
 SEGMENT_RE = re.compile(r"^[a-z0-9][a-z0-9 _-]{0,29}$")
 MAX_TEXT = 2000
 MAX_DEPTH = 6
+DOC_RE = re.compile(r"^doc[0-9]{1,6}$")
 
 
 def clean_path(raw: str) -> str:
@@ -50,6 +51,9 @@ class Record:
     updated: float = 0.0
     edited: bool = False  # a person changed the text after it was saved
     path: str = ""  # the shelf it sits on, like "work/clients"; empty means the shelf named after its type
+    doc: str = ""  # a long note is stored as passages that share one doc id (doc1, doc2, ...)
+    title: str = ""  # the long note's title, kept on every passage so a question about the title finds them all
+    part: int = 0  # which passage of the long note this is, counting from 1
 
     def __post_init__(self):
         if not TYPE_RE.match(self.type or ""):
@@ -60,6 +64,10 @@ class Record:
             raise ValueError(f"a record can hold at most {MAX_TEXT} characters")
         if self.sensitivity not in SENSITIVITY:
             raise ValueError(f"unknown sensitivity {self.sensitivity!r}")
+        if self.doc and not DOC_RE.match(self.doc):
+            raise ValueError("a long note's id must look like doc1")
+        if len(self.title) > 120:
+            raise ValueError("a title can be at most 120 characters")
         if self.path != clean_path(self.path):
             raise ValueError("the shelf path is not in its clean form")
         if self.trust_tier not in (0, 1, 2, 3):
@@ -70,6 +78,11 @@ class Record:
     @property
     def shelf(self) -> str:
         return self.path or self.type
+
+    @property
+    def unit(self) -> str:
+        """What a person sees as one thing: the long note, or the short note itself."""
+        return self.doc or self.id
 
     @property
     def content_hash(self) -> str:
@@ -109,6 +122,19 @@ class Vault:
     def next_id(self, prefix: str = "m") -> str:
         n = 1 + max([int(m.group(1)) for r in self._records for m in [re.fullmatch(prefix + r"(\d+)", r)] if m] or [0])
         return f"{prefix}{n}"
+
+    def next_doc(self) -> str:
+        n = 1 + max([int(r.doc[3:]) for r in self._records.values() if r.doc] or [0])
+        return f"doc{n}"
+
+    def parts(self, doc: str) -> list[Record]:
+        return sorted((r for r in self._records.values() if r.doc == doc), key=lambda r: r.part)
+
+    def unit_of(self, record_id: str) -> str | None:
+        r = self._records.get(record_id)
+        if r is not None:
+            return r.unit
+        return record_id if any(x.doc == record_id for x in self._records.values()) else None
 
     def all(self) -> list[Record]:
         return list(self._records.values())

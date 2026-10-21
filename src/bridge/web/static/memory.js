@@ -151,7 +151,7 @@
       if (n.kind === "file") {
         const f = n.f, on = selFile === f.id, g = sv("g", { class: "mfile bub pop", tabindex: 0, role: "button", "aria-label": "File: " + snip(f.text, 60) });
         g.setAttribute("transform", "translate(" + n.x + " " + n.y + ")"); g.append(sv("title", {}, f.text));
-        const gi = sv("g", { class: "bubi" }), txt = (f.sensitivity === "low" ? "" : "🔒 ") + snip(f.text, 26), w = Math.max(70, txt.length * 6.2 + 20);
+        const gi = sv("g", { class: "bubi" }), txt = (f.sensitivity === "low" ? "" : "🔒 ") + (f.long ? "📄 " + snip(f.title, 22) : snip(f.text, 26)), w = Math.max(70, txt.length * 6.2 + 20);
         gi.append(sv("rect", { x: -w / 2, y: -15, width: w, height: 30, rx: 15, fill: f.sensitivity === "low" ? "#E6F3EA" : "#F9DDD9", stroke: on ? "#1A1320" : col[1], "stroke-width": on ? 3.5 : 2, filter: "url(#soft)" }));
         label(gi, txt, 0, 4, 11, 500); g.append(gi);
         g.onclick = () => { selFile = f.id; drawTree(); drawFiles(true); }; g.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); g.onclick(); } };
@@ -251,11 +251,24 @@
   }
 
   function card(r) {
-    const c = el("div", "mem");
-    c.append(el("div", "memtext", r.text));
+    const c = el("div", "mem" + (r.long ? " longnote" : ""));
+    if (r.long) {
+      c.append(el("div", "notetitle", "📄 " + r.title));
+      const body = el("div", "memtext", r.text.length > 420 ? r.text.slice(0, 420).trimEnd() + "…" : r.text);
+      c.append(body);
+      if (r.text.length > 420) {
+        const more = btn("Read the whole note (" + r.chars.toLocaleString() + " characters)", "linkbtn", () => {
+          const open = more.dataset.open === "1"; more.dataset.open = open ? "0" : "1";
+          body.textContent = open ? r.text.slice(0, 420).trimEnd() + "…" : r.text; body.classList.toggle("fulltext", !open);
+          more.textContent = open ? "Read the whole note (" + r.chars.toLocaleString() + " characters)" : "Show less";
+        });
+        c.append(more);
+      }
+    } else c.append(el("div", "memtext", r.text));
     const meta = el("div", "small muted");
     meta.append((r.source === "helper" ? "Suggested by " + r.helper + ", saved because you said yes" : "Written by you") + (r.created ? " on " + when(r.created) : "") + ". ");
     meta.append(el("span", "tag " + (r.sensitivity === "low" ? "good" : "wait"), r.sensitivity === "low" ? "Everyday" : "Secret"), " ", r.shelf_name + ".");
+    if (r.long) meta.append(" Kept whole, stored as " + r.parts + " passages so a helper reads only the part it needs.");
     if (r.edited) meta.append(" You corrected it later.");
     c.append(meta);
     c.append(el("div", "small muted", r.used.answers ? "Helped write " + r.used.answers + " answer(s); last in “" + r.used.last_chat + "”." : "Not used in any answer yet."));
@@ -268,14 +281,16 @@
 
   function edit(c, r) {
     c.replaceChildren();
-    const ta = document.createElement("textarea"); ta.value = r.text; ta.rows = 3; ta.maxLength = 2000; ta.setAttribute("aria-label", "Text of this memory");
+    const ta = document.createElement("textarea"); ta.value = r.text; ta.rows = r.long ? 14 : 4; ta.maxLength = 80000; ta.setAttribute("aria-label", "Text of this memory");
+    const ti = document.createElement("input"); ti.type = "text"; ti.maxLength = 120; ti.value = r.title || ""; ti.setAttribute("aria-label", "Title of this long note");
     const lv = levelSelect(r.sensitivity), sh = document.createElement("input"); sh.type = "text"; sh.value = r.shelf; sh.setAttribute("aria-label", "Shelf"); sh.setAttribute("list", "shelfnames");
     const a = el("div", "acts");
     a.append(btn("Save", "btn go2", async () => {
-      try { await B.api("/api/memory", { action: "update", id: r.id, text: ta.value, sensitivity: lv.value, shelf: sh.value }); await B.refresh(); }
+      try { await B.api("/api/memory", Object.assign({ action: "update", id: r.id, text: ta.value, sensitivity: lv.value, shelf: sh.value }, r.long ? { title: ti.value } : {})); await B.refresh(); }
       catch (e) { note(e.message); }
     }), btn("Cancel", "btn", () => drawFiles(true)));
-    c.append(ta, el("label", "small fieldrow", "Shelf "), sh, lv, a);
+    c.append(ta); if (r.long) c.append(el("label", "small fieldrow", "Title "), ti);
+    c.append(el("label", "small fieldrow", "Shelf "), sh, lv, a);
   }
 
   /* ---------- adding and importing ---------- */
@@ -284,12 +299,19 @@
     f.onsubmit = async (e) => {
       e.preventDefault();
       try {
-        await B.api("/api/memory", { action: "add", type: $("memkind").value, text: $("memtext").value, sensitivity: lv.value, shelf: $("memshelf").value });
-        $("memtext").value = ""; note("Saved."); await B.refresh();
+        const r = await B.api("/api/memory", { action: "add", type: $("memkind").value, text: $("memtext").value, sensitivity: lv.value, shelf: $("memshelf").value, title: $("memtitle").value });
+        $("memtext").value = ""; $("memtitle").value = ""; countChars(); note(r.id.startsWith("doc") ? "Saved as one long note." : "Saved."); await B.refresh();
       } catch (er) { note(er.message); }
     };
+    $("memtext").oninput = countChars; countChars();
     $("memq").oninput = () => { clearTimeout(queryTimer); queryTimer = setTimeout(() => { query = $("memq").value.trim(); drawFiles(true); }, 300); };
     $("memmore").onclick = () => drawFiles(false);
+  }
+
+  function countChars() {
+    const n = $("memtext").value.length, long = n > 1500;
+    $("memcount").textContent = n ? n.toLocaleString() + " of 80,000 characters" + (long ? ". This is a long note: it is kept whole and cut into passages for helpers." : "") : "";
+    $("memtitlerow").hidden = !long;
   }
 
   function splitNotes(text) {
@@ -309,21 +331,35 @@
     $("memfile").onchange = async (ev) => {
       const f = ev.target.files[0], box = $("importbox"); box.replaceChildren(); if (!f) return;
       if (f.size > 300000) { box.append(el("p", "warnline", "That file is bigger than 300 KB. Cut it into smaller parts first.")); return; }
-      const notes = splitNotes(await f.text()).slice(0, 50);
-      if (!notes.length) { box.append(el("p", "warnline", "There is no text in that file.")); return; }
-      box.append(el("p", "small", "Found " + notes.length + " note(s). Untick the ones you do not want."));
-      const list = el("ul", "filelist"), boxes = [];
-      notes.forEach((t) => { const li = el("li"), c = document.createElement("input"); c.type = "checkbox"; c.checked = true; c.setAttribute("aria-label", "Keep: " + t.slice(0, 60)); boxes.push(c); li.append(c, el("span", null, t)); list.append(li); });
+      const raw = (await f.text()).replace(/\r\n/g, "\n").trim();
+      if (!raw) { box.append(el("p", "warnline", "There is no text in that file.")); return; }
       const lv = levelSelect("low"), shelf = document.createElement("input"); shelf.type = "text"; shelf.setAttribute("list", "shelfnames"); shelf.maxLength = 200; shelf.setAttribute("aria-label", "Shelf for these notes");
-      shelf.value = f.name.replace(/\.[^.]+$/, "").toLowerCase().replace(/[^a-z0-9 -]+/g, " ").trim().slice(0, 30);
-      const row = el("div", "composerrow"); row.append(el("label", "small", "Put them on shelf "), shelf, lv);
-      const save = btn("Save the ticked notes", "btn go2", async () => {
-        const keep = notes.filter((_, i) => boxes[i].checked); if (!keep.length) { note("Tick at least one note."); return; }
+      const base = f.name.replace(/\.[^.]+$/, ""); shelf.value = base.toLowerCase().replace(/[^a-z0-9 -]+/g, " ").trim().slice(0, 30);
+      const canWhole = raw.length <= 80000, mode = { v: canWhole ? "whole" : "split" };
+      const pick = el("div", "modepick");
+      [["whole", "Keep it as one long note (" + raw.length.toLocaleString() + " characters)"], ["split", "Split it into short notes"]].forEach(([v, t]) => {
+        const l = el("label", "small"), r = document.createElement("input"); r.type = "radio"; r.name = "impmode"; r.value = v; r.checked = mode.v === v; r.disabled = v === "whole" && !canWhole;
+        r.onchange = () => { mode.v = v; drawList(); }; l.append(r, " " + t); pick.append(l);
+      });
+      const listBox = el("div"), notes = splitNotes(raw).slice(0, 50), boxes = [];
+      const drawList = () => {
+        listBox.replaceChildren(); boxes.length = 0;
+        if (mode.v === "whole") { listBox.append(el("p", "small muted", "It will be saved whole and cut into passages behind the scenes.")); return; }
+        listBox.append(el("p", "small", "Found " + notes.length + " note(s). Untick the ones you do not want."));
+        const list = el("ul", "filelist");
+        notes.forEach((t) => { const li = el("li"), c = document.createElement("input"); c.type = "checkbox"; c.checked = true; c.setAttribute("aria-label", "Keep: " + t.slice(0, 60)); boxes.push(c); li.append(c, el("span", null, t)); list.append(li); });
+        listBox.append(list);
+      };
+      drawList();
+      const row = el("div", "composerrow"); row.append(el("label", "small", "Put it on shelf "), shelf, lv);
+      const save = btn("Save", "btn go2", async () => {
+        const items = mode.v === "whole" ? [{ title: base, text: raw }] : notes.filter((_, i) => boxes[i].checked);
+        if (!items.length) { note("Tick at least one note."); return; }
         save.disabled = true;
-        try { await B.api("/api/memory", { action: "add_many", items: keep, sensitivity: lv.value, type: "note", shelf: shelf.value }); box.replaceChildren(); $("memfile").value = ""; note("Saved " + keep.length + " note(s)."); await B.refresh(); }
+        try { await B.api("/api/memory", { action: "add_many", items, sensitivity: lv.value, type: "note", shelf: shelf.value }); box.replaceChildren(); $("memfile").value = ""; note("Saved."); await B.refresh(); }
         catch (e) { note(e.message); save.disabled = false; }
       });
-      box.append(list, row, save);
+      box.append(pick, listBox, row, save);
     };
   }
 

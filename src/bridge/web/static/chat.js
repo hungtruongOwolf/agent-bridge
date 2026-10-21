@@ -116,7 +116,7 @@
           if (!f.open || f.dataset.done) return; f.dataset.done = "1";
           try {
             const got = (await B.api("/api/memory?limit=100&ids=" + m.files.slice(0, 50).map(encodeURIComponent).join(","))).items, by = new Map(got.map((r) => [r.id, r]));
-            m.files.forEach((id) => { const r = by.get(id); f.append(el("div", "small", r ? r.shelf_name + ": " + r.text : "A file you have since deleted")); });
+            m.files.forEach((id) => { const r = by.get(id); f.append(el("div", "small", r ? r.shelf_name + ": " + (r.long ? "“" + r.title + "” (long note)" : r.text) : "A file you have since deleted")); });
           } catch (e) { f.append(el("div", "small muted", e.message)); }
         });
         d.append(f);

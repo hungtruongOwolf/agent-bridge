@@ -140,11 +140,12 @@ class ChatService:
         shared_ids = set(broker.manifest)
         everything = self.app.memory.overview()
         open_paths = set(t.lens.shelves)
-        by_shelf_shared: dict[str, int] = {}
-        for rid in shared_ids:
-            p = vault.get(rid).shelf
+        by_shelf_shared: dict[str, set] = {}
+        for rid in shared_ids:  # a long note counts once on each shelf above it, however many passages it has
+            r = vault.get(rid)
+            p = r.shelf
             while True:
-                by_shelf_shared[p] = by_shelf_shared.get(p, 0) + 1
+                by_shelf_shared.setdefault(p, set()).add(r.unit)
                 if "/" not in p:
                     break
                 p = p.rsplit("/", 1)[0]
@@ -152,13 +153,26 @@ class ChatService:
         for sh in everything["shelves"]:
             p = sh["path"]
             inside = any(under(p, o) for o in open_paths)
-            state = "open" if inside else ("partly" if by_shelf_shared.get(p) else "closed")
-            shelves.append({**sh, "state": state, "shared": by_shelf_shared.get(p, 0)})
-        shared = [{"id": r.id, "type": r.type, "text": r.text, "shelf": r.shelf, "shelf_name": pretty(r.shelf)}
-                  for r in sorted((vault.get(i) for i in shared_ids), key=lambda r: (r.shelf, r.id))]
-        held_back = [{"id": r.id, "text": r.text, "shelf": r.shelf, "shelf_name": pretty(r.shelf)} for r in vault.all() if r.id in lens.exclude]
+            n = len(by_shelf_shared.get(p, ()))
+            shelves.append({**sh, "state": "open" if inside else ("partly" if n else "closed"), "shared": n})
+
+        def unit_item(r, parts):
+            text = (r.title + " (long note, " + str(parts) + " passages)") if r.doc else r.text
+            return {"id": r.unit, "type": r.type, "text": text, "long": bool(r.doc), "shelf": r.shelf, "shelf_name": pretty(r.shelf)}
+        first_of, parts_of = {}, {}
+        for i in sorted(shared_ids):
+            r = vault.get(i)
+            first_of.setdefault(r.unit, r)
+            parts_of[r.unit] = parts_of.get(r.unit, 0) + 1
+        shared = [unit_item(r, parts_of[u]) for u, r in sorted(first_of.items(), key=lambda kv: (kv[1].shelf, kv[0]))]
+        held, held_parts = {}, {}
+        for r in vault.all():
+            if r.id in lens.exclude or (r.doc and r.doc in lens.exclude):
+                held.setdefault(r.unit, r)
+                held_parts[r.unit] = held_parts.get(r.unit, 0) + 1
+        held_back = [unit_item(r, held_parts[u]) for u, r in held.items()]
         res = broker.search(draft, fallback=True) if draft.strip() else None
-        likely = [x["id"] for x in res.records] if res else []
+        likely = sorted({vault.get(x["id"]).unit for x in res.records}) if res else []
         walk = broker.walks[-1]["opened"][1:] if res and broker.walks else []
         suggest = []
         if draft.strip():  # closed shelves whose files fit the message, so one tick can open exactly what is needed
@@ -170,7 +184,7 @@ class ChatService:
             suggest = [{"path": p, "name": pretty(p), "matches": n} for p, n in sorted(seen.items(), key=lambda kv: (-kv[1], kv[0]))[:3]]
         hist = self.history(t)
         return {"thread": t.id, "helper": self._agent(t), "shelves": shelves, "suggest": suggest, "total": everything["total"],
-                "secret": everything["secret"], "shared_count": len(shared), "shared": shared[:40], "shared_more": max(0, len(shared) - 40),
+                "secret": everything["secret"], "shared_count": len(first_of), "shared": shared[:40], "shared_more": max(0, len(shared) - 40),
                 "held_back": held_back, "likely": likely, "walk": [pretty(p) for p in walk],
                 "history": hist, "history_turns": t.history_turns, "budget": self.money(t),
                 "goes_to_the_brain": ("To write an answer, your message, the files that match it and the last " + str(t.history_turns) +

@@ -327,11 +327,11 @@ class App:
     def memory_change(self, body: dict) -> dict:
         action = body.get("action")
         if action == "add":
-            return self.memory.add(str(body.get("type", "note")), str(body.get("text", "")), str(body.get("sensitivity", "low")), str(body.get("shelf", "")))
+            return self.memory.add(str(body.get("type", "note")), str(body.get("text", "")), str(body.get("sensitivity", "low")), str(body.get("shelf", "")), str(body.get("title", "")))
         if action == "add_many":
             return self.memory.add_many(body.get("items"), str(body.get("sensitivity", "low")), str(body.get("type", "note")), str(body.get("shelf", "")))
         if action == "update":
-            return self.memory.update(str(body.get("id", "")), text=body.get("text"), sensitivity=body.get("sensitivity"), type=body.get("type"), path=body.get("shelf"))
+            return self.memory.update(str(body.get("id", "")), text=body.get("text"), sensitivity=body.get("sensitivity"), type=body.get("type"), path=body.get("shelf"), title=body.get("title"))
         if action == "delete":
             return self.memory.delete(str(body.get("id", "")))
         if action == "move_shelf":
@@ -464,8 +464,8 @@ def make_handler(app: App):
                 n = int(self.headers.get("Content-Length") or 0)
             except ValueError:
                 n = 0
-            if n > 100000:
-                left = min(n, 1_000_000)  # drain a bounded amount so the client sees the 413, not a reset
+            if n > 400000:
+                left = min(n, 2_000_000)  # drain a bounded amount so the client sees the 413, not a reset
                 while left > 0:
                     chunk = self.rfile.read(min(65536, left))
                     if not chunk:

@@ -12,6 +12,7 @@ import threading
 from pathlib import Path
 from typing import Callable
 
+from .chunking import MAX_DOC, MAX_PARTS, SHORT, guess_title, join_document, split_document
 from .quarantine import Quarantine, QuarantineError
 from .tree import MemoryTree, pretty
 from .vault import Record, Vault, clean_path, under
@@ -88,47 +89,56 @@ class MemoryService:
                 names[r.digest] = r.id.replace("-", " ").title()
         return names
 
-    def _usage(self) -> dict[str, dict]:
+    def _usage(self, unit_of: dict) -> dict[str, dict]:
+        """How many answers each note helped write. A long note counts once per answer, however many passages were used."""
         use: dict[str, dict] = {}
         if self.threads is None:
             return use
         with self.threads.lock:
             for t in self.threads.threads.values():
                 for m in t.messages:
-                    for fid in m.files:
-                        u = use.setdefault(fid, {"answers": 0, "last_chat": "", "last_at": 0.0})
+                    for unit in {unit_of.get(fid, fid) for fid in m.files}:
+                        u = use.setdefault(unit, {"answers": 0, "last_chat": "", "last_at": 0.0})
                         u["answers"] += 1
                         if m.at >= u["last_at"]:
                             u["last_at"], u["last_chat"] = m.at, t.title
         return use
 
-    def _item(self, r: Record, use: dict, names: dict) -> dict:
+    def _item(self, parts: list[Record], use: dict, names: dict) -> dict:
+        r = parts[0]
         origin = r.origin or {}
+        text = join_document([p.text for p in parts]) if r.doc else r.text
         return {
-            "id": r.id, "type": r.type, "sensitivity": "low" if r.sensitivity == "low" else "high", "text": r.text,
-            "shelf": r.shelf, "shelf_name": pretty(r.shelf), "created": r.created, "updated": r.updated,
-            "edited": r.edited, "trust": r.trust_tier,
+            "id": r.unit, "type": r.type, "sensitivity": "low" if r.sensitivity == "low" else "high", "text": text,
+            "long": bool(r.doc), "title": r.title if r.doc else "", "parts": len(parts) if r.doc else 1, "chars": len(text),
+            "shelf": r.shelf, "shelf_name": pretty(r.shelf), "created": r.created, "updated": max(p.updated for p in parts),
+            "edited": any(p.edited for p in parts), "trust": r.trust_tier,
             "source": "helper" if origin.get("pack_digest") else "you",
             "helper": names.get(origin.get("pack_digest"), "a helper") if origin.get("pack_digest") else None,
             "from_run": origin.get("run_id"),
-            "used": use.get(r.id, {"answers": 0, "last_chat": "", "last_at": 0.0}),
+            "used": use.get(r.unit, {"answers": 0, "last_chat": "", "last_at": 0.0}),
         }
 
     def list(self, *, shelf: str | None = None, ids=None, q: str = "", offset: int = 0, limit: int = PAGE) -> list[dict]:
-        """Files for the manager screen, one page at a time. `shelf` includes everything below it."""
-        use, names = self._usage(), self._helper_names()
-        recs = self.vault().all()
+        """Notes for the manager screen, one page at a time. A long note is one item. `shelf` includes everything below it."""
+        v = self.vault()
+        names = self._helper_names()
+        recs = v.all()
+        use = self._usage({r.id: r.unit for r in recs})
         if ids is not None:
             want = set(ids)
-            recs = [r for r in recs if r.id in want]
+            recs = [r for r in recs if r.id in want or r.doc in want]
         if shelf:
             recs = [r for r in recs if under(r.shelf, shelf)]
+        groups: dict[str, list[Record]] = {}
+        for r in recs:
+            groups.setdefault(r.unit, []).append(r)
         if q.strip():
             qt = tokens(q)
-            recs = [r for r in recs if qt & tokens(r.text + " " + r.shelf)]
-        recs.sort(key=lambda r: (-(r.updated or r.created), r.id))
+            groups = {u: ps for u, ps in groups.items() if any(qt & tokens(p.text + " " + p.shelf + " " + p.title) for p in ps)}
+        units = sorted(groups.values(), key=lambda ps: (-max((p.updated or p.created) for p in ps), ps[0].unit))
         start = max(0, offset)
-        return [self._item(r, use, names) for r in recs[start:start + max(1, min(limit, 200))]]
+        return [self._item(sorted(ps, key=lambda p: p.part), use, names) for ps in units[start:start + max(1, min(limit, 200))]]
 
     def overview(self) -> dict:
         """The whole tree without any file text: what the manager and the chat panels draw."""
@@ -138,8 +148,10 @@ class MemoryService:
         recs = vault.all()
         tree = MemoryTree(recs, self.labels())
         secret: dict[str, int] = {}
+        seen_secret: set = set()
         for r in recs:
-            if r.sensitivity != "low":
+            if r.sensitivity != "low" and r.unit not in seen_secret:
+                seen_secret.add(r.unit)
                 p = r.shelf
                 while True:
                     secret[p] = secret.get(p, 0) + 1
@@ -147,14 +159,15 @@ class MemoryService:
                         break
                     p = p.rsplit("/", 1)[0]
         shelves = []
+        recs_by_id = {r.id: r for r in recs}
 
         def walk(path: str, depth: int):
             for o in tree.outline(path):
                 shelves.append({**o, "depth": depth, "secret": secret.get(o["path"], 0), "parent": path,
-                                "own": len(tree.nodes[o["path"]].own)})
+                                "own": len({recs_by_id[i].unit for i in tree.nodes[o["path"]].own})})
                 walk(o["path"], depth + 1)
         walk("", 0)
-        out = {"total": len(recs), "secret": sum(1 for r in recs if r.sensitivity != "low"), "shelves": shelves}
+        out = {"total": len({r.unit for r in recs}), "secret": len(seen_secret), "shelves": shelves}
         self._overview = (self._cache[0] if self._cache else None, out)
         return out
 
@@ -194,22 +207,46 @@ class MemoryService:
                         ids.update(m.files)
         return ids
 
-    def add(self, type: str, text: str, sensitivity: str, path: str = "") -> dict:
+    def _fresh_doc(self, v: Vault, taken: set) -> str:
+        n = int(v.next_doc()[3:])
+        while f"doc{n}" in taken:
+            n += 1
+        return f"doc{n}"
+
+    def _make(self, v: Vault, type: str, text, sensitivity: str, path: str, title: str, now: float, taken: set, *, doc: str = "",
+              created: float | None = None, edited: bool = False, origin=None, trust: int = 3) -> str:
+        """Save one note. A short one is one record; a long one is kept whole and stored as passages. Returns the note's id."""
+        if not isinstance(text, str):
+            raise MemoryChangeError("each note must be text")
+        text = text.strip()
+        if len(text) > MAX_DOC:
+            raise MemoryChangeError(f"a note can be up to {MAX_DOC:,} characters; this one is {len(text):,}")
+        base = dict(sensitivity=sensitivity, path=path, created=now if created is None else created, updated=now, edited=edited, origin=origin, trust_tier=trust)
+        try:
+            if len(text) <= SHORT and not doc:
+                rid = v.next_id("m")
+                while rid in taken:
+                    rid = "m" + str(int(rid[1:]) + 1)
+                v.add(Record(rid, type, text=text, **base))
+                return rid
+            parts = split_document(text)
+            if not parts:
+                raise MemoryChangeError("a record needs some text")
+            if len(parts) > MAX_PARTS:
+                raise MemoryChangeError("that note is too long to keep as one piece; split it into two notes")
+            doc = doc or self._fresh_doc(v, taken)
+            name = (title or "").strip()[:120] or guess_title(text)
+            for n, chunk in enumerate(parts, 1):
+                v.add(Record(f"{doc}.{n}", type, text=chunk, doc=doc, title=name, part=n, **base))
+            return doc
+        except ValueError as e:
+            raise MemoryChangeError(str(e)) from e
+
+    def add(self, type: str, text: str, sensitivity: str, path: str = "", title: str = "") -> dict:
         now = self.clock()
         sensitivity, path = self._level(sensitivity), self._path(path)
-
-        def go(v: Vault):
-            rid = v.next_id("m")
-            while rid in self._referenced():
-                rid = "m" + str(int(rid[1:]) + 1)
-            try:
-                rec = Record(rid, type, sensitivity, (text or "").strip(), created=now, path=path)
-            except ValueError as e:
-                raise MemoryChangeError(str(e)) from e
-            v.add(rec)
-            return rec
-        rec = self._mutate(go)
-        return {"id": rec.id}
+        taken = self._referenced()
+        return {"id": self._mutate(lambda v: self._make(v, type, text, sensitivity, path, title, now, taken))}
 
     def add_many(self, items: list, sensitivity: str, type: str, path: str = "") -> dict:
         """Save several notes at once (for example from an imported file), all or nothing."""
@@ -217,42 +254,51 @@ class MemoryService:
             raise MemoryChangeError("add between 1 and 50 notes at a time")
         now = self.clock()
         sensitivity, path = self._level(sensitivity), self._path(path)
+        taken = self._referenced()
 
         def go(v: Vault):
             ids = []
-            taken = self._referenced()
-            for text in items:
-                if not isinstance(text, str):
-                    raise MemoryChangeError("each note must be text")
-                rid = v.next_id("m")
-                while rid in taken:
-                    rid = "m" + str(int(rid[1:]) + 1)
-                try:
-                    v.add(Record(rid, type, sensitivity, text.strip(), created=now, path=path))
-                except ValueError as e:
-                    raise MemoryChangeError(str(e)) from e
-                ids.append(rid)
+            for item in items:
+                title = ""
+                if isinstance(item, dict):  # {"title": ..., "text": ...}: a long note brought in whole
+                    title, item = str(item.get("title", "")), item.get("text")
+                ids.append(self._make(v, type, item, sensitivity, path, title, now, taken))
+                taken.add(ids[-1])
             return ids
         return {"ids": self._mutate(go)}
 
-    def update(self, record_id: str, *, text=None, sensitivity=None, type=None, path=None) -> dict:
+    def update(self, record_id: str, *, text=None, sensitivity=None, type=None, path=None, title=None) -> dict:
         now = self.clock()
-
-        for name, val in (("text", text), ("sensitivity", sensitivity), ("type", type), ("shelf", path)):
+        for name, val in (("text", text), ("sensitivity", sensitivity), ("type", type), ("shelf", path), ("title", title)):
             if val is not None and not isinstance(val, str):
                 raise MemoryChangeError(f"{name} must be text")
         sensitivity = None if sensitivity is None else self._level(sensitivity)
         path = None if path is None else self._path(path)
+        taken = self._referenced()
 
         def go(v: Vault):
-            if v.get(record_id) is None:
+            unit = v.unit_of(record_id)
+            parts = v.parts(unit) if unit and unit.startswith("doc") and v.parts(unit) else ([v.get(unit)] if unit and v.get(unit) else [])
+            if not parts:
                 raise MemoryChangeError("that file is no longer in your memory")
+            first = parts[0]
             try:
-                return v.update(record_id, now=now, text=None if text is None else text.strip(), sensitivity=sensitivity, type=type, path=path)
+                if text is not None and (first.doc or len(text.strip()) > SHORT):
+                    for p in parts:  # the note is written again from the new text, keeping who wrote it and when
+                        v.remove(p.id)
+                    new = self._make(v, type or first.type, text, sensitivity or first.sensitivity, first.path if path is None else path,
+                               (title if title is not None else first.title), now, taken - {first.doc, first.id}, doc=first.doc,
+                               created=first.created, edited=True, origin=first.origin, trust=3)
+                    return new, True
+                for p in parts:
+                    v.update(p.id, now=now, text=None if text is None else text.strip(), sensitivity=sensitivity, type=type, path=path)
+                    if title is not None and p.doc:
+                        v._records[p.id] = replace(v._records[p.id], title=title.strip()[:120])
+                return first.unit, text is not None or any(p.edited for p in parts)
             except ValueError as e:
                 raise MemoryChangeError(str(e)) from e
-        rec = self._mutate(go)
-        return {"id": rec.id, "edited": rec.edited}
+        unit, edited = self._mutate(go)
+        return {"id": unit, "edited": edited}
 
     def move_shelf(self, source: str, target: str) -> dict:
         """Rename a shelf, or move it inside another one. Every file under it comes along; chats that had it open follow."""
@@ -287,15 +333,23 @@ class MemoryService:
         return {"moved": n}
 
     def delete(self, record_id: str) -> dict:
+        gone: set = set()
+
         def go(v: Vault):
-            if v.remove(record_id) is None:
+            unit = v.unit_of(record_id)
+            members = v.parts(unit) if unit and v.parts(unit) else ([v.get(unit)] if unit and v.get(unit) else [])
+            if not members:
                 raise MemoryChangeError("that file is no longer in your memory")
+            for p in members:
+                v.remove(p.id)
+                gone.add(p.id)
+            gone.add(unit)
         self._mutate(go)
         if self.threads is not None:  # it can no longer be shared, so every chat forgets it was ever picked
             with self.threads.lock:
                 for t in self.threads.threads.values():
-                    t.lens.include = [i for i in t.lens.include if i != record_id]
-                    t.lens.exclude = [i for i in t.lens.exclude if i != record_id]
+                    t.lens.include = [i for i in t.lens.include if i not in gone]
+                    t.lens.exclude = [i for i in t.lens.exclude if i not in gone]
                 self.threads.save()
         return {"deleted": record_id}
 

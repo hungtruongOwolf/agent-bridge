@@ -179,7 +179,9 @@
   <div class="memgrid">
     <div class="panel"><div class="title">Add to memory</div><div class="body">
       <form id="memform" class="memform" autocomplete="off">
-        <textarea id="memtext" rows="3" maxlength="2000" placeholder="For example: Maria prefers email over calls." aria-label="What to remember"></textarea>
+        <textarea id="memtext" rows="5" maxlength="80000" placeholder="Write or paste anything: a short fact, or a whole page of notes. Long notes are kept whole." aria-label="What to remember"></textarea>
+        <div class="small muted" id="memcount" aria-live="polite"></div>
+        <label class="small fieldrow" id="memtitlerow" hidden>Title <input id="memtitle" type="text" maxlength="120" placeholder="optional" aria-label="Title of this long note"></label>
         <label class="small fieldrow">Shelf <input id="memshelf" type="text" list="shelfnames" placeholder="work/clients" maxlength="200" aria-label="Which shelf"></label>
         <datalist id="shelfnames"></datalist>
         <div class="composerrow">
@@ -190,7 +192,7 @@
       </form>
       <div class="memform">
         <h3 class="sub">Or bring in a file</h3>
-        <p class="small muted">A .txt, .md or .csv file. You choose which notes to keep.</p>
+        <p class="small muted">A .txt, .md or .csv file, up to 300 KB. Keep it as one long note, or split it into short notes.</p>
         <input id="memfile" type="file" accept=".txt,.md,.csv,text/plain" aria-label="Choose a text file to import">
         <div id="importbox"></div>
       </div>

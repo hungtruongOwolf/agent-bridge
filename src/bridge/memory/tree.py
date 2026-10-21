@@ -30,7 +30,8 @@ class Shelf:
     path: str
     own: list = field(default_factory=list)  # ids of the files lying directly on this shelf
     children: list = field(default_factory=list)  # paths of the shelves directly below
-    count: int = 0  # files on this shelf and everything below it
+    count: int = 0  # notes on this shelf and everything below it (a long note counts once)
+    units: set = field(default_factory=set)
     df: Counter = field(default_factory=Counter)  # word stem -> how many files below use it
 
     @property
@@ -53,14 +54,17 @@ class MemoryTree:
                 st = stem(w)
                 toks.add(st)
                 self._shown.setdefault(st, w)
-            toks |= tokens(r.type)
+            toks |= tokens(r.type) | tokens(r.title)
             self._types |= tokens(r.type)
             self._tok[r.id] = toks
             self._node(r.shelf).own.append(r.id)
         for path in sorted(self.nodes, key=lambda p: -(p.count("/") + 1) if p else 0):  # deepest first: children before parents
             node = self.nodes[path]
             node.children.sort()
-            node.count = len(node.own) + sum(self.nodes[c].count for c in node.children)
+            node.units = {self.records[rid].unit for rid in node.own}
+            for c in node.children:
+                node.units |= self.nodes[c].units
+            node.count = len(node.units)
             for rid in node.own:
                 node.df.update(self._tok[rid])
             for c in node.children:

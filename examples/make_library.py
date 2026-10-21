@@ -57,6 +57,41 @@ add("d3", "ideas/writing", "Blog post idea: what we learned from cutting onboard
 add("f1", "money", "Bank account 000111222, balance 91000 USD, routing 021000021.", "finance", "high")
 add("f2", "money", "Monthly budget: rent 1800, food 600, travel 300, savings 700.", "finance", "high")
 
+# long notes: kept whole, stored as passages (the same way the app does it)
+from bridge.memory.chunking import guess_title, split_document  # noqa: E402
+
+PLAN = """# Acme account plan, Q4
+
+## Where we stand
+Acme has been a customer for three years and is our second largest account. Usage grew 18 percent last year, mostly from the support team. The renewal is due on December 1 and the budget owner, Maria Lopez, told us in October that finance cut every tools budget by about a third.
+
+## What Maria cares about
+Maria cares about two things: predictable cost and fewer tools to manage. She prefers email on Mondays and does not like surprise invoices. Last year a billing mistake delayed the renewal by six weeks, so any change in price needs to be explained in writing before it reaches her inbox.
+
+## Risks
+The main risk is the budget cut. A second risk is the champion on the product side, who is moving to another team in January. If the new owner has not met us before the renewal call, we should expect a slower decision. The third risk is the security questionnaire Acme's compliance team sends every year; last year it took us nine days to answer.
+
+## Options we discussed
+Option one is a two-year deal at a ten percent discount with annual billing. Option two is a smaller plan with fewer seats, which keeps the price flat but removes the analytics add-on. Priya prefers option one because it locks the account in; Sam prefers option two because it keeps the margin healthy. We agreed to prepare both and let Maria choose.
+
+## Next steps
+Priya prepares both quotes by Friday. Sam answers the security questionnaire early, before the renewal call. Lee books an introduction between the new product owner and our team in the first week of December. Everyone reviews the plan on Thursday."""
+
+TRIP = """# Lisbon trip notes
+
+Flight lands at 9:40 on November 20. Take the metro red line to Alameda, then the green line to Baixa. The hotel is a ten minute walk from there, on a steep street, so pack light.
+
+## Food
+Tomás recommends the small place near Alfama for grilled fish, and a bakery on the way to the castle for pastel de nata in the morning. Reserve dinner for Friday, the restaurants fill up fast.
+
+## Things to remember
+Bring the adapter and a rain jacket. The tram 28 is crowded, walk instead. Buy the transport card at the airport, it works on trams and the metro. Call the dentist before leaving to move the appointment to the week after the trip."""
+
+for i, (shelf, text) in enumerate((("work/accounts/acme", PLAN), ("personal/travel", TRIP)), 1):
+    parts = split_document(text)
+    for n, chunk in enumerate(parts, 1):
+        R.append({"id": f"doc{i}.{n}", "type": "note", "sensitivity": "low", "text": chunk, "path": shelf, "doc": f"doc{i}", "title": guess_title(text), "part": n})
+
 out = Path(__file__).with_name("vault-library.json")
 out.write_text(json.dumps(R, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 print(f"wrote {len(R)} records to {out.name}")

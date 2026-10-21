@@ -436,3 +436,22 @@ def test_the_preview_suggests_the_closed_shelf_that_fits_the_message(srv):
     assert call(url + "/api/thread/context?id=" + t["id"] + "&draft=when+is+my+dentist+appointment")[1]["suggest"] == []
     secret = call(url + "/api/memory", {"action": "add", "type": "note", "text": "Passport locker code 4471", "sensitivity": "high", "shelf": "vault"}, app.token)[1]["id"]
     assert call(url + "/api/thread/context?id=" + t["id"] + "&draft=passport+locker+code")[1]["suggest"] == []  # secrets are never suggested
+
+
+def test_a_long_note_is_one_item_in_memory_and_in_what_the_helper_sees(srv):
+    app, url, model = srv
+    text = "# Globex plan\n\n" + "\n\n".join("Part %d. Globex budget and renewal details. " % i * 15 for i in range(1, 7))
+    out = call(url + "/api/memory", {"action": "add", "type": "note", "text": text, "sensitivity": "low", "shelf": "work/globex", "title": "Globex plan"}, app.token)
+    assert out[0] == 200 and out[1]["id"].startswith("doc")
+    items = call(url + "/api/memory?shelf=work/globex")[1]["items"]
+    assert len(items) == 1 and items[0]["long"] and items[0]["title"] == "Globex plan" and items[0]["parts"] > 2
+    t = new_chat(app, url, shelves=["work"])
+    ctx = call(url + "/api/thread/context?id=" + t["id"] + "&draft=globex+budget")[1]
+    assert ctx["shared_count"] == 1 and ctx["shared"][0]["long"] and "long note" in ctx["shared"][0]["text"] and ctx["likely"] == [out[1]["id"]]
+    code, sent = send(app, url, t["id"], "What is the Globex budget situation?")
+    assert code == 200 and sent["thread"]["messages"][-1]["role"] == "helper"
+    assert any("Globex budget and renewal" in s for s in model.seen)  # a passage reached the helper
+    shown = call(url + "/api/memory?ids=" + ",".join(sent["thread"]["messages"][-1]["files"]))[1]["items"]
+    assert len(shown) == 1 and shown[0]["used"]["answers"] == 1  # passages roll up into the one note
+    assert call(url + "/api/thread/settings", {"id": t["id"], "exclude": [out[1]["id"]]}, app.token)[0] == 200
+    assert call(url + "/api/thread/context?id=" + t["id"])[1]["shared_count"] == 0

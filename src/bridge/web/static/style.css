@@ -377,3 +377,9 @@ details.more>summary{color:var(--ink-700);font-size:14px;margin:0 0 6px;cursor:p
 #graph{width:100%;height:100%;cursor:grab;touch-action:none}
 #graph .node{transition:opacity .15s}
 #graph .node:hover rect{filter:url(#gsoft) brightness(1.04)}
+
+/* ===== long notes ===== */
+.notetitle{font-weight:700;margin-bottom:4px}
+.memtext.fulltext{max-height:360px;overflow:auto;padding:8px;background:#fff;border:2px dashed var(--ink-100)}
+.mem.longnote{border-left:8px solid var(--sky)}
+.modepick{display:grid;gap:4px;margin:8px 0}
