@@ -4,18 +4,18 @@
 (function () {
   "use strict";
   let B = null, list = null, H = null, wf = null, sel = null, dirty = false, saveTimer = null, pollTimer = null, layout = {}, tab = "steps";
-  let problems = [], showData = true, lastTry = null, pulse = [];
+  let problems = [], showData = true, lastTry = null, pulse = [], view = { k: 1, x: 10, y: 10 }, fitNext = true, gsize = { w: 0, h: 0 };
   const $ = (id) => document.getElementById(id);
   const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; };
   const btn = (text, cls, fn) => { const b = el("button", cls || "btn", text); b.type = "button"; if (fn) b.onclick = fn; return b; };
   const NS = "http://www.w3.org/2000/svg";
   const sv = (tag, attrs, text) => { const e = document.createElementNS(NS, tag); for (const k in attrs || {}) e.setAttribute(k, attrs[k]); if (text !== undefined) e.textContent = text; return e; };
   const note = (t) => { $("studionote").textContent = t || ""; };
-  const NW = 176, NH = 70, GX = 70, GY = 36;
+  const NW = 190, NH = 74, GX = 80, GY = 40;
 
   const KIND = {
     memory_search: { title: "Look through your files", fill: "#D2E7DA", hint: "Reads files from the shelves the person opened. Nothing else." },
-    web_search: { title: "Look something up on the web", fill: "#F3DACA", hint: "Searches public pages. It can never be given your files." },
+    web_search: { title: "Look up the web", fill: "#F3DACA", hint: "Searches public pages. It can never be given your files." },
     llm: { title: "Think", fill: "#CFE5E9", hint: "Asks the thinking service to write something from what it was given." },
     gate: { title: "Check the answer", fill: "#F3E4BC", hint: "Stops a bad answer before it goes on." },
     code: { title: "Run a small program", fill: "#E0DAF2", hint: "Runs your own code in a sealed room with no internet." },
@@ -61,7 +61,7 @@
 
   async function openHelper(id) {
     try { H = await B.api("/api/studio/helper?id=" + encodeURIComponent(id)); } catch (e) { note(e.message); return; }
-    wf = H.workflow ? JSON.parse(JSON.stringify(H.workflow)) : null; layout = H.layout || {}; problems = H.problems; sel = null; lastTry = null; pulse = []; dirty = false;
+    fitNext = true; wf = H.workflow ? JSON.parse(JSON.stringify(H.workflow)) : null; layout = H.layout || {}; problems = H.problems; sel = null; lastTry = null; pulse = []; dirty = false;
     $("studiomain").hidden = false; $("studioempty").hidden = true; note("");
     drawList(); draw(); watchTests();
   }
@@ -132,9 +132,10 @@
       m.append(sv("path", { d: "M0,0 L10,5 L0,10 z", fill: col })); defs.append(m);
     });
     svg.append(defs);
-    let w = 600, h = 300; Object.values(P).forEach((p) => { w = Math.max(w, p.x + NW + 60); h = Math.max(h, p.y + NH + 60); });
-    svg.setAttribute("viewBox", "0 0 " + w + " " + h); svg.style.minWidth = w + "px"; svg.style.height = h + "px";
-    const edges = sv("g"), nodes = sv("g"); svg.append(edges, nodes);
+    const shadow = sv("filter", { id: "gsoft", x: "-20%", y: "-20%", width: "140%", height: "150%" }); shadow.append(sv("feDropShadow", { dx: 0, dy: 3, stdDeviation: 3.5, "flood-color": "#3D2E4A", "flood-opacity": 0.22 })); defs.append(shadow);
+    const vp = sv("g", { id: "gvp" }); svg.append(vp);
+    const edges = sv("g"), nodes = sv("g"); vp.append(edges, nodes);
+    let w = 600, h = 300; Object.values(P).forEach((p) => { w = Math.max(w, p.x + NW + 40); h = Math.max(h, p.y + NH + 40); }); gsize = { w, h };
 
     const inputs = [["task", "Your message"], ["history", "Chat so far"]];
     inputs.forEach(([id, label]) => {
@@ -160,11 +161,11 @@
       const g = sv("g", { class: "node" + (sel === s.id ? " sel" : "") + (fail(s.id) ? " bad" : "") + (pulse.includes(s.id) ? " pulse" : ""), tabindex: 0, role: "button", "aria-label": k.title + " (" + s.id + ")" + (priv.has(s.id) ? ", holds private data" : "") });
       g.setAttribute("transform", "translate(" + p.x + "," + p.y + ")");
       g.append(sv("title", {}, k.hint));
-      g.append(sv("rect", { width: NW, height: NH, fill: k.fill, stroke: "#1A1320", "stroke-width": sel === s.id ? 4 : 2 }));
-      g.append(sv("text", { x: 10, y: 24, "font-size": 13, "font-weight": 700 }, k.title));
-      g.append(sv("text", { x: 10, y: 44, "font-size": 11, fill: "#3D2E4A" }, s.id));
-      if (priv.has(s.id) && s.kind !== "return") g.append(sv("text", { x: 10, y: 60, "font-size": 10, fill: "#9a3a33" }, "🔒 holds your private data"));
-      else if (s.tool === "web_search") g.append(sv("text", { x: 10, y: 60, "font-size": 10, fill: "#6B5878" }, "public"));
+      g.append(sv("rect", { width: NW, height: NH, rx: 16, fill: k.fill, stroke: "#1A1320", "stroke-width": sel === s.id ? 3.5 : 2, filter: "url(#gsoft)" }));
+      g.append(sv("text", { x: 14, y: 27, "font-size": 14, "font-weight": 700 }, k.title));
+      g.append(sv("text", { x: 14, y: 46, "font-size": 11.5, fill: "#3D2E4A" }, s.id));
+      if (priv.has(s.id) && s.kind !== "return") g.append(sv("text", { x: 14, y: 63, "font-size": 10.5, fill: "#9a3a33" }, "🔒 holds your private data"));
+      else if (s.tool === "web_search") g.append(sv("text", { x: 14, y: 63, "font-size": 10.5, fill: "#6B5878" }, "public"));
       if (s.kind !== "return") {
         const out = sv("circle", { cx: NW, cy: NH / 2, r: 7, fill: "#5CA97A", stroke: "#1A1320", "stroke-width": 2, class: "port" }); out.append(sv("title", {}, "Drag to the next step"));
         out.addEventListener("pointerdown", (e) => startLink(e, s.id, "next")); g.append(out);
@@ -174,9 +175,35 @@
       g.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); select(s.id); } });
       nodes.append(g);
     });
+    if (fitNext) { fitNext = false; fitGraph(); requestAnimationFrame(fitGraph); setTimeout(fitGraph, 250); } else applyGraphView();
   }
 
-  const svgPoint = (e) => { const svg = $("graph"), r = svg.getBoundingClientRect(), vb = svg.viewBox.baseVal; return { x: (e.clientX - r.left) * (vb.width / r.width), y: (e.clientY - r.top) * (vb.height / r.height) }; };
+  /* zoom and move, like a map */
+  function applyGraphView() { const vp = $("gvp"); if (vp) vp.setAttribute("transform", "translate(" + view.x + " " + view.y + ") scale(" + view.k + ")"); }
+  function fitGraph() {
+    const r = $("graph").getBoundingClientRect(); if (!r.width || !gsize.w) return;
+    const k = Math.min((r.width - 20) / gsize.w, (r.height - 20) / gsize.h, 1.1);
+    view = { k, x: Math.max(10, (r.width - gsize.w * k) / 2), y: 10 }; applyGraphView();
+  }
+  function zoomGraph(f, px, py) {
+    const k2 = Math.min(2.5, Math.max(0.3, view.k * f)), q = k2 / view.k;
+    view = { k: k2, x: px - (px - view.x) * q, y: py - (py - view.y) * q }; applyGraphView();
+  }
+  function setupGraphView() {
+    const svg = $("graph");
+    svg.addEventListener("wheel", (e) => { e.preventDefault(); const r = svg.getBoundingClientRect(); zoomGraph(e.deltaY < 0 ? 1.15 : 1 / 1.15, e.clientX - r.left, e.clientY - r.top); }, { passive: false });
+    svg.addEventListener("pointerdown", (e) => {
+      if (e.target.closest && e.target.closest(".node,.pill")) return;
+      const sx = e.clientX, sy = e.clientY, ox = view.x, oy = view.y; svg.style.cursor = "grabbing";
+      const move = (ev) => { view.x = ox + ev.clientX - sx; view.y = oy + ev.clientY - sy; applyGraphView(); };
+      const up = () => { svg.style.cursor = ""; window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); };
+      window.addEventListener("pointermove", move); window.addEventListener("pointerup", up);
+    });
+    const mid = () => { const r = svg.getBoundingClientRect(); return [r.width / 2, r.height / 2]; };
+    $("gzoomin").onclick = () => zoomGraph(1.25, ...mid()); $("gzoomout").onclick = () => zoomGraph(1 / 1.25, ...mid()); $("gfit").onclick = fitGraph;
+  }
+
+  const svgPoint = (e) => { const r = $("graph").getBoundingClientRect(); return { x: (e.clientX - r.left - view.x) / view.k, y: (e.clientY - r.top - view.y) / view.k }; };
 
   function startDrag(e, id) {
     if (e.target.classList && e.target.classList.contains("port")) return;
@@ -189,7 +216,7 @@
   function startLink(e, from, kind) {
     e.preventDefault(); e.stopPropagation();
     const svg = $("graph"), P = place(), a = P[from], x1 = kind === "next" ? a.x + NW : a.x + NW / 2, y1 = kind === "next" ? a.y + NH / 2 : a.y + NH;
-    const line = sv("line", { x1, y1, x2: x1, y2: y1, stroke: kind === "next" ? "#5CA97A" : "#D96A62", "stroke-width": 3, "stroke-dasharray": "6 4" }); svg.append(line);
+    const line = sv("line", { x1, y1, x2: x1, y2: y1, stroke: kind === "next" ? "#5CA97A" : "#D96A62", "stroke-width": 3, "stroke-dasharray": "6 4" }); ($("gvp") || svg).append(line);
     const move = (ev) => { const q = svgPoint(ev); line.setAttribute("x2", q.x); line.setAttribute("y2", q.y); };
     const up = (ev) => {
       window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); line.remove();
@@ -214,9 +241,10 @@
       deliver: (id) => ({ id, kind: "return", reads: [(steps().filter((s) => s.kind === "llm").pop() || {}).id].filter(Boolean) })
     }[kind];
     const base = { files: "read", web: "web", think: "think", check: "check", program: "program", deliver: "done" }[kind];
-    const s = tmpl(newId(base)), after = sel && byId(sel);
+    const s = tmpl(newId(base)), after = (sel && byId(sel)) || steps().find((x) => x.next && byId(x.next) && byId(x.next).kind === "return" && x.kind !== "gate");
     if (after && after.kind !== "return" && s.kind !== "return") { s.next = after.next; if (s.kind === "gate") s.on_fail = after.on_fail || undefined; after.next = s.id; }
     else if (s.kind !== "return") { const last = steps().find((x) => x.kind === "return"); if (last) s.next = last.id; }
+    if (after) { const P = place(); if (P[after.id]) layout[s.id] = { x: Math.round(P[after.id].x + (NW + GX) / 2), y: Math.round(P[after.id].y + NH + 30) }; }
     wf.steps.push(s); if (!wf.start) wf.start = s.id;
     sel = s.id; changed(["steps"]); drawGraph(); drawPanel();
   }
@@ -422,7 +450,8 @@
     $("newform").onsubmit = createHelper;
     ["steps", "about", "try", "publish", "text"].forEach((t) => { $("ptab-" + t).onclick = () => { tab = t; drawPanel(); }; });
     [["addfiles", "files"], ["addweb", "web"], ["addthink", "think"], ["addcheck", "check"], ["addprogram", "program"], ["adddeliver", "deliver"]].forEach(([id, k]) => { $(id).onclick = () => addStep(k); });
-    $("tidy").onclick = () => { layout = {}; changed(["layout"]); drawGraph(); };
+    setupGraphView();
+    $("tidy").onclick = () => { layout = {}; fitNext = true; changed(["layout"]); drawGraph(); };
     $("showdata").onchange = (e) => { showData = e.target.checked; drawGraph(); };
   }
   window.Studio = { mount, show, redraw: () => {} };

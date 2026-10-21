@@ -119,11 +119,14 @@
           <button class="btn" id="addprogram" type="button">Run a program</button>
           <button class="btn" id="adddeliver" type="button">Hand over</button>
           <span class="gspace"></span>
+          <button class="btn" id="gzoomout" type="button" aria-label="Zoom out" title="Zoom out">−</button>
+          <button class="btn" id="gzoomin" type="button" aria-label="Zoom in" title="Zoom in">+</button>
+          <button class="btn" id="gfit" type="button" title="Fit everything on screen">Fit</button>
           <label class="small"><input type="checkbox" id="showdata" checked> Show what each step reads</label>
           <button class="btn" id="tidy" type="button">Tidy up</button>
         </div>
         <div class="graphwrap"><svg id="graph" role="img" aria-label="The steps this helper runs, as a picture. Use the panel on the right to change them without dragging."></svg></div>
-        <details class="more"><summary>How to read this picture</summary><p class="small">Green dot: drag it onto the next step. Red dot: where to go if the check fails. Grey lines show what each step reads. 🔒 marks steps that hold your private notes.</p></details>
+        <details class="more"><summary>How to read this picture</summary><p class="small">Scroll to zoom, drag the background to move. Green dot: drag it onto the next step. Red dot: where to go if the check fails. Grey lines show what each step reads. 🔒 marks steps that hold your private notes.</p></details>
       </div></div>
     </div>
   </div>

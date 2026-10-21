@@ -371,3 +371,9 @@ details.more>summary{color:var(--ink-700);font-size:14px;margin:0 0 6px;cursor:p
 #memmap .pop{animation:pop .35s ease both}
 @keyframes pop{from{opacity:0}to{opacity:1}}
 #memmap .mnode.sel circle:first-of-type{filter:drop-shadow(0 0 8px rgba(220,171,60,.9))}
+
+/* ===== studio graph: zoomable, soft ===== */
+#view-studio .graphwrap{overflow:hidden!important;max-height:none!important;height:560px;border-radius:14px;background:radial-gradient(circle at 50% 40%,#FFFDF5 0%,#FBF1D6 80%,#F4E4B8 100%)}
+#graph{width:100%;height:100%;cursor:grab;touch-action:none}
+#graph .node{transition:opacity .15s}
+#graph .node:hover rect{filter:url(#gsoft) brightness(1.04)}
