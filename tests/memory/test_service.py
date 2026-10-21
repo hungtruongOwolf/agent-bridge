@@ -45,7 +45,7 @@ def test_adding_a_note_gets_a_fresh_id_and_a_timestamp(svc):
     assert svc.add("note", "another", "low")["id"] != out["id"]
 
 
-@pytest.mark.parametrize("args,msg", [(("note", "", "low"), "some text"), (("note", "x", "top"), "unknown sensitivity"),
+@pytest.mark.parametrize("args,msg", [(("note", "", "low"), "some text"), (("note", "x", "top"), "everyday or secret"),
                                       (("Bad Type", "x", "low"), "type must be"), (("note", "x" * 2001, "low"), "at most")])
 def test_bad_notes_are_refused_with_a_plain_reason(svc, args, msg):
     with pytest.raises(MemoryChangeError, match=msg):
@@ -62,7 +62,7 @@ def test_correcting_a_note_marks_it_edited_and_keeps_the_rest(svc):
 def test_changing_how_private_a_note_is(svc):
     svc.update("c1", sensitivity="high")
     assert next(i for i in svc.list() if i["id"] == "c1")["sensitivity"] == "high"
-    with pytest.raises(MemoryChangeError, match="unknown sensitivity"):
+    with pytest.raises(MemoryChangeError, match="everyday or secret"):
         svc.update("c1", sensitivity="top")
 
 
