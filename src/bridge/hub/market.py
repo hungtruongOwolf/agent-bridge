@@ -65,11 +65,20 @@ class Marketplace:
         return build(rec, attestation=self.attestation(rec), status=self.status(rec), versions=versions,
                      price_cents=max(1, round(rec.listing.price_usd * 100)), unit=rec.listing.unit, stars=rec.stars)
 
+    def current(self) -> list[PackRecord]:
+        """One entry per helper: its newest installable version. Older versions stay reachable from the profile."""
+        best: dict[tuple, PackRecord] = {}
+        for r in self.registry.installable():
+            k = (r.id, r.publisher_key)
+            if k not in best or [int(x) for x in r.version.split(".")] > [int(x) for x in best[k].version.split(".")]:
+                best[k] = r
+        return list(best.values())
+
     def match(self, question: str, limit: int = 3) -> list[dict]:
         """Which helpers fit this question? Helpers caught cheating are never suggested."""
         from .match import rank
         cands = []
-        for rec in self.registry.installable():
+        for rec in self.current():
             st = self.status(rec)
             if st == "flagged":
                 continue
@@ -85,7 +94,7 @@ class Marketplace:
 
     def ranked(self) -> list[dict]:
         rows = []
-        for rec in self.registry.installable():
+        for rec in self.current():
             att = self._atts.get(rec.digest)
             rows.append({
                 "key": rec.key, "id": rec.id, "version": rec.version, "summary": rec.summary,

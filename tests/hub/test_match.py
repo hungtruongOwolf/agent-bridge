@@ -50,3 +50,18 @@ def test_a_question_nobody_covers_is_said_plainly(market):
 def test_matching_returns_a_clickable_example_question(market):
     top = market.match("brief me on my deals")[0]
     assert top["example"] and top["price_cents"] > 0
+
+
+def test_only_the_newest_version_of_a_helper_is_listed_or_suggested(tmp_path):
+    import shutil
+    author, ck = signing.generate_key(), signing.generate_key()
+    reg = Registry()
+    m = Marketplace(reg, {signing.public_b64(ck)})
+    for v in ("0.2.0", "0.3.0"):
+        d = tmp_path / v
+        shutil.copytree(EX / "private-analyst", d)
+        f = d / "pack.yaml"
+        f.write_bytes(f.read_bytes().replace(b"version: 0.2.0", ("version: " + v).encode(), 1))
+        reg.publish(d, author, Listing(price_usd=0.5))
+    assert [r["version"] for r in m.ranked()] == ["0.3.0"]
+    assert [x["key"].endswith("0.3.0") for x in m.match("which accounts are at risk")] == [True]
