@@ -138,3 +138,22 @@ def test_fallback_still_counts_against_the_read_budget(vault):
     first = b.search("nothing matches", fallback=True)
     assert len(first.records) == 1
     assert b.search("again nothing", fallback=True).verdict is Verdict.DENY
+
+
+def test_a_single_file_can_be_shared_even_though_its_type_would_not_be(vault):
+    lens = Lens(types=frozenset({"note"}), include=frozenset({"f1"}))  # the user opened just the money file
+    b = MemoryBroker(vault, lens, run_seed="s")
+    assert set(b.manifest) == {"n1", "n2", "f1"}
+    assert b.read("f1").verdict is Verdict.ALLOW
+
+
+def test_a_single_file_can_be_held_back_whatever_else_says_yes(vault):
+    lens = Lens(types=frozenset({"note", "contact"}), exclude=frozenset({"n1"}))
+    b = MemoryBroker(vault, lens, run_seed="s")
+    assert "n1" not in b.manifest and b.read("n1").verdict is Verdict.DENY
+
+
+def test_exclusion_beats_inclusion():
+    v = Vault([Record("a", "note", "low", "x")])
+    b = MemoryBroker(v, Lens(types=frozenset({"note"}), include=frozenset({"a"}), exclude=frozenset({"a"})), run_seed="s")
+    assert b.manifest == {}

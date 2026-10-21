@@ -33,12 +33,18 @@ class Lens:
     max_records: int = 50
     max_reads: int = 30  # total records returned over the whole run
     max_results_per_query: int = 5
+    include: frozenset[str] = frozenset()  # record ids shared even though their type or level would not allow it
+    exclude: frozenset[str] = frozenset()  # record ids never shared, whatever else says yes
 
     def __post_init__(self):
         if self.max_sensitivity not in SENSITIVITY:
             raise ValueError(f"unknown sensitivity {self.max_sensitivity!r}")
 
     def allows(self, r: Record) -> bool:
+        if r.id in self.exclude:
+            return False
+        if r.id in self.include:
+            return True
         return r.type in self.types and SENSITIVITY[r.sensitivity] <= SENSITIVITY[self.max_sensitivity]
 
 

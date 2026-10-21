@@ -97,7 +97,7 @@ class Quarantine:
         p = self._get_pending(proposal_id)
         rec = Record(
             id=f"q_{p.id}_{p.run_id[-6:]}", type=p.type, sensitivity="low", text=p.text, trust_tier=1,
-            origin={"pack_digest": p.pack_digest, "run_id": p.run_id, "proposal_id": p.id},
+            origin={"pack_digest": p.pack_digest, "run_id": p.run_id, "proposal_id": p.id}, created=self.clock(),
         )
         vault.add(rec)
         p.status, p.record_id = "accepted", rec.id
@@ -108,15 +108,18 @@ class Quarantine:
 
     def revert_run(self, run_id: str, vault: Vault) -> dict:
         """Undo one run: drop its pending items and remove vault records that came from it."""
-        dropped = removed = 0
+        dropped = removed = kept = 0
         for p in self.items.values():
             if p.run_id == run_id and p.status in ("pending", "accepted"):
-                if p.status == "accepted" and p.record_id and vault.remove(p.record_id):
+                rec = vault.get(p.record_id) if p.record_id else None
+                if p.status == "accepted" and rec is not None and rec.edited:
+                    kept += 1  # a person rewrote it, so it is theirs now: undoing the run must not delete their work
+                elif p.status == "accepted" and p.record_id and vault.remove(p.record_id):
                     removed += 1
                 elif p.status == "pending":
                     dropped += 1
                 p.status = "reverted"
-        return {"dropped_pending": dropped, "removed_from_vault": removed}
+        return {"dropped_pending": dropped, "removed_from_vault": removed, "kept_because_edited": kept}
 
     def _get_pending(self, proposal_id: str) -> Proposal:
         self._expire()

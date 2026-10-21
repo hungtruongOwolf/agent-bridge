@@ -95,7 +95,7 @@ def test_revert_run_removes_only_that_runs_records():
     (c,), _ = q.add("run-A00001", "d", [{"type": "note", "text": "still pending"}])
     ra, rb = q.accept(a.id, v), q.accept(b.id, v)
     out = q.revert_run("run-A00001", v)
-    assert out == {"dropped_pending": 1, "removed_from_vault": 1}
+    assert out == {"dropped_pending": 1, "removed_from_vault": 1, "kept_because_edited": 0}
     assert v.get(ra.id) is None and v.get(rb.id) is not None and v.get("mine") is not None
     assert q.items[c.id].status == "reverted"
 
@@ -115,3 +115,22 @@ def test_accepted_record_is_served_and_marked_as_foreign():
     b = MemoryBroker(v, Lens(types=frozenset({"note"})), run_seed="s")
     recs = b.search("Acme renewal").records
     assert recs and recs[0]["trust"] == "endorsed-foreign"
+
+
+def test_undoing_a_run_keeps_a_record_the_person_rewrote():
+    q, v = Quarantine(), Vault()
+    (a,), _ = q.add("run-A00001", "d", [OK])
+    (b,), _ = q.add("run-A00001", "d", [{"type": "fact", "text": "second suggestion"}])
+    ra, rb = q.accept(a.id, v), q.accept(b.id, v)
+    v.update(ra.id, now=9.0, text="I fixed the wording")
+    out = q.revert_run("run-A00001", v)
+    assert out == {"dropped_pending": 0, "removed_from_vault": 1, "kept_because_edited": 1}
+    assert v.get(ra.id) is not None and v.get(rb.id) is None
+
+
+def test_accepting_stamps_when_it_entered_the_vault():
+    c = Clock()
+    q, v = Quarantine(clock=c), Vault()
+    (p,), _ = q.add("run-xyz999", "d", [OK])
+    c.t = 4321.0
+    assert q.accept(p.id, v).created == 4321.0
