@@ -63,7 +63,8 @@ class App:
         self.web = web or LazySearch(lambda: TavilySearch(load_tavily_key(self.env_file)))
         self.model_factory = model_factory or (lambda: NebiusModel(load_api_key(self.env_file)))
         self.token = secrets.token_urlsafe(16)
-        self.dirs = {tree_digest(d): d for d in sorted(Path(packs_dir).iterdir()) if (d / "pack.yaml").exists()}
+        roots = [Path(packs_dir), self.world.state / "candidates"]  # approved improvements live in candidates
+        self.dirs = {tree_digest(d): d for r in roots if r.exists() for d in sorted(r.iterdir()) if (d / "pack.yaml").exists()}
         self.runs = 0
         # the live vault is a copy in the state dir, so accepted memories survive restarts
         self.vault_file = self.world.state / "vault.json"

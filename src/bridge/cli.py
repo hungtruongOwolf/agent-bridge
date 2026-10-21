@@ -21,6 +21,8 @@ from .memory.vault import Record, Vault
 from .pack.digest import tree_digest
 from .sandbox.cell import DockerCell
 from .pack.workflow import parse
+from .hub.certifier import Certifier, sales_dev_suite
+from .improve import improve
 from .world import open_world, seed as seed_world
 
 ICON = {Outcome.COMPLETE: "OK", Outcome.PARTIAL_BUDGET: "PARTIAL", Outcome.FAILED_PACK: "FAILED", Outcome.FAILED_INFRA: "INFRA-FAILED", Outcome.KILLED: "KILLED"}
@@ -109,6 +111,52 @@ def serve_cmd(args) -> int:
     return 0
 
 
+def _model_and_tools(args, pack: Path):
+    model = NebiusModel(load_api_key(args.env))
+    uses_web = "web_search" in (pack / "workflow.yaml").read_text(encoding="utf-8")
+    return model, DockerCell(), (TavilySearch(load_tavily_key(args.env)) if uses_web else None)
+
+
+def improve_cmd(args) -> int:
+    world = open_world(args.state)
+    pack = Path(args.packs) / args.pack
+    model, cell, web = _model_and_tools(args, pack)
+    dev = Certifier(world.certifier.key, sales_dev_suite(), runs_per_task=3)
+    out = Path(args.state) / "candidates" / args.pack
+    rep = improve(pack, out, model, dev, cell=cell, web=web)
+    print(f"\n{rep.pack_id} {rep.old_version}: baseline {rep.baseline.passes}/{rep.baseline.total} "
+          f"(score {rep.baseline.score}) on the development suite")
+    for i, v in enumerate(rep.variants):
+        tag = "REJECTED: " + v.rejected if v.rejected else f"{v.passes}/{v.total} score {v.score}"
+        print(f"  variant {i + 1}: {tag}{'   <- chosen' if rep.chosen == i else ''}")
+    print(f"\n{rep.note}")
+    if rep.diff:
+        print(f"candidate {rep.new_version} in {rep.out_dir}")
+        print(f"typed diff: prompt_only={rep.diff['prompt_only']} widened={rep.diff['widened']} "
+              f"changed_steps={[c['step'] for c in rep.diff['prompt_changes']]}")
+        print(f"to publish it: bridge approve {args.pack} --state {args.state}")
+    return 0 if rep.diff else 3
+
+
+def approve_cmd(args) -> int:
+    world = open_world(args.state)
+    cand = Path(args.state) / "candidates" / args.pack
+    if not cand.exists():
+        print("no candidate to approve; run `bridge improve` first")
+        return 2
+    prev = [r for r in world.registry.records.values() if r.id == yaml.safe_load((cand / "pack.yaml").read_text(encoding="utf-8"))["id"]]
+    listing = prev[0].listing if prev else None
+    rec = world.registry.publish(cand, world.author_key, listing)
+    model, cell, web = _model_and_tools(args, cand)
+    att = world.certifier.certify(cand, model, model.model, cell=cell, web=web)
+    world.market.add_attestation(att)
+    print(f"published {rec.key}")
+    for r in sorted((r for r in world.registry.records.values() if r.id == rec.id), key=lambda r: r.version):
+        a = world.market._atts.get(r.digest)
+        print(f"  {r.version}: held-out {a.passes}/{a.total} score {a.score}" if a else f"  {r.version}: not certified")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     for stream in (sys.stdout, sys.stderr):
         stream.reconfigure(encoding="utf-8", errors="replace")
@@ -129,6 +177,17 @@ def main(argv: list[str] | None = None) -> int:
     sd.add_argument("--state", default=".bridge")
     sd.add_argument("--env", default=".env")
     sd.set_defaults(fn=seed_cmd)
+    im = sub.add_parser("improve", help="propose better instructions for a pack and measure them on the dev suite")
+    im.add_argument("pack")
+    im.add_argument("--packs", default="examples/packs")
+    im.add_argument("--state", default=".bridge")
+    im.add_argument("--env", default=".env")
+    im.set_defaults(fn=improve_cmd)
+    ap2 = sub.add_parser("approve", help="owner approval: publish the improved candidate and certify it on the held-out suite")
+    ap2.add_argument("pack")
+    ap2.add_argument("--state", default=".bridge")
+    ap2.add_argument("--env", default=".env")
+    ap2.set_defaults(fn=approve_cmd)
     sv = sub.add_parser("serve", help="start the local web console")
     sv.add_argument("--packs", default="examples/packs")
     sv.add_argument("--vault", default="examples/vault.json")
