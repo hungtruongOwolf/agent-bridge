@@ -71,6 +71,8 @@ class App:
         if not self.vault_file.exists():
             Vault.load(self.vault_path).save(self.vault_file)
         self.quarantine = Quarantine()
+        self.reports: dict[str, dict] = {}  # run_id -> full report (this session)
+        self.history: list[dict] = []
 
     def vault(self) -> Vault:
         return Vault.load(self.vault_file)
@@ -85,6 +87,7 @@ class App:
             "vault": [{"id": r.id, "type": r.type, "sensitivity": r.sensitivity, "text": r.text,
                        "trust": r.trust_tier, "from_run": (r.origin or {}).get("run_id")} for r in v.all()],
             "proposals": self._proposals(),
+            "history": list(reversed(self.history[-20:])),
             "model": "NVIDIA Nemotron on Nebius",
         }
 
@@ -114,6 +117,9 @@ class App:
         added, problems = self.quarantine.add(run_id, rep.digest, raw) if rep.outcome == "COMPLETE" else ([], [])
         out["proposals"] = [{"id": p.id, "type": p.type, "text": p.text} for p in added]
         out["proposal_problems"] = problems
+        self.reports[run_id] = out
+        self.history.append({"run_id": run_id, "pack": f"{rep.pack_id} v{rep.version}", "outcome": rep.outcome,
+                             "summary": rep.summary, "n": self.runs})
         return out
 
     def decide(self, body: dict) -> dict:
@@ -169,6 +175,9 @@ def make_handler(app: App):
                 return self._send(200, html.encode(), "text/html; charset=utf-8")
             if self.path == "/api/state":
                 return self._json(200, app.state())
+            if self.path.startswith("/api/report/"):
+                rep = app.reports.get(self.path.rsplit("/", 1)[1])
+                return self._json(200, rep) if rep else self._json(404, {"error": "unknown run"})
             self._json(404, {"error": "not found"})
 
         def do_POST(self):

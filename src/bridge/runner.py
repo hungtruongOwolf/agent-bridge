@@ -42,6 +42,8 @@ class RunReport:
     journal_ok: bool = False
     run_id: str = ""
     proposals_raw: list = field(default_factory=list)
+    journal: list = field(default_factory=list)  # [{seq, kind, hash, data}] for the audit view
+    summary: str = ""
 
 
 def run_pack(pack_dir: Path, vault: Vault, lens: Lens, model: Model, *, seed: str, cell=None,
@@ -62,7 +64,7 @@ def run_pack(pack_dir: Path, vault: Vault, lens: Lens, model: Model, *, seed: st
     res = engine.run()
     journal.verify()
     staged_ids = set(broker.manifest)
-    return RunReport(
+    rep = RunReport(
         pack_id=manifest["id"], version=str(manifest["version"]), author=manifest["author"], digest=digest,
         lens={"types": sorted(lens.types), "max_sensitivity": lens.max_sensitivity},
         staged=broker.describe(),
@@ -77,4 +79,23 @@ def run_pack(pack_dir: Path, vault: Vault, lens: Lens, model: Model, *, seed: st
         reasons=res.reasons, tokens=res.tokens, journal_entries=len(journal.entries),
         journal_head=journal.head, journal_ok=True,
         run_id=run_id or seed, proposals_raw=res.proposals,
+        journal=[{"seq": e["seq"], "kind": e["kind"], "hash": e["hash"][:12], "data": e["data"]} for e in journal.entries],
     )
+    rep.summary = summarize(rep)
+    return rep
+
+
+def summarize(rep: RunReport) -> str:
+    """One plain sentence about what happened, for the history list."""
+    read, kept = len(rep.records_handed), len(rep.withheld)
+    if rep.outcome == "COMPLETE":
+        extra = f" and suggested {len(rep.proposals_raw)} thing(s) to remember" if rep.proposals_raw else ""
+        return f"Delivered a result after reading {read} record(s); {kept} stayed private{extra}."
+    if rep.outcome == "KILLED":
+        why = rep.broker_events[0]["kind"] if rep.broker_events else (rep.reasons[0] if rep.reasons else "evidence of theft")
+        return f"Stopped for {why}; nothing was delivered."
+    if rep.outcome == "FAILED_INFRA":
+        return "The model was unavailable; no result, and the pack is not blamed."
+    if rep.outcome == "PARTIAL_BUDGET":
+        return "Ran out of budget before finishing."
+    return "The pack did not produce an acceptable result" + (f" ({rep.reasons[0]})." if rep.reasons else ".")

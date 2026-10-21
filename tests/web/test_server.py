@@ -200,3 +200,20 @@ def test_web_pack_run_uses_the_public_search_and_keeps_records_private(mem_app):
 def test_oversized_body_is_refused(srv):
     app, url = srv
     assert call(url + "/api/run", {"key": "x" * 30000}, app.token)[0] in (413,)
+
+
+def test_history_and_per_run_report_are_available(mem_app):
+    app, url = mem_app
+    rep = run_brief(app, url)[1]
+    st = call(url + "/api/state")[1]
+    assert st["history"][0]["run_id"] == rep["run_id"] and "Delivered a result" in st["history"][0]["summary"]
+    code, again = call(url + "/api/report/" + rep["run_id"])
+    assert code == 200 and again["journal"][0]["kind"] == "run_started"
+    assert call(url + "/api/report/unknown")[0] == 404
+
+
+def test_history_lists_newest_first(mem_app):
+    app, url = mem_app
+    a = run_brief(app, url)[1]["run_id"]
+    b = run_brief(app, url)[1]["run_id"]
+    assert [h["run_id"] for h in call(url + "/api/state")[1]["history"][:2]] == [b, a]

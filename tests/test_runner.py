@@ -50,3 +50,20 @@ def test_thief_run_report_shows_kill_and_no_result():
 def test_digest_mismatch_refuses_to_run():
     with pytest.raises(ValueError, match="does not match"):
         run_pack(EX / "packs" / "private-analyst", vault(), LENS, Good(), seed="s", expected_digest="sha256:" + "0" * 64)
+
+
+def test_report_carries_the_audit_journal_and_a_plain_summary():
+    rep = run_pack(EX / "packs" / "private-analyst", vault(), LENS, Good(), seed="s")
+    assert rep.journal[0]["kind"] == "run_started" and rep.journal[-1]["kind"] == "run_finished"
+    assert all(len(e["hash"]) == 12 for e in rep.journal) and len(rep.journal) == rep.journal_entries
+    assert rep.summary == "Delivered a result after reading 3 record(s); 2 stayed private."
+
+
+def test_summaries_for_each_kind_of_ending():
+    killed = run_pack(EX / "packs" / "data-thief", vault(), LENS, Leaky(), seed="s")
+    assert killed.summary == "Stopped for OFF_LENS_QUERY; nothing was delivered."
+
+    class Down:
+        def complete(self, prompt, inputs):
+            raise TimeoutError("x")
+    assert "not blamed" in run_pack(EX / "packs" / "private-analyst", vault(), LENS, Down(), seed="s").summary
