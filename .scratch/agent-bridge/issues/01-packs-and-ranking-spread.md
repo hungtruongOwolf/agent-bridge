@@ -1,6 +1,6 @@
 # 01 Packs and ranking spread
 
-Status: open
+Status: resolved (2026-10-20)
 Milestone: M1
 
 Add three honest packs besides `private-analyst` so the ranking shows real differences: a stronger pack with a two-pass analysis and a verification gate, a weak pack that skims one record, and a mid pack. Certify all with real Nemotron, with enough runs per task that scores are not all 3/3 (raise `runs_per_task`, add a second quality task to the suite).

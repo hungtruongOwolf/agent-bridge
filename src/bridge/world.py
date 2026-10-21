@@ -53,7 +53,7 @@ def open_world(state: Path | str = ".bridge") -> World:
     cert_key = _load_or_create_key(state / "certifier.key")
     registry = Registry(state / "registry.json")
     market = Marketplace(registry, {signing.public_b64(cert_key)}, state / "attestations.json")
-    return World(state, registry, market, author, Certifier(cert_key, sales_risk_suite(), runs_per_task=3))
+    return World(state, registry, market, author, Certifier(cert_key, sales_risk_suite(), runs_per_task=4))
 
 
 def seed(world: World, packs_dir: Path, model: Model, model_name: str, *, cell=None, web=None, log=print) -> None:
