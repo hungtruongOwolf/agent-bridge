@@ -85,7 +85,7 @@
     if (!cur) { $("budgetline").textContent = ""; say(""); $("convohead").replaceChildren(); return; }
     const head = $("convohead"); head.replaceChildren();
     const a = cur.agent;
-    const title = el("div"); title.append(el("div", "h", cur.title), el("div", "muted small", a.available ? "with " + a.name + " · " + a.price_text : "This helper is no longer available."));
+    const title = el("div"); title.append(el("div", "h", cur.title), el("div", "muted small", a.available ? "with " + a.name + " · " + planLine(a) : "This helper is no longer available."));
     const acts = el("div", "acts");
     if (a.available) acts.append(btn("Meet " + a.name, "btn", () => profile(a.key)));
     head.append(title, acts);
@@ -105,6 +105,12 @@
     if (cur.busy && !waiting) { const r = el("div", "msg system"); r.append(el("div", "text", "This chat still looks busy, maybe because the page was reloaded."), btn("Reset this chat", "btn", resetBusy)); box.append(r); }
     $("send").disabled = waiting || cur.busy || !a.available;
     drawBudget();
+  }
+
+  const day = (t) => new Date(t * 1000).toLocaleDateString([], { month: "short", day: "numeric" });
+  function planLine(a) {
+    if (a.plan_status) return "monthly plan until " + day(a.plan_status.until) + ", " + a.plan_status.left + " of " + a.plan_status.included + " answers left";
+    return a.price_text;
   }
 
   function bubble(m) {
@@ -137,7 +143,7 @@
     }
     if (m.payment) {
       const p = m.payment;
-      meta.append(p.state === "SETTLED" ? "Paid " + B.cents(p.captured) : p.state === "SETTLED_REJECTED" ? "Marked not helpful, paid " + B.cents(p.captured) : p.state === "RESULT_READY" ? "Unless you press “Not helpful”, you pay the rest when you send your next message" : p.captured ? "Paid " + B.cents(p.captured) : "Not charged");
+      meta.append(p.state === "COVERED" ? "Included in your monthly plan" : p.state === "SETTLED" ? "Paid " + B.cents(p.captured) : p.state === "SETTLED_REJECTED" ? "Marked not helpful, paid " + B.cents(p.captured) : p.state === "RESULT_READY" ? "Unless you press “Not helpful”, you pay the rest when you send your next message" : p.captured ? "Paid " + B.cents(p.captured) : "Not charged");
       if (p.can_reject) meta.append(" ", btn("Not helpful", "linkbtn", () => act("/api/thread/reject", { id: cur.id, message_id: m.id })));
     }
     if (m.role !== "system" || !m.run_id) meta.append(" ", btn("Forget this message", "linkbtn", () => act("/api/thread/forget", { id: cur.id, message_id: m.id })));
@@ -207,7 +213,10 @@
 
   function approvalCard() {
     const p = pendingApproval, d = el("div", "msg system");
-    d.append(el("div", "text", "Before the helper starts, approve a hold of " + B.cents(p.price) + " on the payment page. Nothing is charged until there is an answer."));
+    const ag = cur && cur.agent, what = ag && ag.subscription ? "This helper sells a monthly plan (" + ag.price_text + "). Approve a hold of " + B.cents(p.price) + " on the payment page to start it."
+      : ag && ag.metered ? "Approve a hold of " + B.cents(p.price) + " on the payment page. That is the most this answer can cost; you pay only for what it uses."
+      : "Before the helper starts, approve a hold of " + B.cents(p.price) + " on the payment page.";
+    d.append(el("div", "text", what + " Nothing is charged until there is an answer."));
     const acts = el("div", "acts");
     if (/^https?:\/\//.test(p.approve_url || "")) { const a = document.createElement("a"); a.href = p.approve_url; a.target = "_blank"; a.rel = "noopener noreferrer"; a.className = "btn go2"; a.textContent = "Open the approval page"; acts.append(a); }
     acts.append(btn("I approved, continue", "btn", continueApproved), btn("Cancel", "btn warn", async () => {

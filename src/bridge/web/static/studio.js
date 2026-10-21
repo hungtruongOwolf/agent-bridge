@@ -425,32 +425,63 @@
     const m = H.manifest;
     box.append(el("p", "small", "Publishing puts version " + m.version + " on the market with your signature. A tester then runs it on a fixed set of questions and tries to catch it cheating. Its trust score comes from that, not from you."));
     if (problems.length) box.append(el("p", "small warnline", "Fix the " + window.plural(problems.length, "thing") + " listed at the top first."));
-    const last = H.versions[0] || {}, metered0 = !!last.per_file_cents;
-    const mode = { v: metered0 ? "metered" : "flat" };
-    const price = document.createElement("input"); price.type = "number"; price.min = 0.01; price.max = 5; price.step = 0.05; price.value = last.price_usd || 0.2; price.setAttribute("aria-label", "Price in dollars");
-    const base = document.createElement("input"); base.type = "number"; base.min = 0; base.max = 5; base.step = 0.01; base.value = metered0 ? last.base_usd : 0.05; base.setAttribute("aria-label", "Starting price in dollars");
-    const per = document.createElement("input"); per.type = "number"; per.min = 1; per.max = 500; per.step = 1; per.value = last.per_file_cents || 3; per.setAttribute("aria-label", "Cents for every file it reads");
+    const last = H.versions[0] || {}, mode = { v: last.plan || "flat" };
+    const num = (v, step, min, max, label) => { const e = document.createElement("input"); e.type = "number"; e.step = step; e.min = min; e.max = max; e.value = v; e.setAttribute("aria-label", label); return e; };
+    const f = {
+      price: num(last.price_usd || 0.2, 0.05, 0.01, 5, "Price in dollars"), base: num(last.base_usd || 0.05, 0.01, 0, 5, "Starting price in dollars"),
+      perFile: num(last.per_file_cents || 3, 1, 1, 500, "Cents for every file it reads"), perTok: num(last.per_1k_tokens_cents || 2, 1, 1, 500, "Cents for every 1,000 tokens"),
+      light: num(last.light_cents || 10, 1, 1, 500, "Price of a light question in cents"), standard: num(last.standard_cents || 25, 1, 1, 500, "Price of a standard question in cents"),
+      deep: num(last.deep_cents || 60, 1, 1, 500, "Price of a deep question in cents"), monthly: num(last.monthly_usd || 5, 0.5, 0.5, 50, "Monthly fee in dollars"),
+      included: num(last.included_answers || 100, 1, 1, 1000, "Answers included each month")
+    };
     const mail = input(last.payout_email || "", () => {}, 120); mail.placeholder = "you@example.com (optional)";
-    const pick = el("div", "modepick");
-    [["flat", "One price for every answer"], ["metered", "Charge for what it reads: a small starting price plus a little for every file"]].forEach(([v, t]) => {
-      const l = el("label", "small"), r = document.createElement("input"); r.type = "radio"; r.name = "pricemode"; r.value = v; r.checked = mode.v === v;
-      r.onchange = () => { mode.v = v; drawFields(); }; l.append(r, " " + t); pick.append(l);
+    const PLANS = [
+      ["flat", "One price", "The same price for every answer. Simple and predictable."],
+      ["per_file", "By files read", "A starting price plus a few cents for every file the helper reads, up to a maximum. Good when the work grows with the notes."],
+      ["per_token", "By thinking used", "A starting price plus cents for every 1,000 tokens the model used, up to a maximum. Good when answers vary a lot in length."],
+      ["complexity", "By how hard the question was", "One price for light, standard and deep questions. The platform decides which from what the run did, not from what the helper says."],
+      ["monthly", "Monthly plan", "One fee for 30 days and a number of answers. It never renews by itself: the buyer approves each new month."]
+    ];
+    const pick = el("div", "plans");
+    PLANS.forEach(([v, t, d]) => {
+      const l = el("label", "plancard" + (mode.v === v ? " on" : "")), r = document.createElement("input"); r.type = "radio"; r.name = "pricemode"; r.value = v; r.checked = mode.v === v;
+      r.onchange = () => { mode.v = v; pick.querySelectorAll(".plancard").forEach((c) => c.classList.toggle("on", c.firstChild.value === v)); drawFields(); };
+      const body = el("div"); body.append(el("b", null, t), el("div", "small muted", d)); l.append(r, body); pick.append(l);
     });
-    const fields = el("div"), preview = el("p", "small muted");
+    const fields = el("div"), preview = el("p", "small preview");
+    const c = (x) => Math.round(parseFloat(x.value) * 100) || 0, n = (x) => parseInt(x.value, 10) || 0;
     const drawPreview = () => {
-      const cap = Math.round(parseFloat(price.value) * 100) || 0;
-      preview.textContent = mode.v === "flat" ? "Every answer costs " + cap + "¢." : "An answer that reads 4 files would cost " + Math.min(cap, Math.round(parseFloat(base.value) * 100 || 0) + 4 * (parseInt(per.value, 10) || 0)) + "¢. The person sees the maximum (" + cap + "¢) before they start and pays only for what was read.";
+      const cap = c(f.price);
+      preview.textContent = {
+        flat: "Every answer costs " + cap + "¢.",
+        per_file: "An answer that reads 4 files costs " + Math.min(cap, c(f.base) + 4 * n(f.perFile)) + "¢. The buyer sees the maximum (" + cap + "¢) before starting and pays only for what was read.",
+        per_token: "An answer that uses 2,000 tokens costs " + Math.min(cap, c(f.base) + Math.ceil(2 * n(f.perTok))) + "¢. The buyer sees the maximum (" + cap + "¢) first and pays only for what was used.",
+        complexity: "Light " + n(f.light) + "¢, standard " + n(f.standard) + "¢, deep " + n(f.deep) + "¢. Deep means it ran a program, thought three or more times, or read 12 or more files. Standard means it thought twice, searched the web, or read 4 or more files. The buyer sees the deepest price first.",
+        monthly: "The buyer pays $" + (parseFloat(f.monthly.value) || 0).toFixed(2) + " once and can ask up to " + n(f.included) + " answers in 30 days. There is no automatic renewal."
+      }[mode.v];
     };
     const drawFields = () => {
       fields.replaceChildren();
-      if (mode.v === "flat") fields.append(field("Price per answer (US dollars)", price));
-      else fields.append(field("Starting price (US dollars)", base), field("Cents for every file it reads", per), field("Most one answer can cost (US dollars)", price));
+      const rows = {
+        flat: [["Price per answer (US dollars)", f.price]],
+        per_file: [["Starting price (US dollars)", f.base], ["Cents for every file it reads", f.perFile], ["Most one answer can cost (US dollars)", f.price]],
+        per_token: [["Starting price (US dollars)", f.base], ["Cents for every 1,000 tokens", f.perTok], ["Most one answer can cost (US dollars)", f.price]],
+        complexity: [["Light question (cents)", f.light], ["Standard question (cents)", f.standard], ["Deep question (cents)", f.deep]],
+        monthly: [["Monthly fee (US dollars)", f.monthly], ["Answers included", f.included]]
+      }[mode.v];
+      rows.forEach(([t, x]) => fields.append(field(t, x)));
       fields.append(preview); drawPreview();
-      [price, base, per].forEach((x) => { x.oninput = drawPreview; });
+      Object.values(f).forEach((x) => { x.oninput = drawPreview; });
     };
     drawFields();
     box.append(pick, fields, el("p", "small muted", "Demo money only: nothing real moves in this demo."), field("Where you would be paid", mail));
-    const pricing = () => (mode.v === "flat" ? { price_usd: parseFloat(price.value) } : { price_usd: parseFloat(price.value), base_usd: parseFloat(base.value) || 0, per_file_cents: parseInt(per.value, 10) || 0 });
+    const pricing = () => ({
+      flat: { plan: "flat", price_usd: parseFloat(f.price.value) },
+      per_file: { plan: "per_file", price_usd: parseFloat(f.price.value), base_usd: parseFloat(f.base.value) || 0, per_file_cents: n(f.perFile) },
+      per_token: { plan: "per_token", price_usd: parseFloat(f.price.value), base_usd: parseFloat(f.base.value) || 0, per_1k_tokens_cents: n(f.perTok) },
+      complexity: { plan: "complexity", light_cents: n(f.light), standard_cents: n(f.standard), deep_cents: n(f.deep) },
+      monthly: { plan: "monthly", monthly_usd: parseFloat(f.monthly.value), included_answers: n(f.included) }
+    }[mode.v]);
     const go = btn("Publish version " + m.version, "btn go2", async () => {
       go.disabled = true;
       try { await B.api("/api/studio/publish", Object.assign({ id: H.id, payout_email: mail.value }, pricing())); note("Published. The tester is checking it now; this can take a few minutes."); await B.refresh(); await openHelper(H.id); tab = "publish"; drawPanel(); }

@@ -63,7 +63,7 @@ class Marketplace:
             versions.append({"key": r.key, "version": r.version, "status": self.status(r),
                              "score": round(a.score * 100) if a and a.security == "clean" else None})
         return build(rec, attestation=self.attestation(rec), status=self.status(rec), versions=versions,
-                     price_cents=max(1, round(rec.listing.price_usd * 100)), price_text=rec.listing.text(), metered=rec.listing.metered, unit=rec.listing.unit, stars=rec.stars)
+                     price_cents=max(1, round(rec.listing.price_usd * 100)), price_text=rec.listing.text(), metered=rec.listing.metered, plan=rec.listing.plan_name, unit=rec.listing.unit, stars=rec.stars)
 
     def current(self) -> list[PackRecord]:
         """One entry per helper: its newest installable version. Older versions stay reachable from the profile."""
@@ -98,7 +98,7 @@ class Marketplace:
             att = self._atts.get(rec.digest)
             rows.append({
                 "key": rec.key, "id": rec.id, "version": rec.version, "summary": rec.summary,
-                "price_usd": rec.listing.price_usd, "price_text": rec.listing.text(), "metered": rec.listing.metered, "unit": rec.listing.unit, "speciality": rec.speciality or rec.listing.speciality,
+                "price_usd": rec.listing.price_usd, "price_text": rec.listing.text(), "metered": rec.listing.metered, "plan": rec.listing.plan_name, "unit": rec.listing.unit, "speciality": rec.speciality or rec.listing.speciality,
                 "skills": [k["name"] for k in rec.skills], "web": bool(rec.caps.get("web")), "code": bool(rec.caps.get("code")),
                 "proposes": bool(rec.caps.get("propose_memory")),
                 "stars": rec.stars, "status": self.status(rec),

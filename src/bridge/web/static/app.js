@@ -52,7 +52,18 @@
     if (d.dashboard) { const l = document.createElement("a"); l.href = d.dashboard; l.target = "_blank"; l.rel = "noopener noreferrer"; l.className = "btn"; l.textContent = "Open the practice PayPal page"; body.append(el("div", "acts", "")); body.lastChild.append(l); }
     const sum = el("div", "walletsum");
     [["Spent", cents(s.captured || 0)], ["On hold", cents(s.on_hold || 0)], ["Paid to helper authors", cents(s.paid_out || 0)]].forEach(([k, v]) => { const c = el("div", "wcell"); c.append(el("div", "small muted", k), el("b", null, v)); sum.append(c); });
-    body.append(sum, el("h3", "sub", "Receipts"));
+    body.append(sum);
+    if (d.plans && d.plans.length) {
+      body.append(el("h3", "sub", "Monthly plans"));
+      d.plans.forEach((p) => {
+        const row = el("div", "receipt"), top = el("div", "rtop");
+        top.append(el("b", null, p.helper), el("span", "small muted", p.pending ? "starts when the first answer is accepted" : p.running ? "until " + new Date(p.until * 1000).toLocaleDateString([], { month: "short", day: "numeric" }) : "finished"));
+        row.append(top, el("div", "small", p.pending ? "Waiting for the first payment to settle." : p.used + " of " + p.included + " answers used, " + p.left + " left. It does not renew by itself."));
+        if (p.running) { const b = el("button", "linkbtn", "Stop this plan"); b.type = "button"; b.onclick = async () => { try { await api("/api/subscription/cancel", { key: p.key }); wallet(); } catch (e) { /* the list stays as it was */ } }; row.append(b); }
+        body.append(row);
+      });
+    }
+    body.append(el("h3", "sub", "Receipts"));
     if (!d.items.length) body.append(el("p", "empty", "No payments yet. Money only moves after you start a chat message."));
     d.items.forEach((r) => {
       const c = el("div", "receipt"), top = el("div", "rtop");

@@ -27,7 +27,9 @@ from ..chat.service import ChatBusy, ChatService
 from ..chat.threads import ThreadError, ThreadStore
 from ..engine.limits import clean_history
 from ..engine.journal import Journal
+from ..hub.pricing import facts_from_report
 from ..payments.ledger import TERMINAL, Ledger, PendingError, StateError
+from ..payments.subscriptions import Subscriptions
 from ..payments.provider import FakeProvider, ProviderError
 from ..pack.digest import tree_digest
 from ..runner import run_pack
@@ -116,6 +118,7 @@ class App:
         self.live: dict[str, object] = {}  # run id -> journal of a run in progress, so the page can show what is happening
         self.reports: dict[str, dict] = {}  # run_id -> full report (this session)
         self.history: list[dict] = []
+        self.subs = Subscriptions(self.world.state / "subscriptions.json")  # monthly plans bought by the buyer
         self.chat = ChatService(self)
         self.studio = Studio(self)
 
@@ -139,10 +142,13 @@ class App:
         return rec, pack_dir
 
     def hire(self, rec, run_id: str):
-        price = max(1, round(rec.listing.price_usd * 100))
+        price = rec.listing.max_cents  # the most this answer can cost (a monthly plan: the fee); the real price is worked out afterwards
         try:  # the hold comes last before starting; nothing is charged before a result exists
             with self.lock:
-                return self.ledger.hire(run_id, rec.key, self.author_payee(rec), self.requester, price, self.clock())
+                row = self.ledger.hire(run_id, rec.key, self.author_payee(rec), self.requester, price, self.clock())
+                if rec.listing.subscription:  # the plan starts once this payment settles
+                    self.subs.register(run_id, rec, self.requester)
+                return row
         except ProviderError as e:
             raise ValueError(f"payment could not be authorized: {e}") from e
 
@@ -217,9 +223,11 @@ class App:
         """Run the pack and settle the money for what happened. Never leaves a hold open."""
         rec, pack_dir = params["rec"], params["pack_dir"]
         model = LeakyModel() if params["simulate"] else LazyModel(self.model_factory)
+        covered = bool(params.get("covered"))  # an answer inside a monthly plan that is already paid for: no hold, no ledger row
         try:
-            with self.lock:
-                self.ledger.start(run_id, self.clock())
+            if not covered:
+                with self.lock:
+                    self.ledger.start(run_id, self.clock())
             journal = Journal()
             with self.lock:
                 self.live[run_id] = journal
@@ -231,19 +239,25 @@ class App:
                 with self.lock:
                     self.live.pop(run_id, None)
         except Exception:
-            with self.lock:
-                try:
-                    self.ledger.fail_infra(run_id, self.clock(), "run crashed before a result")
-                except StateError:
-                    pass
+            if not covered:
+                with self.lock:
+                    try:
+                        self.ledger.fail_infra(run_id, self.clock(), "run crashed before a result")
+                    except StateError:
+                        pass
             raise
         with self.lock:
-            if rep.outcome == "COMPLETE" and rec.listing.metered:  # the buyer pays for what the helper actually read, up to the held maximum
-                try:
-                    self.ledger.reprice(run_id, rec.listing.cents_for(len(rep.records_handed)), self.clock())
-                except StateError:
-                    pass
-            self._settle_outcome(rec, run_id, rep)
+            if covered:
+                if rep.outcome == "COMPLETE":
+                    self.subs.use(self.requester, rec)
+            else:
+                if rep.outcome == "COMPLETE" and rec.listing.metered:  # the buyer pays for what the run did, up to the held maximum
+                    facts = facts_from_report(rep)
+                    try:
+                        self.ledger.reprice(run_id, rec.listing.cents_for(facts), self.clock(), f"priced by what the run did ({rec.listing.explain(facts)})")
+                    except StateError:
+                        pass
+                self._settle_outcome(rec, run_id, rep)
             out = dict(rep.__dict__)
             raw = out.pop("proposals_raw")
             known = [_words(r.text) for r in self.vault().all()] + [_words(p.text) for p in self.quarantine.pending()]
@@ -254,7 +268,8 @@ class App:
                 problems.append(f"{dupes} suggestion(s) were already in your memory and were left out")
             out["proposals"] = [{"id": p.id, "type": p.type, "text": p.text} for p in added]
             out["proposal_problems"] = problems
-            out["payment"] = self.payment(run_id)
+            out["payment"] = ({"state": "COVERED", "price": 0, "floor": 0, "captured": 0, "refunded": 0, "accept_by": None, "payout": {"status": "none", "amount": 0},
+                               "test_money": True, "events": []} if covered else self.payment(run_id))
             self.reports[run_id] = out
             while len(self.reports) > 100:
                 self.reports.pop(next(iter(self.reports)))
@@ -322,7 +337,11 @@ class App:
                               "when": row.events[0]["t"] if row.events else 0,
                               "events": [{"t": e["t"], "to": self.STATE_WORDS.get(e["to"], e["to"]), "why": e["why"]} for e in row.events]})
         items.sort(key=lambda i: -i["when"])
-        return {"mode": self.payments_mode, "dashboard": self.payments_dashboard, "summary": self._payments_summary(), "items": items}
+        plans = []
+        for p in self.subs.listing(self.requester, self.ledger, self.clock()):
+            plans.append({"helper": p["helper"].replace("-", " ").title(), "key": p["key"], "pending": bool(p.get("pending")), "included": p["included"],
+                          "used": p.get("used", 0), "left": p.get("left", p["included"]), "until": p.get("until", 0), "running": bool(p.get("running"))})
+        return {"mode": self.payments_mode, "dashboard": self.payments_dashboard, "summary": self._payments_summary(), "items": items, "plans": plans}
 
     def settle(self, body: dict) -> dict:
         run_id, action, now = str(body.get("run_id", "")), body.get("action"), self.clock()
@@ -396,14 +415,15 @@ POST_ROUTES = {
     "/api/thread/forget": lambda a, b: a.chat.forget(b),
     "/api/thread/clear": lambda a, b: a.chat.clear(b),
     "/api/thread/delete": lambda a, b: a.chat.delete(b),
+    "/api/subscription/cancel": lambda a, b: {"cancelled": a.subs.cancel(a.requester, str(b.get("key", "")))},
     "/api/studio/create": lambda a, b: a.studio.create(b.get("id"), b.get("template")),
     "/api/studio/save": lambda a, b: a.studio.save(b.get("id"), b),
     "/api/studio/delete": lambda a, b: a.studio.delete(b.get("id")),
     "/api/studio/try": lambda a, b: a.studio.try_it(b.get("id"), b.get("task"), b.get("shelves")),
-    "/api/studio/publish": lambda a, b: a.studio.publish(b.get("id"), b.get("price_usd"), b.get("payout_email", ""), b.get("per_file_cents", 0), b.get("base_usd", 0)),
+    "/api/studio/publish": lambda a, b: a.studio.publish(b.get("id"), b, b.get("payout_email", "")),
     "/api/studio/retest": lambda a, b: a.studio.retest(b.get("key")),
     "/api/studio/retire": lambda a, b: a.studio.retire(b.get("key")),
-    "/api/studio/price": lambda a, b: a.studio.set_price(b.get("key"), b.get("price_usd"), b.get("payout_email", ""), b.get("per_file_cents", 0), b.get("base_usd", 0)),
+    "/api/studio/price": lambda a, b: a.studio.set_price(b.get("key"), b, b.get("payout_email", "")),
 }
 
 

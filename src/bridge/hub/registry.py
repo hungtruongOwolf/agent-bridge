@@ -15,6 +15,7 @@ import yaml
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 from ..pack import signing
+from . import pricing
 from .manifest import profile_fields, validate as validate_manifest
 from ..pack.caps import Version, capabilities, widening
 from ..pack.digest import tree_digest
@@ -28,31 +29,46 @@ class RegistryError(Exception):
 
 @dataclass
 class Listing:
+    """What a helper costs. `plan` says how (see pricing.py); price_usd is the flat price, or the most one answer can cost."""
     price_usd: float = 0.0
     unit: str = "task"  # "task" | "hour"
     speciality: str = "general"
     payout_email: str = ""  # where the author is paid (a PayPal email for real payouts)
-    per_file_cents: int = 0  # metered pricing: extra cents for every file the helper reads (0 = one flat price)
-    base_usd: float = 0.0  # metered pricing: the part every answer costs; price_usd is then the most one answer can cost
+    per_file_cents: int = 0
+    base_usd: float = 0.0
+    plan: str = ""  # "" means a listing made before plans existed: flat, or per file when per_file_cents is set
+    per_1k_tokens_cents: int = 0
+    light_cents: int = 0
+    standard_cents: int = 0
+    deep_cents: int = 0
+    monthly_usd: float = 0.0
+    included_answers: int = 0
+
+    @property
+    def plan_name(self) -> str:
+        return pricing.plan_of(self)
 
     @property
     def metered(self) -> bool:
-        return self.per_file_cents > 0
+        """Is the price of an answer worked out afterwards, from what the run did?"""
+        return self.plan_name in ("per_file", "per_token", "complexity")
+
+    @property
+    def subscription(self) -> bool:
+        return self.plan_name == "monthly"
 
     @property
     def max_cents(self) -> int:
-        return max(1, round(self.price_usd * 100))
+        return pricing.max_cents(self)
 
-    def cents_for(self, files_read: int) -> int:
-        """What one answer costs: the flat price, or base plus a bit per file read, never more than the stated maximum."""
-        if not self.metered:
-            return self.max_cents
-        return max(1, min(self.max_cents, round(self.base_usd * 100) + self.per_file_cents * max(0, files_read)))
+    def cents_for(self, facts) -> int:
+        return pricing.cents_for(self, facts)
+
+    def explain(self, facts) -> str:
+        return pricing.explain(self, facts)
 
     def text(self) -> str:
-        if not self.metered:
-            return f"{self.max_cents}¢ each"
-        return f"{max(1, round(self.base_usd * 100))}¢ + {self.per_file_cents}¢ per file it reads, at most {self.max_cents}¢"
+        return pricing.text(self)
 
 
 @dataclass

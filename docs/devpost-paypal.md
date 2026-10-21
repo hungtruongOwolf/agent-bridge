@@ -35,6 +35,12 @@ If the run is stopped for theft, the hold is **held in dispute, not voided**: th
 the requester could lie. It is refunded only when independent evidence arrives, here the Certifier having reproduced the same violation for that pack.
 Outages and crashes release the hold with no charge.
 
+## How helpers charge
+
+Five plans: one price, by files read, by tokens used, by how hard the question was (light, standard, deep, decided from the engine's journal), and a monthly
+plan that never renews by itself. The hold is always the most one answer can cost; the real price is worked out afterwards from recorded facts, and the
+unused part of the hold is released. A monthly plan starts when its payment settles, so a first answer marked not helpful never starts one.
+
 ## How we built it
 
 - **Ledger**: one row per hire, one state machine (AWAITING_APPROVAL, AUTHORIZED, RUNNING, RESULT_READY, SETTLED, SETTLED_REJECTED,

@@ -51,7 +51,15 @@ class ChatService:
             return {"id": "gone", "name": "This helper", "version": "", "status": "gone", "price_cents": 0, "available": False}
         return {"id": rec.id, "name": rec.id.replace("-", " ").title(), "version": rec.version,
                 "status": self.app.world.market.status(rec), "price_cents": max(1, round(rec.listing.price_usd * 100)),
-                "price_text": rec.listing.text(), "metered": rec.listing.metered, "available": True, "key": rec.key}
+                "price_text": rec.listing.text(), "metered": rec.listing.metered, "plan": rec.listing.plan_name, "subscription": rec.listing.subscription,
+                "plan_status": self._plan_status(rec), "available": True, "key": rec.key}
+
+    def _plan_status(self, rec) -> dict | None:
+        """The buyer's running monthly plan for this helper, in the words the page shows."""
+        if not rec.listing.subscription:
+            return None
+        a = self.app.subs.current(self.app.requester, rec, self.app.ledger, self.app.clock())
+        return {"until": a["until"], "left": a["left"], "included": a["included"]} if a else None
 
     def money(self, t) -> dict:
         """What this chat has cost, and what is still undecided, in cents."""
@@ -83,6 +91,10 @@ class ChatService:
         for m in t.messages:
             d = {k: getattr(m, k) for k in ("id", "role", "text", "at", "run_id", "outcome", "risk", "files", "blocked", "proposals", "price", "pay")}
             row = self.app.ledger.rows.get(m.run_id) if m.run_id else None
+            if row is None and m.pay == "COVERED":
+                d["payment"] = {"state": "COVERED", "price": 0, "captured": 0, "can_reject": False, "accept_by": None}
+                msgs.append(d)
+                continue
             d["payment"] = None if row is None else {
                 "state": row.state, "price": row.price, "captured": row.captured(),
                 "can_reject": row.state == "RESULT_READY", "accept_by": row.accept_by}
@@ -224,7 +236,14 @@ class ChatService:
             raise
         try:
             rec, pack_dir = self.app.resolve_agent(t.agent_key)
-            price = max(1, round(rec.listing.price_usd * 100))
+            price = rec.listing.max_cents
+            if rec.listing.subscription:
+                self._accept_previous(t, "")  # sending the next message accepts the last answer, and that can be what starts the plan
+                if self._plan_status(rec):
+                    run_id = self.app.new_run_id()  # inside a plan that is already paid for: no hold, no spending-limit check
+                    params = {"rec": rec, "pack_dir": pack_dir, "lens": self.run_lens(t), "task": text.strip(), "covered": True,
+                              "history": clean_history(self.history(t)), "simulate": bool(body.get("simulate")), "thread_id": tid}
+                    return self.finish_turn(run_id, params)
             with self.app.lock:
                 if self._projected(t) + price > t.budget_cents:
                     raise ThreadError(f"This chat has a spending limit of {t.budget_cents}¢ and another answer ({price}¢) would go past it. "
@@ -289,10 +308,10 @@ class ChatService:
 
     def _record_answer(self, t, run_id: str, out: dict, rec) -> None:
         helper = rec.id.replace("-", " ").title()
-        pay = self.app.ledger.rows[run_id]
+        row = self.app.ledger.rows.get(run_id)  # no row: the answer was inside a monthly plan
         kinds = [e["kind"] for e in out.get("broker_events", [])]
         common = dict(run_id=run_id, outcome=out["outcome"], files=list(out.get("records_handed", [])), blocked=kinds,
-                      price=pay.price, pay=pay.state)
+                      price=row.price if row else 0, pay=row.state if row else "COVERED")
         if out["outcome"] == "COMPLETE":
             risk = out["result"].get("risk")
             self.store.add(t.id, "helper", answer_text(out["result"]), risk=None if risk in (None, "n/a") else risk,

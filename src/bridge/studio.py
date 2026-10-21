@@ -17,6 +17,7 @@ from pathlib import Path
 import yaml
 
 from .chat.plain import answer_text, how_made
+from .hub import pricing
 from .hub.manifest import validate as validate_manifest
 from .hub.registry import Listing, RegistryError
 from .hub.suites import available
@@ -239,7 +240,10 @@ class Studio:
                         "score": round(att.score * 100) if att and att.security == "clean" else None,
                         "passes": att.passes if att else None, "total": att.total if att else None,
                         "violations": att.violations if att and att.security != "clean" else [],
-                        "price_usd": r.listing.price_usd, "price_text": r.listing.text(), "per_file_cents": r.listing.per_file_cents, "base_usd": r.listing.base_usd, "payout_email": r.listing.payout_email, "stars": r.stars,
+                        "price_usd": r.listing.price_usd, "price_text": r.listing.text(), "plan": r.listing.plan_name, "per_file_cents": r.listing.per_file_cents,
+                        "base_usd": r.listing.base_usd, "per_1k_tokens_cents": r.listing.per_1k_tokens_cents, "light_cents": r.listing.light_cents,
+                        "standard_cents": r.listing.standard_cents, "deep_cents": r.listing.deep_cents, "monthly_usd": r.listing.monthly_usd,
+                        "included_answers": r.listing.included_answers, "payout_email": r.listing.payout_email, "stars": r.stars,
                         "answers": len(rows), "earned_cents": sum(x.payout["amount"] for x in rows if x.payout["status"] in ("paid", "pending")),
                         "testing": job.get("state") == "running", "test_error": job.get("error", ""), "revoked": r.revoked})
         return out
@@ -377,27 +381,19 @@ class Studio:
 
     # -- publishing ----------------------------------------------------------------------------------
     @staticmethod
-    def _pricing(price_usd, per_file_cents, base_usd) -> tuple[float, int, float]:
-        """One flat price, or a base plus cents per file read with a stated maximum. Returns (maximum_usd, per_file_cents, base_usd)."""
-        if isinstance(price_usd, bool) or not isinstance(price_usd, (int, float)) or not 0.01 <= price_usd <= MAX_PRICE_USD:
-            raise StudioError(f"the price per answer must be between $0.01 and ${MAX_PRICE_USD:.2f}")
-        per = per_file_cents or 0
-        if isinstance(per, bool) or not isinstance(per, int) or not 0 <= per <= 500:
-            raise StudioError("the price per file must be between 0 and 500 cents")
-        if per == 0:
-            return round(float(price_usd), 2), 0, 0.0
-        base = 0.0 if base_usd in (None, "") else base_usd
-        if isinstance(base, bool) or not isinstance(base, (int, float)) or not 0 <= base <= price_usd:
-            raise StudioError("the starting price cannot be more than the most one answer can cost")
-        return round(float(price_usd), 2), per, round(float(base), 2)
+    def _pricing(body: dict) -> dict:
+        try:
+            return pricing.validate(body)
+        except pricing.PricingError as e:
+            raise StudioError(str(e)) from e
 
-    def publish(self, hid: str, price_usd, payout_email: str = "", per_file_cents=0, base_usd=0) -> dict:
+    def publish(self, hid: str, plan: dict, payout_email: str = "") -> dict:
         d = self._draft(hid)
         manifest, text = self._read(d)
         problems = self._problems(hid, manifest, text)
         if problems:
             raise StudioError("It cannot be published yet: " + problems[0])
-        cap, per, base = self._pricing(price_usd, per_file_cents, base_usd)
+        fields = self._pricing(plan)
         email = (payout_email or "").strip()
         if email and not EMAIL_RE.match(email):
             raise StudioError("that payout email does not look right")
@@ -407,8 +403,7 @@ class Studio:
                 raise StudioError(f"version {manifest['version']} is already published with different content; raise the version number first")
         else:
             shutil.copytree(d, snap)
-        listing = Listing(price_usd=cap, unit="task", speciality=str(manifest.get("speciality") or "general"), payout_email=email,
-                          per_file_cents=per, base_usd=base)
+        listing = Listing(unit="task", speciality=str(manifest.get("speciality") or "general"), payout_email=email, **fields)
         try:
             with self.app.lock:
                 rec = self.w.registry.publish(snap, self.w.author_key, listing)
@@ -456,12 +451,12 @@ class Studio:
         self.w.registry.revoke(rec.key, "retired by its author")
         return {"retired": key}
 
-    def set_price(self, key: str, price_usd, payout_email: str = "", per_file_cents=0, base_usd=0) -> dict:
+    def set_price(self, key: str, plan: dict, payout_email: str = "") -> dict:
         rec = self._mine(key)
-        cap, per, base = self._pricing(price_usd, per_file_cents, base_usd)
+        fields = self._pricing(plan)
         email = (payout_email or "").strip()
         if email and not EMAIL_RE.match(email):
             raise StudioError("that payout email does not look right")
         old = rec.listing
-        self.w.registry.set_listing(rec.key, Listing(cap, old.unit, old.speciality, email, per, base))
+        self.w.registry.set_listing(rec.key, Listing(unit=old.unit, speciality=old.speciality, payout_email=email, **fields))
         return {"key": key}

@@ -224,4 +224,4 @@ def test_a_helper_can_charge_for_what_it_reads_up_to_a_stated_maximum(srv):
     r = next(x for x in call(url + "/api/payments")[1]["items"] if x["run_id"] == rid)
     assert r["price"] == row.price and any("of the 50¢ hold" in e["why"] for e in r["events"])
     assert post(app, url, "/api/studio/price", {"key": v["key"], "price_usd": 0.3})[0] == 200  # back to one flat price
-    assert next(x for x in call(url + "/api/studio/helper?id=my-helper")[1]["versions"])["price_text"] == "30¢ each"
+    assert next(x for x in call(url + "/api/studio/helper?id=my-helper")[1]["versions"])["price_text"] == "30¢ per answer"

@@ -29,6 +29,22 @@ Two of the helpers are malicious on purpose. One reaches for the secret drawer. 
 message out of the room, open another program and write outside its notebook. The glass stops all of it, the guard sounds the alarm,
 nothing reaches your desk, and your coins come back. Everything on the floor replays the job's real record.
 
+## How helpers charge
+
+The author picks a plan when publishing a helper. Whatever the plan, the buyer sees the most one answer can cost **before** starting,
+the hold is exactly that, and the real price is worked out afterwards from facts the engine recorded (files handed over, tokens used,
+model calls, web lookups, programs run), never from anything the helper says about itself. The unused part of the hold goes back.
+
+| Plan | What the buyer pays |
+|---|---|
+| One price | The same price for every answer. |
+| By files read | A starting price plus a few cents for every file the helper read, up to a maximum. |
+| By thinking used | A starting price plus cents for every 1,000 tokens the run used, up to a maximum. |
+| By how hard the question was | One price for light, standard or deep. Deep: a program ran, three or more thinking steps, or 12+ files. Standard: two thinking steps, a web lookup, or 4+ files. |
+| Monthly plan | One fee for 30 days and a number of answers. It starts when the first payment settles, never renews by itself, and the buyer can stop it at any time. |
+
+Code: `src/bridge/hub/pricing.py` (plans and validation), `src/bridge/payments/subscriptions.py` (monthly plans), `Ledger.reprice` (price below the hold).
+
 ## Quickstart
 
 Requirements: Python 3.11+, a Nebius Token Factory key, a Tavily key. Docker is needed only for packs
