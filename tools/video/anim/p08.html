@@ -1,0 +1,93 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>p08 When an agent cheats</title>
+<body>
+<script type="module">
+import { stage, fontFace, K, seg, ease, DUR, clamp, lerp } from "./lib.js";
+fontFace();
+const S = stage(), root = S.root;
+S.c.canvas.style.opacity = 0;                    // this scene is a diagram: no pixel world, just boxes and arrows
+document.body.style.background = "#FFF8E7";
+const T = (s) => (s / 13) * DUR;
+const NS = "http://www.w3.org/2000/svg";
+const svg = document.createElementNS(NS, "svg");
+svg.setAttribute("width", 1280); svg.setAttribute("height", 720);
+svg.style.cssText = "position:absolute;inset:0";
+root.append(svg);
+const els = {};
+function node(id, x, y, w, h, html, { fill = K.cream50, color = K.ink, big = false } = {}) {
+  const d = document.createElement("div");
+  d.innerHTML = html;
+  d.style.cssText = `position:absolute;left:${x}px;top:${y}px;width:${w}px;height:${h}px;box-sizing:border-box;border:4px solid ${K.ink};background:${fill};color:${color};box-shadow:6px 6px 0 rgba(26,19,32,.2);display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:10px 16px;font:700 ${big ? 26 : 22}px/1.3 Inter,system-ui,sans-serif;opacity:0`;
+  root.append(d);
+  els[id] = { d, x, y, w, h };
+}
+function arrow(id, x1, y1, x2, y2, col = K.ink, dash = false) {
+  const len = Math.hypot(x2 - x1, y2 - y1);
+  const g = document.createElementNS(NS, "g");
+  const l = document.createElementNS(NS, "line");
+  l.setAttribute("x1", x1); l.setAttribute("y1", y1); l.setAttribute("x2", x2); l.setAttribute("y2", y2);
+  l.setAttribute("stroke", col); l.setAttribute("stroke-width", 5); l.setAttribute("stroke-linecap", "round");
+  if (dash) l.setAttribute("stroke-dasharray", "12 10");
+  const a = Math.atan2(y2 - y1, x2 - x1), hx = x2, hy = y2;
+  const head = document.createElementNS(NS, "path");
+  head.setAttribute("d", `M${hx},${hy} L${hx - 18 * Math.cos(a - 0.45)},${hy - 18 * Math.sin(a - 0.45)} L${hx - 18 * Math.cos(a + 0.45)},${hy - 18 * Math.sin(a + 0.45)} Z`);
+  head.setAttribute("fill", col);
+  g.append(l, head); svg.append(g);
+  els[id] = { g, l, head, len, dash };
+}
+function txt(id, x, y, html, size, color, weight = 800, w = 1200) {
+  const d = document.createElement("div");
+  d.innerHTML = html;
+  d.style.cssText = `position:absolute;left:${x}px;top:${y}px;width:${w}px;font:${weight} ${size}px/1.3 Inter,system-ui,sans-serif;color:${color};opacity:0`;
+  root.append(d); els[id] = { d, x, y };
+}
+txt("title", 60, 36, "When an agent cheats", 36, K.ink, 800);
+node("A", 60, 130, 300, 110, "The answer arrives");
+node("B", 490, 130, 300, 110, "The run is stopped:<br><span style='font-weight:500;font-size:19px'>it tried to take a file</span>", { fill: K.coralL });
+node("C", 920, 130, 300, 110, "The money is held", { fill: K.lemonL });
+arrow("a1", 360, 185, 480, 185); arrow("a2", 790, 185, 910, 185);
+node("cancel", 90, 360, 330, 90, "Cancel the payment", { fill: K.cream100 });
+node("refuse", 90, 480, 330, 130, "Refused.<br><span style='font-weight:500;font-size:19px'>My word alone is not evidence.</span>", { fill: K.coralL, color: "#7a2a24" });
+arrow("a3", 1000, 242, 420, 345, K.ink, true);
+node("test", 620, 340, 360, 130, "Independent testers<br><span style='font-weight:500;font-size:19px'>already reproduced this exact cheating</span>", { fill: K.skyL });
+arrow("a4", 1070, 242, 800, 330, K.sky);
+node("refund", 520, 540, 330, 100, "Refunded to you", { fill: K.mintL, big: true });
+node("zero", 900, 540, 330, 100, "Author earns nothing", { fill: K.coralL, big: true });
+arrow("a5", 760, 472, 700, 528, K.mint); arrow("a6", 880, 472, 1020, 528, K.coral);
+txt("cap", 60, 664, "A claim holds the money. Evidence decides.", 28, K.ink700, 800);
+
+// a small cursor that tries to press "Cancel"
+const cur = document.createElement("div");
+cur.style.cssText = "position:absolute;width:0;height:0;border-left:16px solid #1A1320;border-top:10px solid transparent;border-bottom:10px solid transparent;transform:rotate(-30deg);opacity:0";
+root.append(cur);
+
+const show = (e, u) => { e.d.style.opacity = u; e.d.style.transform = `translateY(${(1 - u) * 14}px)`; };
+const draw = (e, u) => { e.l.setAttribute("stroke-opacity", u > 0 ? 1 : 0); e.head.setAttribute("fill-opacity", u >= 1 ? 1 : 0); const len = e.len; if (!e.dash) { e.l.setAttribute("stroke-dasharray", `${len}`); e.l.setAttribute("stroke-dashoffset", len * (1 - u)); } else { e.l.setAttribute("stroke-opacity", u); } };
+window.seek = (t) => {
+  show(els.title, seg(t, 0, T(0.5)));
+  show(els.A, ease.out(seg(t, T(0.4), T(1.1))));
+  draw(els.a1, seg(t, T(1.4), T(2.0)));
+  show(els.B, ease.out(seg(t, T(1.9), T(2.6))));
+  draw(els.a2, seg(t, T(3.0), T(3.5)));
+  show(els.C, ease.out(seg(t, T(3.4), T(4.1))));
+  // the buyer tries to cancel
+  draw(els.a3, seg(t, T(4.4), T(5.0)));
+  show(els.cancel, ease.out(seg(t, T(4.6), T(5.2))));
+  const cu = seg(t, T(5.2), T(6.0));
+  cur.style.opacity = cu > 0 && t < T(7.2) ? 1 : 0;
+  cur.style.left = lerp(300, 260, ease.inOut(cu)) + "px"; cur.style.top = lerp(520, 420, ease.inOut(cu)) + "px";
+  show(els.refuse, ease.back(seg(t, T(6.2), T(6.8))));
+  // the testers' evidence
+  draw(els.a4, seg(t, T(7.4), T(8.0)));
+  show(els.test, ease.out(seg(t, T(7.8), T(8.5))));
+  draw(els.a5, seg(t, T(9.0), T(9.5))); draw(els.a6, seg(t, T(9.2), T(9.7)));
+  show(els.refund, ease.back(seg(t, T(9.4), T(10.1))));
+  show(els.zero, ease.back(seg(t, T(9.6), T(10.3))));
+  show(els.cap, seg(t, T(10.8), T(11.6)));
+  // a dim over the refused branch once the evidence arrives
+  els.cancel.d.style.opacity = Math.min(seg(t, T(4.6), T(5.2)), 1 - 0.55 * seg(t, T(7.6), T(8.2)));
+  els.refuse.d.style.opacity = Math.min(seg(t, T(6.2), T(6.8)), 1 - 0.55 * seg(t, T(7.6), T(8.2)));
+};
+window.ready = true;
+</script>

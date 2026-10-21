@@ -1,0 +1,66 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>n09 Why it matters</title>
+<body>
+<script type="module">
+import { stage, label, setPos, fontFace, background, panel, shelf, lock, coin, person, lookFor, ME, K, seg, ease, arc, lerp, px, box, DUR, W, H, fade } from "./lib.js";
+fontFace();
+const S = stage(), c = S.c;
+const T = (s) => (s / 12) * DUR;
+const folks = [
+  { name: "Founder", note: "client notes", look: { shirt: K.mint, hat: "cap", skin: "#E0AC82", hair: K.ink } },
+  { name: "Freelancer", note: "project files", look: { shirt: K.sky, hat: "headset", skin: "#C68642", hair: "#3B2A20" } },
+  { name: "Receptionist", note: "patient list", look: { shirt: K.coral, hat: "glasses", skin: "#F5CBA7", hair: "#8A5A2B" } }
+];
+const helpers = [
+  { name: "Deal Brief", score: 92, price: "60¢", look: lookFor("deal-brief", "certified") },
+  { name: "Action Finder", score: 88, price: "30¢", look: lookFor("action-finder", "certified") },
+  { name: "Quick Skim", score: 81, price: "15¢", look: lookFor("quick-skim", "certified") }
+];
+const rows = [38, 86, 134];                   // vertical centre of each row, in pixel-world units
+const L = folks.map((f, i) => ({ name: label(S.text, f.name, { x: 50, y: rows[i] - 18, size: 22, weight: 800 }), note: label(S.text, f.note + ", locked", { x: 50, y: rows[i] - 3, size: 16, weight: 600, color: K.ink500 }) }));
+const R = helpers.map((h, i) => ({ name: label(S.text, h.name, { x: 222, y: rows[i] - 18, size: 22, weight: 800 }), score: label(S.text, `Tested: ${h.score} / 100`, { x: 222, y: rows[i] - 3, size: 16, weight: 700, color: "#2f7a4d" }), price: label(S.text, h.price, { x: 284, y: rows[i] - 18, size: 22, weight: 800, color: K.ink700 }) }));
+const head1 = label(S.text, "Your data stays with you", { x: 14, y: 3, size: 22, weight: 800 });
+const head2 = label(S.text, "Specialists are paid on evidence", { x: 168, y: 3, size: 22, weight: 800 });
+const tag = label(S.text, "Hire one: the agent comes to you", { x: 0, y: 164, size: 22, align: "center", w: 320, weight: 800, color: K.ink700 });
+
+window.seek = (t) => {
+  background(c);
+  folks.forEach((f, i) => {
+    const a = T(0.6) + i * T(0.7), u = ease.out(seg(t, a, a + T(0.7)));
+    c.globalAlpha = u;
+    const x = 12 - (1 - u) * 24, y = rows[i];
+    panel(c, x, y - 20, 128, 44, K.cream100);
+    person(c, x + 22, y + 18, { ...f.look, pose: "idle", facing: "f" }, t * 1000);
+    shelf(c, x + 92, y - 12, 30, [K.coral, K.mint, K.sky], 1, 0);
+    lock(c, x + 107, y + 8, false, 0, K.lemon);
+    c.globalAlpha = 1;
+  });
+  helpers.forEach((h, i) => {
+    const a = T(2.6) + i * T(0.6), u = ease.out(seg(t, a, a + T(0.7)));
+    c.globalAlpha = u;
+    const x = 180 + (1 - u) * 30, y = rows[i];
+    panel(c, x, y - 20, 128, 44, K.cream100);
+    person(c, x + 20, y + 18, { ...h.look, pose: "idle", facing: "f" }, t * 1000);
+    c.globalAlpha = 1;
+  });
+  folks.forEach((f, i) => {
+    const y = rows[i] + 2;
+    const link = ease.inOut(seg(t, T(5.0) + i * T(0.5), T(5.8) + i * T(0.5)));
+    if (link > 0) px(c, 140, y, 40 * link, 2, K.ink);
+    const pay = seg(t, T(7.0) + i * T(0.5), T(8.2) + i * T(0.5));
+    if (pay > 0 && pay < 1) coin(c, lerp(142, 176, ease.inOut(pay)), y + 1 - Math.sin(pay * Math.PI) * 8);
+    if (pay >= 1) coin(c, 176, y + 1);
+  });
+  const outT = 1 - seg(t, T(10.8), T(11.6));
+  L.forEach((l, i) => { const u = seg(t, T(0.8) + i * T(0.7), T(1.4) + i * T(0.7)) * outT; setPos(l.name, 50, rows[i] - 18, u); setPos(l.note, 50, rows[i] - 3, u); });
+  R.forEach((r, i) => { const u = seg(t, T(2.8) + i * T(0.6), T(3.4) + i * T(0.6)) * outT; setPos(r.name, 222, rows[i] - 18, u); setPos(r.score, 222, rows[i] - 3, u); setPos(r.price, 284, rows[i] - 18, u); });
+  setPos(head1, 14, 3, seg(t, T(0.3), T(0.9)) * outT);
+  setPos(head2, 168, 3, seg(t, T(2.4), T(3.0)) * outT);
+  setPos(tag, 0, 164, seg(t, T(8.6), T(9.4)) * outT);
+  fade(c, seg(t, 0, T(0.4)));
+  const f = seg(t, T(11.2), T(12));
+  if (f > 0) { c.globalAlpha = f; px(c, 0, 0, W, H, K.cream100); c.globalAlpha = 1; }
+};
+window.ready = true;
+</script>

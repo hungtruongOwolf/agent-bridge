@@ -1,0 +1,92 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Terminal scene</title>
+<body>
+<script type="module">
+import { stage, fontFace, K, seg, ease, DUR, lerp } from "./lib.js";
+fontFace();
+const q = new URLSearchParams(location.search), scene = q.get("scene") || "n06";
+const data = await (await fetch(`/video-out/term-${scene}.json`)).json();
+const S = stage(), root = S.root;
+S.c.canvas.style.opacity = 0;
+document.body.style.background = "#D4EAB0";
+const bgc = document.createElement("div");
+bgc.style.cssText = "position:absolute;inset:0;background:linear-gradient(45deg,#cde5a8 25%,transparent 25%,transparent 75%,#cde5a8 75%),linear-gradient(45deg,#cde5a8 25%,transparent 25%,transparent 75%,#cde5a8 75%);background-size:64px 64px;background-position:0 0,32px 32px";
+root.append(bgc);
+const win = document.createElement("div");
+win.style.cssText = `position:absolute;left:50px;top:36px;width:1180px;height:480px;border:5px solid ${K.ink};background:${K.ink};box-shadow:10px 10px 0 rgba(26,19,32,.25)`;
+win.innerHTML = `<div style="height:44px;background:linear-gradient(${K.cream100},${K.cream200});border-bottom:5px solid ${K.ink};display:flex;align-items:center;gap:10px;padding:0 16px;font:400 13px 'Press Start 2P',monospace;color:${K.ink}"><span style="width:14px;height:14px;background:${K.coral};border:3px solid ${K.ink}"></span><span style="width:14px;height:14px;background:${K.lemon};border:3px solid ${K.ink}"></span><span style="width:14px;height:14px;background:${K.mint};border:3px solid ${K.ink}"></span><span style="margin-left:14px">Terminal</span></div>`;
+const body = document.createElement("div");
+body.style.cssText = "position:absolute;left:0;right:0;top:44px;bottom:0;overflow:hidden;padding:22px 26px";
+const pre = document.createElement("div");
+pre.style.cssText = `font:500 18px/27px Consolas,'Cascadia Mono',monospace;color:${K.cream100};white-space:pre-wrap;word-break:break-all`;
+body.append(pre); win.append(body); root.append(win);
+const chips = [];
+function chip(text, color) {
+  const d = document.createElement("div");
+  d.textContent = text;
+  d.style.cssText = `position:absolute;width:360px;box-sizing:border-box;padding:14px 18px;text-align:center;border:4px solid ${K.ink};background:${color};color:${K.ink};font:800 23px/1.3 Inter,system-ui,sans-serif;box-shadow:6px 6px 0 rgba(26,19,32,.3);opacity:0`;
+  root.append(d); return d;
+}
+const CALL = {
+  n06: [
+    { when: (l) => /incident/.test(l), text: "Caught: it tried to phone home", color: K.coralL, top: 250 },
+    { when: (l) => /KILLED/.test(l), text: "Run killed. Nothing delivered.", color: K.lemonL, top: 360 },
+    { when: (l) => /journal/.test(l), text: "Every step is in a tamper-evident log.", color: K.skyL, top: 470 }
+  ],
+  p09: [
+    { at: 0.18, text: "Safe to repeat: a lost reply never charges twice", color: K.skyL, top: 200 },
+    { at: 0.45, text: "One lock decides: accept and stop cannot both win", color: K.lemonL, top: 310 },
+    { at: 0.72, text: "Crash in the middle: recovered from a written record", color: K.mintL, top: 420 }
+  ]
+}[scene] || [];
+CALL.forEach((c, i) => { c.el = chip(c.text, c.color); c.el.style.top = "548px"; c.el.style.left = (60 + i * 394) + "px"; });
+
+// build the timeline: the command is typed, then the real output appears at its real pace (never faster than a reader can follow)
+const TYPE0 = 0.8, CPS = 30, cmd = data.cmd;
+const out0 = TYPE0 + cmd.length / CPS + 0.7;
+const stretch = scene === "n06" ? 1 : 1;
+const minGap = (e) => (e.text.length <= 1 ? 0.012 : 0.5);
+const disp = [];
+data.events.forEach((e, i) => { disp.push(Math.max((disp[i - 1] ?? out0) + minGap(e), out0 + e.t * stretch)); });
+const needed = (disp[disp.length - 1] ?? out0) + 2;
+const sec = Math.min(1, (DUR - 0.8) / needed);        // squeeze if the scene is shorter than the real thing needs
+const lineOf = (txt) => txt.replace(/\r/g, "");
+const colour = (line) => {
+  if (/incident|KILLED/.test(line)) return `<span style="color:${K.coral};font-weight:800">${line}</span>`;
+  if (/nothing delivered/.test(line)) return `<span style="background:${K.coral};color:${K.cream50};font-weight:800;padding:0 6px">${line}</span>`;
+  if (/passed/.test(line)) return `<span style="color:${K.mint};font-weight:800;font-size:28px">${line}</span>`;
+  if (/^(pack|digest|lens|model|journal|outcome|result|records)/.test(line)) return `<span style="color:${K.cream200}">${line}</span>`;
+  if (/step_started/.test(line)) return `<span style="color:${K.sky}">${line}</span>`;
+  return line;
+};
+const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+
+window.seek = (t0) => {
+  const t = t0 / sec;
+  let html = `<span style="color:${K.mint}">$</span> `;
+  const typed = Math.min(cmd.length, Math.max(0, Math.floor((t - TYPE0) * CPS)));
+  html += esc(cmd.slice(0, typed));
+  const cursorOn = Math.floor(t0 * 2) % 2 === 0;
+  let text = "", raw = "";
+  data.events.forEach((e, i) => { if (t >= disp[i]) raw += e.text; });
+  if (t >= out0 - 0.1) html += "\n";
+  const lines = lineOf(raw).split("\n");
+  const shown = [];
+  lines.forEach((l, i) => { shown.push(i < lines.length - 1 || l ? colour(esc(l)) : ""); });
+  html += shown.join("\n");
+  html += cursorOn ? `<span style="background:${K.cream100};color:${K.ink}"> </span>` : "";
+  pre.innerHTML = html;
+  const over = pre.scrollHeight - (480 - 44 - 44);
+  pre.style.transform = `translateY(${-Math.max(0, over)}px)`;
+  // callouts
+  CALL.forEach((c, i) => {
+    let at;
+    if (c.when) { const idx = data.events.findIndex((e) => c.when(e.text)); at = idx >= 0 ? disp[idx] : 1e9; }
+    else at = out0 + (c.at) * (disp[disp.length - 1] - out0);
+    const u = ease.out(seg(t, at + 0.15, at + 0.65));
+    c.el.style.opacity = u; c.el.style.transform = `translateY(${(1 - u) * 24}px)`;
+  });
+};
+window.ready = true;
+</script>

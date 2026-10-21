@@ -1,0 +1,48 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>p01 Who pays?</title>
+<body>
+<script type="module">
+import { stage, label, setPos, fontFace, background, panel, paper, coin, thumbDown, mask, person, ME, AGENT, K, seg, ease, arc, lerp, px, box, DUR, W, H, fade } from "./lib.js";
+fontFace();
+const S = stage(), c = S.c;
+const T = (s) => (s / 10) * DUR;
+const l1 = label(S.text, "Your agent", { x: 20, y: 90, size: 26, weight: 800 });
+const l2 = label(S.text, "Another agent", { x: 196, y: 90, size: 26, weight: 800 });
+const q = label(S.text, "Who pays?", { x: 0, y: 20, size: 40, font: "pixel", align: "center", w: 320, weight: 400 });
+const bad = label(S.text, "Bad work? Cheating?", { x: 0, y: 40, size: 28, align: "center", w: 320, weight: 800, color: K.coral });
+const title = label(S.text, "Money that follows evidence,<br>not trust.", { x: 0, y: 60, size: 34, font: "pixel", align: "center", w: 320, weight: 400, lh: 1.6 });
+
+window.seek = (t) => {
+  background(c);
+  c.save(); c.scale(2, 2);
+  const inA = ease.out(seg(t, 0, T(0.8)));
+  c.globalAlpha = inA;
+  panel(c, 8, 52, 56, 36, K.cream100); panel(c, 96, 52, 56, 36, K.cream100);
+  const cheating = t > T(6.6);
+  person(c, 36, 84, { ...ME, pose: "idle", facing: "r" }, t * 1000);
+  person(c, 124, 84, { ...AGENT, pose: t > T(2.8) && t < T(4.4) ? "sit" : "idle", facing: "l", mask: cheating, stripes: cheating }, t * 1000);
+  c.globalAlpha = 1;
+  // the task goes over
+  let u = seg(t, T(1.4), T(2.8));
+  if (u > 0 && u < 1) { const p = arc([44, 60], [112, 60], ease.inOut(u), 14); paper(c, p.x, p.y, K.lemonL); }
+  // a coin hangs between them with a question mark
+  const cu = ease.back(seg(t, T(3.6), T(4.4)));
+  if (cu > 0) coin(c, 80, 40 - Math.sin(t * 3) * 2, true);
+  // the answer comes back, and it is bad
+  u = seg(t, T(4.6), T(5.8));
+  if (u > 0 && u < 1) { const p = arc([112, 60], [48, 60], ease.inOut(u), 14); paper(c, p.x, p.y, K.cream50); }
+  if (u >= 1 && t < T(7.6)) { paper(c, 48, 60, K.cream50); thumbDown(c, 48, 60); }
+  if (cheating && t < T(8)) mask(c, 124, 66);
+  c.restore();
+  const out = 1 - seg(t, T(7.6), T(8.2));
+  setPos(l1, 20, 90, seg(t, T(0.4), T(1)) * out); setPos(l2, 196, 90, seg(t, T(0.4), T(1)) * out);
+  setPos(q, 0, 20, seg(t, T(3.4), T(4.0)) * out, "");
+  setPos(bad, 0, 40, seg(t, T(5.6), T(6.2)) * out, "");
+  fade(c, seg(t, 0, T(0.4)));
+  const f = seg(t, T(8), T(8.8));
+  if (f > 0) { c.globalAlpha = f; px(c, 0, 0, W, H, K.cream100); c.globalAlpha = 1; }
+  setPos(title, 0, 62, seg(t, T(8.4), T(9.4)), "");
+};
+window.ready = true;
+</script>

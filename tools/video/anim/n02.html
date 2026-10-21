@@ -1,0 +1,77 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>n02 Pull mode</title>
+<body>
+<script type="module">
+import { stage, label, setPos, fontFace, background, panel, shelf, paper, lock, cloud, glassRoom, person, ME, AGENT, K, seg, ease, arc, lerp, px, box, DUR, W, H, fade } from "./lib.js";
+fontFace();
+const S = stage(), c = S.c;
+const T = (s) => (s / 12) * DUR;
+const cols = [K.coral, K.mint, K.sky, K.lemon, K.lilac];
+const lblMachine = label(S.text, "Your machine", { x: 22, y: 20, size: 24, weight: 800 });
+const lblWork = label(S.text, "Work", { x: 114, y: 44, size: 22, weight: 800 });
+const lblAcc = label(S.text, "Accounts", { x: 114, y: 76, size: 22, weight: 800 });
+const lblSecret = label(S.text, "Secret<br><span style=\"font-size:16px;font-weight:600\">never shown</span>", { x: 114, y: 130, size: 22, weight: 800, color: K.coral });
+const lblRoom = label(S.text, "Sealed room", { x: 176, y: 26, size: 22, weight: 800, color: K.ink700 });
+const lblCloud = label(S.text, "Stays home<br><span style=\"font-size:16px;font-weight:600\">no network</span>", { x: 256, y: 86, size: 20, weight: 800, color: K.ink500 });
+const ribbon = label(S.text, "Pull mode", { x: 0, y: 150, size: 34, font: "pixel", align: "center", w: 320, weight: 400, bg: K.cream100, pad: 14, border: true, shadow: true });
+const sub = label(S.text, "The agent comes to your data.", { x: 0, y: 164, size: 24, align: "center", w: 320, weight: 700, color: K.ink700 });
+ribbon.style.width = "auto"; ribbon.style.left = "50%"; ribbon.style.transform = "translateX(-50%)";
+
+window.seek = (t) => {
+  background(c);
+  c.save(); c.scale(2, 2);
+  const inA = seg(t, 0, T(0.8));
+  c.globalAlpha = inA;
+  panel(c, 8, 8, 114, 74, K.cream100);
+  // shelves on the left: Work and Accounts open up, Money stays shut
+  const w1 = seg(t, T(4.0), T(4.6)), w2 = seg(t, T(5.0), T(5.6));
+  shelf(c, 14, 20, 40, cols, 1, w1 * (1 - seg(t, T(9), T(10))));
+  shelf(c, 14, 36, 40, cols.slice().reverse(), 1, w2 * (1 - seg(t, T(9), T(10))));
+  shelf(c, 14, 52, 40, cols, 1, 0);
+  // the secret cabinet: dark and locked
+  box(c, 14, 62, 40, 16, K.ink700);
+  px(c, 18, 66, 14, 8, K.ink);
+  const shake = t > T(6.4) && t < T(7.2) ? Math.round(Math.sin(t * 60)) : 0;
+  lock(c, 42 + shake, 66, false, 0, K.lemon);
+  px(c, 14, 62, 40, 1, K.coral);
+  // the glass room with a desk
+  glassRoom(c, 78, 22, 38, 50, 1);
+  box(c, 84, 58, 26, 8, K.wood);
+  box(c, 91, 52, 12, 6, K.ink700);
+  px(c, 93, 54, 8, 2, K.skyL);
+  // the door in the right wall
+  const door = ease.inOut(seg(t, T(1.2), T(1.8))) * (1 - ease.inOut(seg(t, T(3.2), T(3.8))));
+  px(c, 118, 54, 5, 20, K.cream100);
+  px(c, 118, 54 + 20 * (1 - door), 5, 20 * door, K.woodD || K.wall);
+  c.globalAlpha = 1;
+  // the cloud outside, small and cut off
+  cloud(c, 140, 28, 0.55, K.ink100, false, t);
+  px(c, 130, 36, 20, 1, K.coral);
+  // the stranger's agent walks in, sits at the desk and works
+  const walk = ease.inOut(seg(t, T(1.0), T(3.6)));
+  const x = lerp(152, 97, walk), moving = t > T(1.0) && t < T(3.7);
+  const pose = t < T(1.0) ? "idle" : moving ? "walk" : t < T(3.9) ? "idle" : "sit";
+  const y = lerp(70, 70, walk);
+  person(c, x, y, { ...AGENT, pose, facing: moving ? "l" : "f" }, t * 1000);
+  // papers copied from the open shelves to the desk (read only)
+  [[w1, 0, 34, 24], [w2, 1, 34, 40]].forEach(([w, i, sx, sy]) => {
+    const a = T(4.6) + i * T(0.8), u = seg(t, a, a + T(0.9));
+    if (u > 0 && u < 1) { const p = arc([sx + 20, sy], [97, 56], ease.inOut(u), 14); paper(c, p.x, p.y); }
+    if (u >= 1) paper(c, 88 + i * 10, 55);
+  });
+  c.restore();
+  // labels
+  const show = (el, x, y, a, b) => setPos(el, x, y, seg(t, a, b) * (1 - seg(t, T(10.4), T(11))));
+  show(lblMachine, 22, 20, T(0.4), T(1));
+  show(lblWork, 114, 44, T(4.2), T(4.8));
+  show(lblAcc, 114, 76, T(5.2), T(5.8));
+  show(lblSecret, 114, 130, T(5.8), T(6.4));
+  show(lblRoom, 176, 26, T(3.6), T(4.2));
+  show(lblCloud, 256, 86, T(2.0), T(2.6));
+  ribbon.style.opacity = seg(t, T(7.6), T(8.2)); ribbon.style.top = "6px";
+  setPos(sub, 0, 168, seg(t, T(9.0), T(9.8)), "");
+  fade(c, seg(t, 0, T(0.4)));
+};
+window.ready = true;
+</script>

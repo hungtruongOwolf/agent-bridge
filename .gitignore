@@ -19,3 +19,7 @@ node_modules/
 .bridge-*/
 *.log
 *.egg-info/
+
+# video work files
+video-out/
+tools/video/node_modules/

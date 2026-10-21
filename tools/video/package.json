@@ -1,0 +1,7 @@
+{
+  "name": "agent-bridge-video-tools",
+  "private": true,
+  "type": "module",
+  "description": "Renders the animation scenes and records the console for the demo videos. See docs/video/PRODUCTION.md.",
+  "dependencies": { "puppeteer-core": "^23.0.0" }
+}

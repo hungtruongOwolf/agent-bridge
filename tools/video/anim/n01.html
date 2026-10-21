@@ -1,0 +1,52 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>n01 The trade nobody should make</title>
+<body>
+<script type="module">
+import { stage, label, setPos, fontFace, background, panel, laptop, folder, paper, lock, cloud, siren, thumbDown, K, seg, ease, arc, lerp, px, box, DUR, W, H, fade } from "./lib.js";
+fontFace();
+const S = stage(), c = S.c;
+const T = (s) => (s / 14) * DUR;                       // times below are written for a 14 second scene
+const files = [[0, folder, K.lemon], [1, paper], [2, folder, K.coral], [3, paper], [4, folder, K.sky], [5, paper]];
+const spot = (i) => [26 + (i % 3) * 16, 39 + Math.floor(i / 3) * 14];   // where each file sits on the laptop screen (half-world units)
+const CLOUD = [116, 40];
+const lab1 = label(S.text, "Your files", { x: 30, y: 36, size: 28, weight: 800 });
+const lab2 = label(S.text, "Someone else's agent", { x: 188, y: 16, size: 28, weight: 800 });
+const kept = label(S.text, "", { x: 196, y: 126, size: 24, weight: 800, color: K.coral });
+const title = label(S.text, "agent-bridge", { x: 0, y: 68, size: 60, font: "pixel", align: "center", w: 320, weight: 400 });
+const sub = label(S.text, "Rent a stronger agent. Keep your data.", { x: 0, y: 96, size: 28, align: "center", w: 320, weight: 700, color: K.ink700 });
+
+window.seek = (t) => {
+  background(c);
+  c.save(); c.scale(2, 2);                              // sprites are drawn at double size, still crisp
+  laptop(c, 14, 30, 56, 38, K.cream50);
+  files.forEach(([i, fn, col]) => {
+    const leave = T(2.6) + i * T(0.55);
+    if (t < leave) { const [x, y] = spot(i); fn(c, x, y, col); }
+  });
+  let landed = 0;
+  files.forEach(([i]) => { if (t > T(2.6) + i * T(0.55) + T(1.1)) landed++; });
+  const bump = landed ? Math.max(0, 1 - ((t - (T(2.6) + (landed - 1) * T(0.55) + T(1.1))) / 0.25)) : 0;
+  cloud(c, CLOUD[0], CLOUD[1] - bump * 2, 1.15 + bump * 0.06, K.skyL, true, t);
+  const lockIn = seg(t, T(0.8), T(1.5)), crack = seg(t, T(2.2), T(2.9)), drop = ease.in(seg(t, T(3.0), T(4.0)));
+  if (lockIn > 0 && drop < 1) lock(c, 42, 38 + drop * 40, false, crack, K.lemon);
+  files.forEach(([i, fn, col]) => {
+    const a = T(2.6) + i * T(0.55), u = seg(t, a, a + T(1.1));
+    if (u > 0 && u < 1) { const p = arc(spot(i), CLOUD, ease.inOut(u), 26); fn(c, p.x, p.y, col); }
+  });
+  if (landed === 6 && t > T(7)) siren(c, CLOUD[0], 22, Math.floor(t * 4) % 2 === 0);
+  if (t > T(6.8)) thumbDown(c, 42, 44);
+  c.restore();
+  const f = seg(t, T(10.2), T(11.2));
+  const cl = (v) => v * (1 - f);
+  kept.textContent = landed ? `kept: ${landed} of 6` : "";
+  setPos(lab1, 30, 36, cl(ease.out(seg(t, 0, T(0.6)))));
+  setPos(lab2, 188, 16, cl(ease.out(seg(t, T(0.4), T(1)))));
+  setPos(kept, 196, 126, cl(landed ? 1 : 0));
+  if (f > 0) { c.globalAlpha = f; px(c, 0, 0, W, H, K.cream100); c.globalAlpha = 1; }
+  setPos(title, 0, 68, f, `translateY(${(1 - f) * 12}px)`);
+  setPos(sub, 0, 96, seg(t, T(11.2), T(12.2)));
+  fade(c, seg(t, 0, T(0.5)));
+};
+window.ready = true;
+</script>
