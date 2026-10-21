@@ -63,27 +63,38 @@ def _http_post(url: str, headers: dict, body: dict) -> dict:
 
 class NebiusModel:
     def __init__(self, api_key: str, model: str = DEFAULT_MODEL, *, post: Callable[..., dict] = _http_post,
-                 max_tokens: int = 1200, attempts: int = 3):
+                 max_tokens: int = 1500, attempts: int = 3, thinking: bool = False):
         self._key, self.model, self._post, self._max = api_key, model, post, max_tokens
         self._attempts = attempts  # bounded retries: the proxy, not the pack, owns them
+        # Nemotron reasons in a hidden field and can spend the whole budget before answering (finish=length, empty
+        # content). Thinking is off by default: replies are complete, much cheaper and faster.
+        self._extra: dict | None = {"chat_template_kwargs": {"enable_thinking": thinking}}
 
     def complete(self, prompt: str, inputs: dict[str, Any]) -> ModelReply:
         user = f"TASK: {prompt}\n\nINPUTS:\n{json.dumps(inputs, ensure_ascii=False)}"
-        body = {
-            "model": self.model, "temperature": 0, "max_tokens": self._max,
-            "messages": [{"role": "system", "content": SYSTEM}, {"role": "user", "content": user}],
-        }
         headers = {"Authorization": f"Bearer {self._key}", "Content-Type": "application/json"}
+        budget = self._max
         last: Exception | None = None
         tokens_total = 0
         for _ in range(self._attempts):
+            body = {
+                "model": self.model, "temperature": 0, "max_tokens": budget,
+                "messages": [{"role": "system", "content": SYSTEM}, {"role": "user", "content": user}],
+            }
+            if self._extra:
+                body.update(self._extra)
             try:
                 out = self._post(f"{BASE_URL}/chat/completions", headers, body)
                 tokens_total += int(out.get("usage", {}).get("total_tokens", 0))
-                text = out["choices"][0]["message"]["content"] or ""
+                choice = out["choices"][0]
+                text = choice["message"]["content"] or ""
+                if not text and choice.get("finish_reason") == "length":
+                    budget = min(budget * 2, 6000)  # ran out of budget before answering: allow more next time
                 return ModelReply(extract_json(text), tokens=tokens_total)
             except ModelError as e:  # empty or non-JSON reply: ask again
                 last = e
             except Exception as e:  # network, HTTP, shape: report the type only, never the key
+                if getattr(e, "code", None) == 400 and self._extra:
+                    self._extra = None  # this endpoint does not know the thinking switch: drop it and retry
                 last = ModelError(f"model call failed: {type(e).__name__}")
         raise last

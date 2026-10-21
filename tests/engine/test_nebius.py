@@ -104,3 +104,40 @@ def test_retries_never_leak_the_key():
     with pytest.raises(ModelError) as e:
         NebiusModel("SECRETKEY", post=post).complete("t", {})
     assert "SECRETKEY" not in str(e.value)
+
+
+def test_thinking_is_off_by_default_and_can_be_enabled():
+    seen = []
+    NebiusModel("K", post=lambda u, h, b: seen.append(b) or reply("{}")).complete("t", {})
+    NebiusModel("K", post=lambda u, h, b: seen.append(b) or reply("{}"), thinking=True).complete("t", {})
+    assert seen[0]["chat_template_kwargs"] == {"enable_thinking": False}
+    assert seen[1]["chat_template_kwargs"] == {"enable_thinking": True}
+
+
+def test_a_reply_cut_off_by_the_token_limit_is_retried_with_a_bigger_budget():
+    budgets = []
+    replies = [{"choices": [{"message": {"content": ""}, "finish_reason": "length"}], "usage": {"total_tokens": 5}},
+               reply('{"ok": true}')]
+
+    def post(url, headers, body):
+        budgets.append(body["max_tokens"])
+        return replies.pop(0)
+
+    assert NebiusModel("K", post=post, max_tokens=1000).complete("t", {}).content == {"ok": True}
+    assert budgets == [1000, 2000]
+
+
+def test_an_endpoint_that_rejects_the_thinking_switch_is_retried_without_it():
+    class Http400(Exception):
+        code = 400
+
+    bodies = []
+
+    def post(url, headers, body):
+        bodies.append(dict(body))
+        if "chat_template_kwargs" in body:
+            raise Http400("bad request")
+        return reply('{"ok": 1}')
+
+    assert NebiusModel("K", post=post).complete("t", {}).content == {"ok": 1}
+    assert "chat_template_kwargs" in bodies[0] and "chat_template_kwargs" not in bodies[1]
