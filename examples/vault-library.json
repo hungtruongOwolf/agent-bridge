@@ -1595,5 +1595,95 @@
     "created": 1777766400.0,
     "updated": 1777766400.0,
     "edited": false
+  },
+  {
+    "id": "m199",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Acme discount approvals: anything above ten percent needs Linh's sign-off, and anything above fifteen needs the board.",
+    "path": "work/accounts/acme/2026/q4/renewal/pricing/discounts",
+    "created": 1791936000.0,
+    "updated": 1791936000.0,
+    "edited": false
+  },
+  {
+    "id": "m200",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Approved on October 14: twelve percent for Acme on a two-year term, signed by Linh. Valid until the renewal date.",
+    "path": "work/accounts/acme/2026/q4/renewal/pricing/discounts/approved",
+    "created": 1791849600.0,
+    "updated": 1791849600.0,
+    "edited": false
+  },
+  {
+    "id": "m201",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Condition on the twelve percent: Acme must pay annually up front and agree to be a reference customer.",
+    "path": "work/accounts/acme/2026/q4/renewal/pricing/discounts/approved/conditions",
+    "created": 1791849600.0,
+    "updated": 1791849600.0,
+    "edited": false
+  },
+  {
+    "id": "m202",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Acme legal asked to change the data-processing clause. Our lawyer says the change is fine if the deletion window stays at thirty days.",
+    "path": "work/accounts/acme/2026/q4/renewal/legal",
+    "created": 1792022400.0,
+    "updated": 1792022400.0,
+    "edited": false
+  },
+  {
+    "id": "m203",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Acme renewal plan: price hold agreed, legal review in progress, signature expected before December 1.",
+    "path": "work/accounts/acme/2026/q4/renewal",
+    "created": 1792108800.0,
+    "updated": 1792108800.0,
+    "edited": false
+  },
+  {
+    "id": "m204",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Q3 review with Acme: usage grew eighteen percent; two open support tickets about exports.",
+    "path": "work/accounts/acme/2026/q3",
+    "created": 1787270400.0,
+    "updated": 1787270400.0,
+    "edited": false
+  },
+  {
+    "id": "m205",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Acme first year: signed in November 2025, pilot with the sales team, expanded to support in the spring.",
+    "path": "work/accounts/acme/2025",
+    "created": 1766534400.0,
+    "updated": 1766534400.0,
+    "edited": false
+  },
+  {
+    "id": "m206",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Scene two of the demo: tick the Work shelf, ask about Acme, and point at the opened shelves under the answer.",
+    "path": "projects/hackathon/nebius/demo/script/scene-two",
+    "created": 1792281600.0,
+    "updated": 1792281600.0,
+    "edited": false
+  },
+  {
+    "id": "m207",
+    "type": "note",
+    "sensitivity": "low",
+    "text": "Mum's pho broth: add a piece of rock sugar at the end and let it rest for ten minutes before serving.",
+    "path": "family/mum/recipes/soups/pho/broth",
+    "created": 1784678400.0,
+    "updated": 1784678400.0,
+    "edited": false
   }
 ]

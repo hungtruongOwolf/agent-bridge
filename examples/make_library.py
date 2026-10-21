@@ -327,6 +327,18 @@ add("ideas/product", "Idea: show a renewal countdown on every account page, with
 add("ideas/writing", "Blog post idea: what we learned from cutting onboarding from three weeks to four days.", days=40)
 add("ideas/writing", "Short book idea: 'The renewal calendar', one chapter per month of the year, for founders of small software companies.", days=170)
 
+# ================================================================== an uneven tree: some subjects go many levels down, most do not
+DEEP = "work/accounts/acme/2026/q4/renewal/pricing/discounts"
+add(DEEP, "Acme discount approvals: anything above ten percent needs Linh's sign-off, and anything above fifteen needs the board.", days=6)
+add(DEEP + "/approved", "Approved on October 14: twelve percent for Acme on a two-year term, signed by Linh. Valid until the renewal date.", days=7)
+add(DEEP + "/approved/conditions", "Condition on the twelve percent: Acme must pay annually up front and agree to be a reference customer.", days=7)
+add("work/accounts/acme/2026/q4/renewal/legal", "Acme legal asked to change the data-processing clause. Our lawyer says the change is fine if the deletion window stays at thirty days.", days=5)
+add("work/accounts/acme/2026/q4/renewal", "Acme renewal plan: price hold agreed, legal review in progress, signature expected before December 1.", days=4)
+add("work/accounts/acme/2026/q3", "Q3 review with Acme: usage grew eighteen percent; two open support tickets about exports.", days=60)
+add("work/accounts/acme/2025", "Acme first year: signed in November 2025, pilot with the sales team, expanded to support in the spring.", days=300)
+add("projects/hackathon/nebius/demo/script/scene-two", "Scene two of the demo: tick the Work shelf, ask about Acme, and point at the opened shelves under the answer.", days=2)
+add("family/mum/recipes/soups/pho/broth", "Mum's pho broth: add a piece of rock sugar at the end and let it rest for ten minutes before serving.", days=90)
+
 out = Path(__file__).with_name("vault-library.json")
 out.write_text(json.dumps(R, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 docs = {r["doc"] for r in R if r.get("doc")}

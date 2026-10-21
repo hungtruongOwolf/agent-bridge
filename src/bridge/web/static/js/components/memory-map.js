@@ -8,7 +8,8 @@ import { PanZoom } from "../lib/panzoom.js";
 const BRANCH = [["#F6D7A7", "#D9A441"], ["#CDE8D6", "#5CA97A"], ["#CFE5F0", "#4F9FAF"], ["#E3DCF5", "#9482D3"], ["#F7D4CF", "#D96A62"], ["#F5E6B8", "#C9A227"]];
 const CHAT_COLORS = ["#CFE5E9", "#F3DACA", "#E0DAF2", "#F3E4BC", "#D2E7DA", "#F3D3CD"];
 const MAX_LEAVES = 14;
-const bubbleR = (count) => Math.min(62, 30 + 6 * Math.sqrt(Math.max(count, 1)));
+const depthScale = (depth) => Math.max(0.6, 1 - 0.08 * (depth - 1));  // deep shelves are drawn smaller, so a very deep tree stays on the page
+const bubbleR = (count, depth = 1) => Math.min(62, 30 + 6 * Math.sqrt(Math.max(count, 1))) * depthScale(depth);
 const parentOf = (p) => (p.includes("/") ? p.slice(0, p.lastIndexOf("/")) : "");
 
 export class MemoryMap {
@@ -81,7 +82,7 @@ export class MemoryMap {
     // the chats, on the right, joined to the shelves they may look at
     let minX = 0, maxX = 0, minY = 0, maxY = 0;
     all.forEach((n) => {
-      const pad = n.kind === "shelf" ? bubbleR(n.s.count) + 50 : n.kind === "file" ? 130 : 60;
+      const pad = n.kind === "shelf" ? bubbleR(n.s.count, n.depth) + 50 : n.kind === "file" ? 130 : 60;
       minX = Math.min(minX, n.x - pad); maxX = Math.max(maxX, n.x + pad); minY = Math.min(minY, n.y - pad); maxY = Math.max(maxY, n.y + pad);
     });
     const chatX = maxX + 70;
@@ -98,7 +99,12 @@ export class MemoryMap {
     // frame it: shift so the top-left is at the origin, and remember the size for "Fit"
     inner.setAttribute("transform", `translate(${-minX + 20} ${-minY + 20})`);
     this.pz.setViewport(vp, { w: maxX - minX + 40, h: Math.max(maxY - minY, stalls.length * 76 + 80) + 40 });
-    if (this.fitNext) { this.fitNext = false; this.pz.fitSoon(); }
+    if (this.fitNext) {
+      this.fitNext = false;
+      const target = sel && all.find((n) => n.kind === "shelf" && n.chain.some((c) => c.path === sel));
+      if (target && target.depth >= 4) this.pz.focus(target.x - minX + 20, target.y - minY + 20, 0.9);  // a deep shelf: look at it, not at the whole tree
+      else this.pz.fitSoon();
+    }
   }
 
   #gradient(id, from, to) {
@@ -111,8 +117,15 @@ export class MemoryMap {
   #layout(shelves, sel, leaf) {
     const byParent = {};
     shelves.filter((s) => this.#visible(s)).forEach((s) => { (byParent[s.parent] = byParent[s.parent] || []).push(s); });
-    const make = (s, depth, branch) => {
-      const n = { kind: "shelf", s, depth, branch, kids: [] };
+    const make = (s0, depth, branch) => {
+      // a shelf with nothing of its own and only one shelf below it is the same set of notes as that shelf: draw the chain as one bubble
+      const chain = [s0];
+      let s = s0;
+      while ((byParent[s.path] || []).length === 1 && !s.own && s.path !== sel) {
+        s = byParent[s.path][0];
+        chain.push(s);
+      }
+      const n = { kind: "shelf", s, chain, depth, branch, kids: [] };
       (byParent[s.path] || []).forEach((c) => n.kids.push(make(c, depth + 1, branch)));
       if (s.path === sel) {
         leaf.slice(0, MAX_LEAVES).forEach((f) => n.kids.push({ kind: "file", f, depth: depth + 1, branch, kids: [], w: 0.6 }));
@@ -121,23 +134,40 @@ export class MemoryMap {
       return n;
     };
     const top = (byParent[""] || []).map((s, i) => make(s, 1, i % BRANCH.length));
-    const weight = (n) => (n.kids.length ? n.kids.reduce((a, k) => a + weight(k), 0) : n.w || 1);
-    const perDepth = {};
-    const count = (n) => { perDepth[n.depth] = (perDepth[n.depth] || 0) + 1; n.kids.forEach(count); };
-    top.forEach(count);
-    const R = { 0: 0 };
-    Object.keys(perDepth).map(Number).sort((a, b) => a - b).forEach((d) => { R[d] = Math.max((R[d - 1] || 0) + (d === 1 ? 210 : 170), (perDepth[d] * 96) / (2 * Math.PI)); });
-    const place = (list, a0, a1) => {
+    const leaves = (n) => (n.kids.length ? n.kids.reduce((a, k) => a + leaves(k), 0) : n.w || 1);
+    const weight = (n) => Math.pow(leaves(n), 0.55);  // a branch with many tips gets more room, but not all of it: the small ones must stay apart
+    // 1) how much of the circle each branch gets (this does not depend on the distance)
+    const angles = (list, a0, a1) => {
       const total = list.reduce((a, n) => a + weight(n), 0) || 1;
       let a = a0;
       list.forEach((n) => {
-        const span = ((a1 - a0) * weight(n)) / total, mid = a + span / 2;
-        n.x = Math.cos(mid) * R[n.depth]; n.y = Math.sin(mid) * R[n.depth];
-        place(n.kids, a, a + span);
-        a += span;
+        n.span = ((a1 - a0) * weight(n)) / total;
+        n.mid = a + n.span / 2;
+        angles(n.kids, a, a + n.span);
+        a += n.span;
       });
     };
-    place(top, -Math.PI / 2, Math.PI * 1.5);
+    angles(top, -Math.PI / 2, Math.PI * 1.5);
+    // 2) how far out each level must be so that no two neighbours touch: wide enough for the most crowded branch on it
+    const need = {};
+    const walk = (n) => {
+      const width = n.kind === "shelf" ? 2 * bubbleR(n.s.count, n.depth) + 44 : n.kind === "file" ? 46 : 110;
+      need[n.depth] = Math.max(need[n.depth] || 0, width / Math.min(n.span, Math.PI));
+      n.kids.forEach(walk);
+    };
+    top.forEach(walk);
+    const R = { 0: 0 };
+    const depths = Object.keys(need).map(Number).sort((a, b) => a - b);
+    depths.forEach((d) => {
+      const step = d === 1 ? 210 : Math.max(105, 175 * Math.pow(0.87, d - 2));  // each level a little closer than the one before, so depth never runs away
+      R[d] = Math.max((R[d - 1] || 0) + step, need[d]);
+    });
+    const place = (list) => list.forEach((n) => {
+      n.x = Math.cos(n.mid) * R[n.depth];
+      n.y = Math.sin(n.mid) * R[n.depth];
+      place(n.kids);
+    });
+    place(top);
     const all = [], root = { kind: "root", x: 0, y: 0, kids: top, depth: 0 };
     const flat = (n, parent) => { n.parent = parent; all.push(n); n.kids.forEach((k) => flat(k, n)); };
     flat(root, null);
@@ -151,7 +181,7 @@ export class MemoryMap {
   }
 
   #chatEdge(n, chatX, cy) {
-    const r = bubbleR(n.s.count), x1 = n.x + r, dx = Math.max(60, (chatX - x1) / 2);
+    const r = bubbleR(n.s.count, n.depth), x1 = n.x + r, dx = Math.max(60, (chatX - x1) / 2);
     return sv("path", { d: `M${x1},${n.y} C${x1 + dx},${n.y} ${chatX - dx},${cy} ${chatX},${cy}`, fill: "none", stroke: "#4F9FAF", "stroke-width": 3, "stroke-dasharray": "2 9", "stroke-linecap": "round" });
   }
 
@@ -181,19 +211,20 @@ export class MemoryMap {
     const col = BRANCH[n.branch % BRANCH.length];
     if (n.kind === "more") return sv("text", { x: n.x, y: n.y + 4, "text-anchor": "middle", "font-size": 12, fill: "#6B5878" }, `…and ${n.n} more (see the list)`);
     if (n.kind === "file") return this.#fileNode(n, col, selFile);
-    const s = n.s, r = bubbleR(s.count), isSel = sel === s.path;
-    const g = sv("g", { class: "mnode bub" + (isSel ? " sel" : ""), tabindex: 0, role: "button", "aria-label": `${s.name}, ${s.count} notes` + (s.secret ? `, ${s.secret} secret` : "") }), inner = sv("g", { class: "bubi" });
+    const s = n.s, r = bubbleR(s.count, n.depth), k = depthScale(n.depth), isSel = n.chain.some((c) => c.path === sel);
+    const name = n.chain.map((c) => c.name).join(" › ");
+    const g = sv("g", { class: "mnode bub" + (isSel ? " sel" : ""), tabindex: 0, role: "button", "aria-label": `${name}, ${s.count} notes` + (s.secret ? `, ${s.secret} secret` : "") }), inner = sv("g", { class: "bubi" });
     g.setAttribute("transform", `translate(${n.x} ${n.y})`);
-    g.append(sv("title", {}, s.label || s.name));
+    g.append(sv("title", {}, (s.label ? s.label + " (" + name + ")" : name)));
     inner.append(sv("circle", { r, fill: `url(#g-${n.branch % BRANCH.length})`, stroke: isSel ? "#1A1320" : col[1], "stroke-width": isSel ? 4 : 2.5, filter: "url(#soft)" }));
     if (s.secret) {  // the red ring shows how much of this shelf is secret
       const c = 2 * Math.PI * (r + 5);
       inner.append(sv("circle", { r: r + 5, fill: "none", stroke: "#D96A62", "stroke-width": 4, "stroke-linecap": "round", "stroke-dasharray": `${c * (s.secret / Math.max(s.count, 1))} ${c}`, transform: "rotate(-90)" }));
     }
-    this.#label(inner, String(s.count), 0, 6, 17, 700);
-    if (s.has_children) this.#label(inner, this.expanded.has(s.path) ? "▾" : "▸", 0, -r * 0.45, 11, 500);
-    this.#label(inner, snip(s.name, 16), 0, r + 22, 15, 700);
-    if (s.label) this.#label(inner, snip(s.label, 22), 0, r + 35, 10.5, 400).setAttribute("fill", "#6B5878");
+    this.#label(inner, String(s.count), 0, 6 * k, 17 * k, 700);
+    if (s.has_children) this.#label(inner, this.expanded.has(s.path) ? "▾" : "▸", 0, -r * 0.45, 11 * k, 500);
+    this.#label(inner, snip(name, n.chain.length > 1 ? 30 : 16), 0, r + 22 * k, 15 * Math.max(k, 0.8), 700);
+    if (s.label) this.#label(inner, snip(s.label, 22), 0, r + 35 * k, 10.5, 400).setAttribute("fill", "#6B5878");
     g.append(inner);
     this.#press(g, () => this.clickShelf(s));
     return g;

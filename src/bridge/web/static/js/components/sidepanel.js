@@ -48,7 +48,7 @@ export class SidePanel {
     const inherited = (s) => s.state === "open" && !chat.lens.shelves.includes(s.path);
     ctx.shelves.filter((s) => this.#visible(s)).forEach((s) => {
       const li = el("li");
-      li.style.paddingLeft = s.depth * 14 + "px";
+      li.style.paddingLeft = Math.min(s.depth <= 6 ? s.depth * 14 : 84 + (s.depth - 6) * 4, 150) + "px";  // deep shelves indent less and less, so a very deep one still fits
       const twist = s.has_children
         ? btn(this.open.has(s.path) ? "▾" : "▸", "twist", () => { this.open.has(s.path) ? this.open.delete(s.path) : this.open.add(s.path); this.render(chat, ctx); })
         : el("span", "twist");

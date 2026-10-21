@@ -111,7 +111,7 @@ class Quarantine:
     def accept(self, proposal_id: str, vault: Vault) -> Record:
         p = self._get_pending(proposal_id)
         rec = Record(
-            id=f"q_{p.id}_{p.run_id[-6:]}", type=p.type, sensitivity="low", text=p.text, trust_tier=1,
+            id=f"q_{p.id}_{p.run_id[-6:]}", type=p.type, sensitivity="low", text=p.text, trust_tier=1, path="from helpers",
             origin={"pack_digest": p.pack_digest, "run_id": p.run_id, "proposal_id": p.id}, created=self.clock(),
         )
         vault.add(rec)

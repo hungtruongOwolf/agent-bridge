@@ -42,6 +42,19 @@ export class PanZoom {
     this.apply();
   }
 
+  /** Put the point (x, y) of the drawing in the middle of the view at zoom k, now and once the page has settled. */
+  focus(x, y, k) {
+    const go = () => {
+      const r = this.svg.getBoundingClientRect();
+      if (!r.width) return;
+      this.view = { k, x: r.width / 2 - x * k, y: r.height / 2 - y * k };
+      this.apply();
+    };
+    go();
+    requestAnimationFrame(go);
+    setTimeout(go, 250);
+  }
+
   /** Fit now, and again after the page has settled (the first measure can be taken before layout). */
   fitSoon() {
     this.fit();

@@ -17,12 +17,12 @@ SENSITIVITY = {"low": 0, "medium": 1, "high": 2}
 TYPE_RE = re.compile(r"^[a-z][a-z0-9-]{1,19}$")
 SEGMENT_RE = re.compile(r"^[^\W_][\w -]{0,29}$")  # letters of any language (accents included), digits, spaces, dashes
 MAX_TEXT = 2000
-MAX_DEPTH = 6
+MAX_DEPTH = 24  # only a safety bound against runaway input: shelves go as deep as the subject needs, and uneven trees are normal
 DOC_RE = re.compile(r"^doc[0-9]{1,6}$")
 
 
 def clean_path(raw: str) -> str:
-    """A shelf path such as 'work/clients': lower-case segments of letters, digits, spaces, dashes; at most 6 deep."""
+    """A shelf path such as 'work/clients': lower-case segments of letters, digits, spaces, dashes. Any depth up to MAX_DEPTH."""
     if not isinstance(raw, str):
         raise ValueError("a shelf name must be text")
     parts = [re.sub(r"\s+", " ", p.strip().lower()) for p in raw.replace("\\", "/").split("/") if p.strip()]

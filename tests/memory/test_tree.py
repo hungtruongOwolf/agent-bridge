@@ -26,7 +26,7 @@ def records():
 def test_clean_path_normalises_and_refuses_odd_names():
     assert clean_path(" Work / Clients  ") == "work/clients"
     assert clean_path("") == ""
-    for bad in ("a/" * 7 + "b", "x" * 31, "../etc", "semi;colon"):
+    for bad in ("a/" * 25 + "b", "x" * 31, "../etc", "semi;colon"):
         with pytest.raises(ValueError):
             clean_path(bad)
     assert under("work/clients", "work") and under("work", "work") and not under("workshop", "work")
@@ -116,3 +116,53 @@ def test_a_plural_and_its_ing_form_find_each_other():
     assert stem("prefers") == "prefer" and stem("accounts") == "account" and stem("budgets") == "budget"
     t = MemoryTree([rec("m1", "work/meetings", "Meeting notes, Monday: Priya will book the venue.")])
     assert [r.id for r in t.route("what are the action items from my meetings")[0]] == ["m1"]
+
+
+# ---- uneven depth: a subject can sit on level 1 or level 20, in the same tree --------------------------------------------------
+
+def deep(n):
+    return "/".join(f"level{i}" for i in range(1, n + 1))
+
+
+def test_shelves_can_go_as_deep_as_the_subject_needs_and_no_deeper_than_the_safety_bound():
+    from bridge.memory.vault import MAX_DEPTH, clean_path
+    assert clean_path(deep(MAX_DEPTH)) == deep(MAX_DEPTH)
+    with pytest.raises(ValueError):
+        clean_path(deep(MAX_DEPTH + 1))
+
+
+def test_a_note_on_level_two_and_one_on_level_twenty_are_both_found():
+    recs = [Record("a", "note", "low", "Quarterly pricing review with the board", path="work/finance"),
+            Record("b", "note", "low", "Zebra discount approved for the warehouse deal", path=deep(20)),
+            Record("c", "note", "low", "Unrelated recipe for noodle soup", path="recipes")]
+    tree = MemoryTree(recs)
+    hit, opened = tree.route("zebra discount")
+    assert [r.id for r in hit] == ["b"] and deep(20) in opened and "recipes" not in opened
+    hit, _ = tree.route("pricing review board")
+    assert [r.id for r in hit] == ["a"]
+
+
+def test_a_shelf_with_notes_of_its_own_and_shelves_below_keeps_both():
+    recs = [Record("a", "note", "low", "Acme contract overview", path="acme"),
+            Record("b", "note", "low", "Acme contract clause about deletion", path="acme/legal/clauses/deletion"),
+            Record("c", "note", "low", "Acme contract price", path="acme/pricing")]
+    tree = MemoryTree(recs)
+    assert tree.nodes["acme"].count == 3 and tree.nodes["acme"].own == ["a"]
+    assert tree.nodes["acme/legal/clauses"].count == 1 and tree.nodes["acme/legal"].children == ["acme/legal/clauses"]
+    ids = {r.id for r in tree.route("acme contract", limit=5)[0]}
+    assert ids == {"a", "b", "c"}
+
+
+def test_sharing_a_shelf_shares_everything_below_it_however_deep():
+    from bridge.memory.vault import under
+    assert under(deep(12), deep(3)) and not under(deep(3), deep(12)) and not under("level1x/a", "level1")
+
+
+def test_a_deep_and_wide_memory_is_still_searched_in_milliseconds():
+    import time
+    recs = [Record(f"n{i}", "note", "low", f"note {i} about topic{i % 40}", path=deep(1 + i % 20) + f"/s{i % 7}") for i in range(6000)]
+    tree = MemoryTree(recs)
+    t = time.perf_counter()
+    for k in range(20):
+        tree.route(f"topic{k}")
+    assert (time.perf_counter() - t) / 20 < 0.1
