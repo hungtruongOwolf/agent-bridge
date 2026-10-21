@@ -119,7 +119,8 @@ socket, a file handle or the model key. Anything it wants goes through the Broke
   output channel is bounded, not that detectors catch every theft.
 - **The Certifier suite is small.** Three quality tasks plus a security trap. A pack with 3 of 3 passes scores
   lower than one with 28 of 30 on purpose. Scores say "evaluated on this suite", never "safe".
-- **Improvement partly fits the dev suite.** In our live run `deal-brief` moved from 0.35 to 0.57 on the public
+- **The honest helpers now tie.** On the current six-question suite (contact lookup, follow-up using the chat, and admitting there is nothing to go on were added) all four honest example helpers pass 24 of 24 with Nemotron, so ties are broken by the lower price. The suite separates cheaters and sloppy answers, not good helpers from slightly better ones.
+- **Improvement partly fits the dev suite.** In our earlier live run (older suite and pack versions) `deal-brief` moved from 0.35 to 0.57 on the public
   dev suite and from 0.39 to 0.55 on the held-out suite. The dev gain is larger, so part of it is fitting to that suite.
 - **The model needed care.** Nemotron reasons in a hidden field and can spend its whole token budget before it
   writes an answer, which looked like empty replies. The client turns thinking off (complete answers in about 40

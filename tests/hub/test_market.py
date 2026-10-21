@@ -149,3 +149,21 @@ def test_listing_rows_carry_skill_names_and_what_the_pack_uses(world):
     reg, market, cert, packs = world
     row = next(r for r in market.ranked() if r["id"] == "private-analyst")
     assert row["skills"][0] == "Spot accounts at risk" and row["web"] is False and row["code"] is False
+
+
+def test_equal_scores_are_ordered_by_the_lower_price(world, tmp_path):
+    reg, market, cert, packs = world
+    dear_dir = tmp_path / "quick-skim-dear"
+    shutil.copytree(EX / "quick-skim", dear_dir)
+    cheap_dir = tmp_path / "quick-skim-cheap"
+    shutil.copytree(EX / "quick-skim", cheap_dir)
+    for d, name in ((dear_dir, "quick-skim-dear"), (cheap_dir, "quick-skim-cheap")):  # two different helpers
+        f = d / "pack.yaml"
+        f.write_bytes(f.read_bytes().replace(b"id: quick-skim", ("id: " + name).encode(), 1))
+    author = signing.generate_key()
+    dear = reg.publish(dear_dir, author, Listing(price_usd=0.9))
+    cheap = reg.publish(cheap_dir, author, Listing(price_usd=0.2))
+    for d in (dear_dir, cheap_dir):
+        market.add_attestation(cert.certify(d, Fixed(), "fixed"))
+    rows = [r for r in market.ranked() if r["status"] == "certified"]
+    assert [r["key"] for r in rows][:2] == [cheap.key, dear.key] and rows[0]["score"] == rows[1]["score"]

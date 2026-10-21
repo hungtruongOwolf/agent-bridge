@@ -55,7 +55,7 @@ Packs can suggest things to remember, but nothing enters your memory unless you 
 ## Accomplishments
 
 - A malicious pack with real code is caught live, and the Certifier flags it by behaviour.
-- A measured improvement on a held-out suite (`deal-brief` 0.39 to 0.55, after 0.35 to 0.57 on the dev suite), with the overfitting stated rather than hidden.
+- A measured improvement on a held-out suite (`deal-brief` 0.39 to 0.55, after 0.35 to 0.57 on the dev suite; measured on the earlier, harder suite and pack versions, before the packs became chat-aware), with the overfitting stated rather than hidden.
 - 240 automated tests, and a clean-clone check of the quickstart.
 
 ## What we learned

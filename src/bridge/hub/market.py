@@ -4,7 +4,7 @@ Ranking rules (deliberately simple and explainable):
   1. only packs that are installable (valid author signature, not revoked) are listed;
   2. a pack is "certified" only if it has an attestation whose signature verifies, whose pack digest
      equals the listed digest, and whose security result is clean;
-  3. certified packs sort by score (Wilson lower bound of the quality pass rate), then by stars;
+  3. certified packs sort by score (Wilson lower bound of the quality pass rate), then the cheaper price, then by stars;
   4. a pack that failed the security check is shown as FLAGGED at the bottom, never ranked;
   5. uncertified packs follow certified ones; stars alone never lift a pack above a certified one.
 """
@@ -87,7 +87,7 @@ class Marketplace:
                 "digest": rec.digest,
             })
         order = {"certified": 0, "uncertified": 1, "flagged": 2}
-        rows.sort(key=lambda r: (order[r["status"]], -(r["score"] or 0), -r["stars"], r["key"]))
+        rows.sort(key=lambda r: (order[r["status"]], -(r["score"] or 0), r["price_usd"], -r["stars"], r["key"]))
         for i, r in enumerate(x for x in rows if x["status"] == "certified"):
             r["rank"] = i + 1
         return rows
