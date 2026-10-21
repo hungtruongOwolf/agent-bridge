@@ -46,14 +46,10 @@ def answer_text(result: dict) -> str:
             continue
         label = key.replace("_", " ").capitalize()
         if isinstance(val, list):
-            lines.append(label + ":
-" + "
-".join("• " + str(x) for x in val))
+            lines.append(label + ":" + chr(10) + chr(10).join("• " + str(x) for x in val))
         else:
             lines.append(f"{label}: {val}")
-    return "
-
-".join(x for x in lines if x)
+    return (chr(10) * 2).join(x for x in lines if x)
 
 
 def how_made(steps: list[dict], vault_texts: dict[str, str] | None = None) -> list[str]:
