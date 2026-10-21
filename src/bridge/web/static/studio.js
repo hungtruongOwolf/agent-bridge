@@ -1,0 +1,429 @@
+/* My helpers: build, test, publish and manage your own helpers. The harness (the steps a helper runs) is drawn as a graph you
+   can touch: drag steps, draw arrows from one step to the next, click a step to change it. The server checks every change and
+   says in plain words what is wrong. Strings from the server are inserted with textContent only. */
+(function () {
+  "use strict";
+  let B = null, list = null, H = null, wf = null, sel = null, dirty = false, saveTimer = null, pollTimer = null, layout = {}, tab = "steps";
+  let problems = [], showData = true, lastTry = null, pulse = [];
+  const $ = (id) => document.getElementById(id);
+  const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; };
+  const btn = (text, cls, fn) => { const b = el("button", cls || "btn", text); b.type = "button"; if (fn) b.onclick = fn; return b; };
+  const NS = "http://www.w3.org/2000/svg";
+  const sv = (tag, attrs, text) => { const e = document.createElementNS(NS, tag); for (const k in attrs || {}) e.setAttribute(k, attrs[k]); if (text !== undefined) e.textContent = text; return e; };
+  const note = (t) => { $("studionote").textContent = t || ""; };
+  const NW = 176, NH = 70, GX = 70, GY = 36;
+
+  const KIND = {
+    memory_search: { title: "Look through your files", fill: "#D2E7DA", hint: "Reads files from the shelves the person opened. Nothing else." },
+    web_search: { title: "Look something up on the web", fill: "#F3DACA", hint: "Searches public pages. It can never be given your files." },
+    llm: { title: "Think", fill: "#CFE5E9", hint: "Asks the thinking service to write something from what it was given." },
+    gate: { title: "Check the answer", fill: "#F3E4BC", hint: "Stops a bad answer before it goes on." },
+    code: { title: "Run a small program", fill: "#E0DAF2", hint: "Runs your own code in a sealed room with no internet." },
+    return: { title: "Hand over the answer", fill: "#F3D3CD", hint: "The guard inspects this before it reaches the person." }
+  };
+  const kindOf = (s) => (s.kind === "tool" ? s.tool : s.kind);
+  const steps = () => (wf && Array.isArray(wf.steps) ? wf.steps : []);
+  const byId = (id) => steps().find((s) => s.id === id);
+
+  /* ---------- screens ---------- */
+  async function show() {
+    try { list = await B.api("/api/studio"); } catch (e) { note(e.message); return; }
+    drawList();
+    if (!H && list.helpers.length) await openHelper(list.helpers[0].id);
+    else if (!list.helpers.length) { H = null; drawEmpty(); }
+  }
+
+  function drawEmpty() {
+    $("studiomain").hidden = true; $("studioempty").hidden = false;
+  }
+
+  function drawList() {
+    const box = $("helperlist"); box.replaceChildren();
+    list.helpers.forEach((h) => {
+      const b = el("button", "threadbtn" + (H && H.id === h.id ? " cur" : "")); b.type = "button";
+      const live = h.versions.find((v) => !v.revoked);
+      b.append(el("span", "name", h.title), el("span", "blurb", h.problems ? h.problems + " thing(s) to fix" : live ? "On the market: v" + live.version : "Draft v" + h.version));
+      b.onclick = () => openHelper(h.id);
+      box.append(b);
+    });
+    if (!list.helpers.length) box.append(el("p", "empty", "You have not built a helper yet."));
+    const t = $("newtemplate"); t.replaceChildren();
+    list.templates.forEach((x) => { const o = document.createElement("option"); o.value = x.id; o.textContent = x.title; t.append(o); });
+  }
+
+  async function createHelper(ev) {
+    ev.preventDefault();
+    try {
+      const h = await B.api("/api/studio/create", { id: $("newname").value.trim().toLowerCase().replace(/\s+/g, "-"), template: $("newtemplate").value });
+      $("newname").value = ""; note(""); list = await B.api("/api/studio"); H = null; await openHelper(h.id);
+    } catch (e) { note(e.message); }
+  }
+
+  async function openHelper(id) {
+    try { H = await B.api("/api/studio/helper?id=" + encodeURIComponent(id)); } catch (e) { note(e.message); return; }
+    wf = H.workflow ? JSON.parse(JSON.stringify(H.workflow)) : null; layout = H.layout || {}; problems = H.problems; sel = null; lastTry = null; pulse = []; dirty = false;
+    $("studiomain").hidden = false; $("studioempty").hidden = true; note("");
+    drawList(); draw(); watchTests();
+  }
+
+  function draw() {
+    $("helpertitle").textContent = (H.id.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())) + "  ·  version " + (H.manifest.version || "?");
+    drawProblems(); drawGraph(); drawPanel();
+  }
+
+  function drawProblems() {
+    const box = $("problems"); box.replaceChildren();
+    if (!problems.length) { box.append(el("p", "small okline", dirty ? "Saving…" : "Everything checks out. This helper is ready to try or publish.")); return; }
+    box.append(el("p", "small warnline", problems.length + " thing" + (problems.length === 1 ? "" : "s") + " to fix before it can be published:"));
+    const ul = el("ul", "small"); problems.slice(0, 6).forEach((p) => ul.append(el("li", null, p))); box.append(ul);
+  }
+
+  /* ---------- saving ---------- */
+  function changed(what) {
+    dirty = true; drawProblems();
+    clearTimeout(saveTimer); saveTimer = setTimeout(() => save(what), 500);
+  }
+  async function save(what) {
+    if (!H) return;
+    const body = { id: H.id, layout };
+    if (!what || what.includes("steps")) body.workflow = wf;
+    if (!what || what.includes("about")) body.manifest = H.manifest;
+    try {
+      const r = await B.api("/api/studio/save", body);
+      dirty = false; problems = r.problems; H.caps = r.caps; H.versions = r.versions;
+      drawProblems(); if (tab === "publish") drawPanel();
+    } catch (e) { note(e.message); }
+  }
+
+  /* ---------- the graph ---------- */
+  function depths() {
+    const d = {}, order = [], s0 = wf && wf.start;
+    if (!s0 || !byId(s0)) return { d, order };
+    d[s0] = 0; order.push(s0);
+    for (const id of order) { const s = byId(id); [s.next, s.on_fail].forEach((t) => { if (t && byId(t) && !(t in d)) { d[t] = d[id] + 1; order.push(t); } }); }
+    for (let i = 0; i < steps().length; i++) for (const id of order) { const s = byId(id); [s.next, s.on_fail].forEach((t) => { if (t && byId(t) && d[t] <= d[id] && !(d[t] > steps().length)) d[t] = d[id] + 1; }); }
+    steps().forEach((s) => { if (!(s.id in d)) { d[s.id] = 0; order.push(s.id); } });  // steps nothing leads to still appear
+    return { d, order };
+  }
+  function privateSet() {
+    const p = new Set(steps().filter((s) => s.memory === "lens").map((s) => s.id)); p.add("history");
+    let ch = true; while (ch) { ch = false; steps().forEach((s) => { if (!p.has(s.id) && (s.reads || []).some((r) => p.has(r))) { p.add(s.id); ch = true; } }); }
+    return p;
+  }
+  function pos(s, i, lanes) {
+    if (layout[s.id]) return layout[s.id];
+    return { x: 150 + lanes.col * (NW + GX), y: 40 + lanes.row * (NH + GY) };
+  }
+  function place() {
+    const { d, order } = depths(), rows = {}, out = {};
+    order.forEach((id, i) => { const c = d[id]; rows[c] = (rows[c] === undefined ? -1 : rows[c]) + 1; out[id] = pos(byId(id), i, { col: c, row: rows[c] }); });
+    return out;
+  }
+  const fail = (id) => problems.some((p) => new RegExp("step '" + id + "'").test(p));
+
+  function drawGraph() {
+    const svg = $("graph"); svg.replaceChildren();
+    if (!wf || !steps().length) { svg.append(sv("text", { x: 20, y: 40, fill: "#6B5878" }, "The steps could not be read. Fix the text under “Edit as text”, or start again from a template.")); return; }
+    const P = place(), priv = privateSet();
+    P.task = { x: 14, y: 30 }; P.history = { x: 14, y: 130 };
+    const defs = sv("defs");
+    [["arr", "#1A1320"], ["arrfail", "#D96A62"], ["arrdata", "#A899B5"]].forEach(([id, col]) => {
+      const m = sv("marker", { id, viewBox: "0 0 10 10", refX: 9, refY: 5, markerWidth: 7, markerHeight: 7, orient: "auto-start-reverse" });
+      m.append(sv("path", { d: "M0,0 L10,5 L0,10 z", fill: col })); defs.append(m);
+    });
+    svg.append(defs);
+    let w = 600, h = 300; Object.values(P).forEach((p) => { w = Math.max(w, p.x + NW + 60); h = Math.max(h, p.y + NH + 60); });
+    svg.setAttribute("viewBox", "0 0 " + w + " " + h); svg.style.minWidth = w + "px"; svg.style.height = h + "px";
+    const edges = sv("g"), nodes = sv("g"); svg.append(edges, nodes);
+
+    const inputs = [["task", "Your message"], ["history", "Chat so far"]];
+    inputs.forEach(([id, label]) => {
+      const p = P[id], g = sv("g", { class: "pill" }); g.append(sv("rect", { x: p.x, y: p.y, width: 104, height: 26, rx: 13, fill: id === "history" ? "#FFF8E7" : "#CFE5E9", stroke: "#1A1320", "stroke-width": 2 }), sv("text", { x: p.x + 52, y: p.y + 17, "text-anchor": "middle", "font-size": 11 }, label));
+      nodes.append(g);
+    });
+    const edge = (a, b, cls, marker, dy) => {
+      const A = P[a], T = P[b]; if (!A || !T) return;
+      const fromInput = a === "task" || a === "history";
+      const x1 = fromInput ? A.x + 104 : A.x + NW, y1 = fromInput ? A.y + 13 : A.y + (cls === "fail" ? NH : NH / 2);
+      const x2 = T.x, y2 = T.y + NH / 2 + (dy || 0), off = Math.max(40, Math.abs(x2 - x1) / 2);
+      const path = sv("path", { d: "M" + x1 + "," + y1 + " C" + (x1 + off) + "," + (cls === "fail" ? y1 + 50 : y1) + " " + (x2 - off) + "," + y2 + " " + x2 + "," + y2, class: "edge " + cls, "marker-end": "url(#" + marker + ")", fill: "none" });
+      edges.append(path);
+    };
+    steps().forEach((s) => {
+      if (s.next) edge(s.id, s.next, "next", "arr");
+      if (s.on_fail) edge(s.id, s.on_fail, "fail", "arrfail");
+      if (showData) (s.reads || []).forEach((r, i) => { if (byId(r) || r === "task" || r === "history") edge(r, s.id, "data", "arrdata", -14 + i * 7); });
+    });
+
+    steps().forEach((s) => {
+      const p = P[s.id], k = KIND[kindOf(s)] || { title: kindOf(s), fill: "#F4E9C7" };
+      const g = sv("g", { class: "node" + (sel === s.id ? " sel" : "") + (fail(s.id) ? " bad" : "") + (pulse.includes(s.id) ? " pulse" : ""), tabindex: 0, role: "button", "aria-label": k.title + " (" + s.id + ")" + (priv.has(s.id) ? ", holds private data" : "") });
+      g.setAttribute("transform", "translate(" + p.x + "," + p.y + ")");
+      g.append(sv("title", {}, k.hint));
+      g.append(sv("rect", { width: NW, height: NH, fill: k.fill, stroke: "#1A1320", "stroke-width": sel === s.id ? 4 : 2 }));
+      g.append(sv("text", { x: 10, y: 24, "font-size": 13, "font-weight": 700 }, k.title));
+      g.append(sv("text", { x: 10, y: 44, "font-size": 11, fill: "#3D2E4A" }, s.id));
+      if (priv.has(s.id) && s.kind !== "return") g.append(sv("text", { x: 10, y: 60, "font-size": 10, fill: "#9a3a33" }, "🔒 holds your private data"));
+      else if (s.tool === "web_search") g.append(sv("text", { x: 10, y: 60, "font-size": 10, fill: "#6B5878" }, "public"));
+      if (s.kind !== "return") {
+        const out = sv("circle", { cx: NW, cy: NH / 2, r: 7, fill: "#5CA97A", stroke: "#1A1320", "stroke-width": 2, class: "port" }); out.append(sv("title", {}, "Drag to the next step"));
+        out.addEventListener("pointerdown", (e) => startLink(e, s.id, "next")); g.append(out);
+        if (s.kind === "gate") { const f = sv("circle", { cx: NW / 2, cy: NH, r: 7, fill: "#D96A62", stroke: "#1A1320", "stroke-width": 2, class: "port" }); f.append(sv("title", {}, "Drag to where it goes if the check fails")); f.addEventListener("pointerdown", (e) => startLink(e, s.id, "on_fail")); g.append(f); }
+      }
+      g.addEventListener("pointerdown", (e) => startDrag(e, s.id));
+      g.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); select(s.id); } });
+      nodes.append(g);
+    });
+  }
+
+  const svgPoint = (e) => { const svg = $("graph"), r = svg.getBoundingClientRect(), vb = svg.viewBox.baseVal; return { x: (e.clientX - r.left) * (vb.width / r.width), y: (e.clientY - r.top) * (vb.height / r.height) }; };
+
+  function startDrag(e, id) {
+    if (e.target.classList && e.target.classList.contains("port")) return;
+    e.preventDefault(); const P = place(), p0 = svgPoint(e), o = { x: P[id].x, y: P[id].y }; let moved = false;
+    const move = (ev) => { const q = svgPoint(ev); if (Math.abs(q.x - p0.x) + Math.abs(q.y - p0.y) > 4) moved = true; if (moved) { layout[id] = { x: Math.max(0, Math.round(o.x + q.x - p0.x)), y: Math.max(0, Math.round(o.y + q.y - p0.y)) }; drawGraph(); } };
+    const up = () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); if (moved) changed(["layout"]); else select(id); };
+    window.addEventListener("pointermove", move); window.addEventListener("pointerup", up);
+  }
+
+  function startLink(e, from, kind) {
+    e.preventDefault(); e.stopPropagation();
+    const svg = $("graph"), P = place(), a = P[from], x1 = kind === "next" ? a.x + NW : a.x + NW / 2, y1 = kind === "next" ? a.y + NH / 2 : a.y + NH;
+    const line = sv("line", { x1, y1, x2: x1, y2: y1, stroke: kind === "next" ? "#5CA97A" : "#D96A62", "stroke-width": 3, "stroke-dasharray": "6 4" }); svg.append(line);
+    const move = (ev) => { const q = svgPoint(ev); line.setAttribute("x2", q.x); line.setAttribute("y2", q.y); };
+    const up = (ev) => {
+      window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); line.remove();
+      const q = svgPoint(ev), hit = steps().find((s) => s.id !== from && P[s.id] && q.x >= P[s.id].x && q.x <= P[s.id].x + NW && q.y >= P[s.id].y && q.y <= P[s.id].y + NH);
+      if (hit) { byId(from)[kind] = hit.id; changed(["steps"]); drawGraph(); if (sel === from) drawPanel(); }
+    };
+    window.addEventListener("pointermove", move); window.addEventListener("pointerup", up);
+  }
+
+  function select(id) { sel = id; tab = "steps"; drawGraph(); drawPanel(); }
+
+  /* ---------- adding and removing steps ---------- */
+  function newId(base) { let i = 1; while (byId(base + (i > 1 ? i : ""))) i++; return base + (i > 1 ? i : ""); }
+  function addStep(kind) {
+    if (!wf) return;
+    const tmpl = {
+      files: (id) => ({ id, kind: "tool", tool: "memory_search", tools: ["memory_search"], memory: "lens", prompt: "{task}" }),
+      web: (id) => ({ id, kind: "tool", tool: "web_search", tools: ["web_search"], prompt: "{task}" }),
+      think: (id) => ({ id, kind: "llm", reads: ["task", "history"], prompt: "Answer the question in INPUTS.task using only what is in the other inputs. Reply as JSON with the key summary: at most 3 plain sentences." }),
+      check: (id) => ({ id, kind: "gate", check: "result_matches_schema", reads: [(steps().filter((s) => s.kind === "llm").pop() || {}).id].filter(Boolean) }),
+      program: (id) => ({ id, kind: "code", script: "result = {\"summary\": \"ok\"}\n", reads: [] }),
+      deliver: (id) => ({ id, kind: "return", reads: [(steps().filter((s) => s.kind === "llm").pop() || {}).id].filter(Boolean) })
+    }[kind];
+    const base = { files: "read", web: "web", think: "think", check: "check", program: "program", deliver: "done" }[kind];
+    const s = tmpl(newId(base)), after = sel && byId(sel);
+    if (after && after.kind !== "return" && s.kind !== "return") { s.next = after.next; if (s.kind === "gate") s.on_fail = after.on_fail || undefined; after.next = s.id; }
+    else if (s.kind !== "return") { const last = steps().find((x) => x.kind === "return"); if (last) s.next = last.id; }
+    wf.steps.push(s); if (!wf.start) wf.start = s.id;
+    sel = s.id; changed(["steps"]); drawGraph(); drawPanel();
+  }
+  function removeStep(id) {
+    const s = byId(id); if (!s) return;
+    wf.steps = wf.steps.filter((x) => x.id !== id);
+    wf.steps.forEach((x) => { if (x.next === id) { if (s.next && s.next !== x.id) x.next = s.next; else delete x.next; } if (x.on_fail === id) delete x.on_fail; x.reads = (x.reads || []).filter((r) => r !== id); if (x.propose === id) delete x.propose; });
+    if (wf.start === id) wf.start = s.next || (wf.steps[0] && wf.steps[0].id);
+    delete layout[id]; sel = null; changed(["steps"]); drawGraph(); drawPanel();
+  }
+
+  /* ---------- the right-hand panel ---------- */
+  function drawPanel() {
+    ["steps", "about", "try", "publish", "text"].forEach((t) => { const b = $("ptab-" + t); b.setAttribute("aria-selected", String(tab === t)); });
+    const box = $("panelbody"); box.replaceChildren();
+    ({ steps: stepPanel, about: aboutPanel, try: tryPanel, publish: publishPanel, text: textPanel })[tab](box);
+  }
+  function field(label, node, hint) { const w = el("label", "fld"); w.append(el("span", "small", label), node); if (hint) w.append(el("span", "small muted", hint)); return w; }
+  function textarea(v, rows, fn) { const t = document.createElement("textarea"); t.rows = rows; t.value = v || ""; t.maxLength = 4000; t.oninput = () => fn(t.value); return t; }
+  function input(v, fn, max) { const t = document.createElement("input"); t.type = "text"; t.value = v || ""; t.maxLength = max || 200; t.oninput = () => fn(t.value); return t; }
+
+  function stepPanel(box) {
+    const s = sel && byId(sel);
+    if (!s) {
+      box.append(el("p", "small", "Click a step in the picture to change it. Drag a step to move it. Drag the green dot of a step onto another step to say what comes next."));
+      const legend = el("div", "legend"); Object.values(KIND).forEach((k) => { const r = el("div", "small"); const sw = el("i", "sw"); sw.style.background = k.fill; r.append(sw, k.title); legend.append(r); }); box.append(legend);
+      box.append(el("p", "small muted", "🔒 means a step holds your private files, so it can never be connected to the web. The picture shows this, and the checker enforces it."));
+      return;
+    }
+    const k = KIND[kindOf(s)] || { title: kindOf(s), hint: "" };
+    box.append(el("h3", "sub", k.title), el("p", "small muted", k.hint), el("p", "small", "Step name: " + s.id));
+    if (s.kind === "llm") box.append(field("What should it do? (instructions for the thinking service)", textarea(s.prompt, 7, (v) => { s.prompt = v; changed(["steps"]); })));
+    if (s.kind === "tool" && s.tool === "memory_search") box.append(field("What to look for", input(s.prompt, (v) => { s.prompt = v; changed(["steps"]); }, 300), "{task} means the person's message."));
+    if (s.kind === "tool" && s.tool === "web_search") box.append(field("What to search for", input(s.prompt, (v) => { s.prompt = v; changed(["steps"]); }, 300), "{task} means the person's message. Never put their files here."));
+    if (s.kind === "code") box.append(field("The program (runs with no internet)", textarea(s.script, 8, (v) => { s.script = v; changed(["steps"]); }), "Leave the answer in a variable called result. Needs the sealed room to be available on this computer."));
+    if (s.kind === "gate") box.append(el("p", "small", "Checks that the answer has exactly the fields you described under “About”. If it does not, the helper goes to the failure step."));
+    if (s.kind !== "return") {
+      const sn = document.createElement("select"); [["", "(nothing: it ends here)"]].concat(steps().filter((x) => x.id !== s.id).map((x) => [x.id, (KIND[kindOf(x)] || {}).title + " (" + x.id + ")"])).forEach(([v, t]) => { const o = document.createElement("option"); o.value = v; o.textContent = t; sn.append(o); });
+      sn.value = s.next || ""; sn.onchange = () => { if (sn.value) s.next = sn.value; else delete s.next; changed(["steps"]); drawGraph(); };
+      box.append(field("What comes next", sn));
+    }
+    if (s.kind === "gate") {
+      const fn = document.createElement("select"); [["", "(choose)"]].concat(steps().filter((x) => x.id !== s.id).map((x) => [x.id, (KIND[kindOf(x)] || {}).title + " (" + x.id + ")"])).forEach(([v, t]) => { const o = document.createElement("option"); o.value = v; o.textContent = t; fn.append(o); });
+      fn.value = s.on_fail || ""; fn.onchange = () => { if (fn.value) s.on_fail = fn.value; else delete s.on_fail; changed(["steps"]); drawGraph(); };
+      box.append(field("If the check fails, go to", fn));
+    }
+    if (s.kind !== "tool") {
+      const fs = el("fieldset", "reads"); fs.append(el("legend", "small", "What this step may read"));
+      const opts = [["task", "Your message"], ["history", "The chat so far (private)"]].concat(steps().filter((x) => x.id !== s.id).map((x) => [x.id, (KIND[kindOf(x)] || {}).title + " (" + x.id + ")"]));
+      opts.forEach(([v, t]) => { const l = el("label", "small"), c = document.createElement("input"); c.type = "checkbox"; c.checked = (s.reads || []).includes(v); c.onchange = () => { const set = new Set(s.reads || []); c.checked ? set.add(v) : set.delete(v); s.reads = [...set]; changed(["steps"]); drawGraph(); }; l.append(c, t); fs.append(l); });
+      box.append(fs);
+    }
+    if (s.kind === "tool" && s.tool === "memory_search") box.append(el("p", "small muted", "It can only reach the shelves the person opens in their chat."));
+    const acts = el("div", "acts"); acts.append(btn("Make this the first step", "btn", () => { wf.start = s.id; changed(["steps"]); drawGraph(); }), btn("Remove this step", "btn warn", (e) => { if (e.target.dataset.armed) removeStep(s.id); else { e.target.dataset.armed = "1"; e.target.textContent = "Really remove?"; setTimeout(() => { delete e.target.dataset.armed; e.target.textContent = "Remove this step"; }, 3500); } }));
+    box.append(acts);
+  }
+
+  /* about: the description that people read before they hire */
+  function aboutPanel(box) {
+    const m = H.manifest;
+    box.append(el("p", "small muted", "This is what people read before they hire your helper. Be concrete: the tests show whether it holds up."));
+    box.append(field("One sentence about it", textarea(m.summary, 2, (v) => { m.summary = v; changed(["about"]); })));
+    box.append(field("Best at", input(m.speciality, (v) => { m.speciality = v; changed(["about"]); }, 60)));
+    box.append(field("Version", input(m.version, (v) => { m.version = v; changed(["about"]); }, 20), "Like 0.2.0. Raise the first number when it can do more than before."));
+    const sel2 = document.createElement("select"); [["", "General (sales accounts)"]].concat(list.suites.map((s) => [s.id, s.title])).forEach(([v, t]) => { const o = document.createElement("option"); o.value = v; o.textContent = t; sel2.append(o); });
+    sel2.value = m.suite || ""; sel2.onchange = () => { if (sel2.value) m.suite = sel2.value; else delete m.suite; changed(["about"]); };
+    box.append(field("It will be tested on", sel2, "The tester asks your helper these questions and checks its answers."));
+    box.append(el("h3", "sub", "What it can do"));
+    (m.skills = m.skills || []).forEach((s, i) => {
+      const d = el("div", "skill");
+      d.append(field("Skill name", input(s.name, (v) => { s.name = v; changed(["about"]); }, 60)), field("What it actually does", textarea(s.does, 2, (v) => { s.does = v; changed(["about"]); })),
+        field("Example questions (one per line)", textarea((s.try_asking || []).join("\n"), 3, (v) => { s.try_asking = v.split("\n").map((x) => x.trim()).filter(Boolean).slice(0, 3); changed(["about"]); })));
+      if (m.skills.length > 1) d.append(btn("Remove this skill", "linkbtn", () => { m.skills.splice(i, 1); changed(["about"]); drawPanel(); }));
+      box.append(d);
+    });
+    if (m.skills.length < 5) box.append(btn("+ Add a skill", "btn", () => { m.skills.push({ name: "", does: "", try_asking: [] }); drawPanel(); }));
+    box.append(el("h3", "sub", "What it cannot do"));
+    box.append(field("Limits (one per line)", textarea((m.limits || []).join("\n"), 3, (v) => { m.limits = v.split("\n").map((x) => x.trim()).filter(Boolean).slice(0, 5); changed(["about"]); })));
+    resultEditor(box, m);
+  }
+
+  function resultEditor(box, m) {
+    box.append(el("h3", "sub", "What its answer looks like"));
+    const sch = m.result_schema || {}, props = sch.properties || {}, simple = Object.keys(props).every((k) => { const p = props[k]; return p.type === "string" || p.enum || (p.type === "array" && p.items && p.items.type === "string"); });
+    if (!simple) { box.append(el("p", "small muted", "This answer shape is more detailed than this editor can show. Use “Edit as text” to change it.")); return; }
+    box.append(el("p", "small muted", "Every answer has a summary. Add other fields if you need them; the checker rejects answers that do not match."));
+    const rows = el("div", "fieldrows");
+    const draw = () => {
+      rows.replaceChildren();
+      Object.keys(props).forEach((name) => {
+        const p = props[name], r = el("div", "frow"); r.append(el("b", "small", name));
+        const type = p.enum ? "choice" : p.type === "array" ? "list" : "text";
+        r.append(el("span", "small muted", type === "choice" ? "one of: " + p.enum.join(", ") : type === "list" ? "a list" : "text"));
+        if (name !== "summary") r.append(btn("Remove", "linkbtn", () => { delete props[name]; sch.required = (sch.required || []).filter((x) => x !== name); changed(["about"]); draw(); }));
+        rows.append(r);
+      });
+    };
+    draw(); box.append(rows);
+    const nm = input("", () => {}, 30); nm.placeholder = "field name"; const ty = document.createElement("select");
+    [["text", "text"], ["list", "a list of short lines"], ["choice", "one of a few words"]].forEach(([v, t]) => { const o = document.createElement("option"); o.value = v; o.textContent = t; ty.append(o); });
+    const ch = input("", () => {}, 80); ch.placeholder = "low, medium, high"; ch.hidden = true; ty.onchange = () => { ch.hidden = ty.value !== "choice"; };
+    box.append(el("div", "composerrow"), nm, ty, ch, btn("Add the field", "btn", () => {
+      const name = nm.value.trim().toLowerCase().replace(/[^a-z0-9_]+/g, "_"); if (!name || props[name]) return;
+      props[name] = ty.value === "list" ? { type: "array", items: { type: "string", maxLength: 300 }, maxItems: 20 } : ty.value === "choice" ? { enum: ch.value.split(",").map((x) => x.trim()).filter(Boolean) } : { type: "string", maxLength: 600 };
+      if (ty.value === "choice" && !props[name].enum.length) { delete props[name]; return; }
+      sch.properties = props; m.result_schema = sch; nm.value = ""; changed(["about"]); draw();
+    }));
+  }
+
+  /* try it */
+  function tryPanel(box) {
+    box.append(el("p", "small muted", "A practice run on your own files. Nothing is published and no coins move."));
+    const q = textarea("", 2, () => {}); q.id = "tryq"; q.placeholder = "Ask it something, like a person would."; box.append(field("Your question", q));
+    const fs = el("fieldset", "reads"); fs.append(el("legend", "small", "Shelves it may open"));
+    (B.state().memory.shelves || []).filter((s) => s.depth <= 1).forEach((s) => { const l = el("label", "small"), c = document.createElement("input"); c.type = "checkbox"; c.value = s.path; l.append(c, "  ".repeat(s.depth) + s.name + " (" + s.count + ")"); fs.append(l); });
+    box.append(fs);
+    const out = el("div", "tryout"); out.id = "tryout";
+    const go = btn("Run it", "btn go2", async () => {
+      go.disabled = true; out.replaceChildren(el("p", "small muted", "Running…"));
+      try {
+        const r = await B.api("/api/studio/try", { id: H.id, task: q.value, shelves: [...fs.querySelectorAll("input:checked")].map((c) => c.value) });
+        lastTry = r; showTry(out, r); await playPulse(r.visited);
+      } catch (e) { out.replaceChildren(el("p", "warnline small", e.message)); }
+      go.disabled = false;
+    });
+    box.append(go, out);
+    if (lastTry) showTry(out, lastTry);
+  }
+  function showTry(out, r) {
+    out.replaceChildren();
+    out.append(el("div", "report", r.outcome === "COMPLETE" ? r.answer : r.outcome === "KILLED" ? "The guard stopped this helper. Nothing was delivered." : "No usable answer. " + (r.reasons[0] || "")));
+    if (r.files.length) { const d = el("details"); d.append(el("summary", null, "It read " + r.files.length + " of your files")); r.files.forEach((f) => d.append(el("div", "small", f.shelf + ": " + f.text))); out.append(d); }
+    else out.append(el("p", "small muted", "It read none of your files."));
+    const how = el("details"); how.append(el("summary", null, "What it did")); r.how.forEach((t) => how.append(el("div", "small", "• " + t))); out.append(how);
+  }
+  async function playPulse(ids) { for (const id of ids) { pulse = [id]; drawGraph(); await new Promise((r) => setTimeout(r, 450)); } pulse = []; drawGraph(); }
+
+  /* publish and manage */
+  function chipFor(v) {
+    if (v.revoked) return ["Retired", "wait"];
+    if (v.testing) return ["Being tested…", "wait"];
+    if (v.status === "flagged") return ["Caught cheating while tested", "bad"];
+    if (v.status === "certified") return ["Trust " + v.score + " of 100 (" + v.passes + " of " + v.total + " tests)", "good"];
+    return [v.test_error ? "Testing did not finish" : "Not tested yet", "wait"];
+  }
+  function publishPanel(box) {
+    const m = H.manifest;
+    box.append(el("p", "small", "Publishing puts version " + m.version + " on the market with your signature. A tester then runs it on a fixed set of questions and tries to catch it cheating. Its trust score comes from that, not from you."));
+    if (problems.length) box.append(el("p", "small warnline", "Fix the " + problems.length + " thing(s) above first."));
+    const price = document.createElement("input"); price.type = "number"; price.min = 0.01; price.max = 5; price.step = 0.05; price.value = ((H.versions[0] && H.versions[0].price_usd) || 0.2); price.setAttribute("aria-label", "Price per answer in dollars");
+    const mail = input(H.versions[0] ? H.versions[0].payout_email : "", () => {}, 120); mail.placeholder = "you@example.com (optional)";
+    box.append(field("Price per answer (US dollars)", price, "Demo money only: nothing real moves in this demo."), field("Where you would be paid", mail));
+    const go = btn("Publish version " + m.version, "btn go2", async () => {
+      go.disabled = true;
+      try { await B.api("/api/studio/publish", { id: H.id, price_usd: parseFloat(price.value), payout_email: mail.value }); note("Published. The tester is checking it now; this can take a few minutes."); await B.refresh(); await openHelper(H.id); tab = "publish"; drawPanel(); }
+      catch (e) { note(e.message); go.disabled = false; }
+    }); go.disabled = problems.length > 0; box.append(go);
+    box.append(el("h3", "sub", "Your versions"));
+    if (!H.versions.length) box.append(el("p", "small muted", "Nothing published yet."));
+    H.versions.forEach((v) => {
+      const c = el("div", "mem"), [t, cls] = chipFor(v);
+      c.append(el("div", null, "Version " + v.version), el("span", "tag " + cls, t));
+      c.append(el("div", "small muted", v.answers + " answer" + (v.answers === 1 ? "" : "s") + " given · earned " + B.cents(v.earned_cents) + " · " + v.stars + " fan" + (v.stars === 1 ? "" : "s") + " · $" + v.price_usd.toFixed(2) + " each"));
+      if (v.test_error) c.append(el("div", "small warnline", v.test_error));
+      const a = el("div", "acts");
+      if (!v.revoked) {
+        a.append(btn("Test it again", "btn", async () => { try { await B.api("/api/studio/retest", { key: v.key }); await openHelper(H.id); tab = "publish"; drawPanel(); } catch (e) { note(e.message); } }));
+        a.append(btn("Change price", "btn", async () => { const p = parseFloat(price.value); try { await B.api("/api/studio/price", { key: v.key, price_usd: p, payout_email: mail.value }); await B.refresh(); await openHelper(H.id); tab = "publish"; drawPanel(); } catch (e) { note(e.message); } }));
+        a.append(btn("Take it off the market", "btn warn", (e) => { if (e.target.dataset.armed) retire(v.key); else { e.target.dataset.armed = "1"; e.target.textContent = "Really?"; setTimeout(() => { delete e.target.dataset.armed; e.target.textContent = "Take it off the market"; }, 3500); } }));
+      }
+      c.append(a); box.append(c);
+    });
+    box.append(el("h3", "sub", "Delete this draft"), btn("Delete the draft", "btn warn", async (e) => {
+      if (!e.target.dataset.armed) { e.target.dataset.armed = "1"; e.target.textContent = "Really delete?"; setTimeout(() => { delete e.target.dataset.armed; e.target.textContent = "Delete the draft"; }, 3500); return; }
+      try { await B.api("/api/studio/delete", { id: H.id }); H = null; await show(); } catch (er) { note(er.message); }
+    }));
+  }
+  async function retire(key) { try { await B.api("/api/studio/retire", { key }); await B.refresh(); await openHelper(H.id); tab = "publish"; drawPanel(); } catch (e) { note(e.message); } }
+
+  /* power users: the steps as text */
+  function textPanel(box) {
+    box.append(el("p", "small muted", "The steps as written in the file. Changes here replace the picture once they are valid."));
+    const t = textarea(H.workflow_text, 18, () => {}); t.maxLength = 30000; t.className = "mono";
+    const go = btn("Use this text", "btn go2", async () => {
+      try { const r = await B.api("/api/studio/save", { id: H.id, workflow_text: t.value }); H.workflow_text = r.workflow_text; wf = r.workflow; problems = r.problems; sel = null; note(""); drawProblems(); drawGraph(); }
+      catch (e) { note(e.message); }
+    });
+    box.append(t, go);
+  }
+
+  /* poll while a version is being tested */
+  function watchTests() {
+    clearInterval(pollTimer);
+    pollTimer = setInterval(async () => {
+      if ($("view-studio").hidden || !H) return;
+      if (!H.versions.some((v) => v.testing)) return;
+      try { const r = await B.api("/api/studio/helper?id=" + encodeURIComponent(H.id)); H.versions = r.versions; if (!r.versions.some((v) => v.testing)) await B.refresh(); if (tab === "publish") drawPanel(); } catch (e) { /* next poll */ }
+    }, 3000);
+  }
+
+  function mount(bridge) {
+    B = bridge;
+    $("newform").onsubmit = createHelper;
+    ["steps", "about", "try", "publish", "text"].forEach((t) => { $("ptab-" + t).onclick = () => { tab = t; drawPanel(); }; });
+    [["addfiles", "files"], ["addweb", "web"], ["addthink", "think"], ["addcheck", "check"], ["addprogram", "program"], ["adddeliver", "deliver"]].forEach(([id, k]) => { $(id).onclick = () => addStep(k); });
+    $("tidy").onclick = () => { layout = {}; changed(["layout"]); drawGraph(); };
+    $("showdata").onchange = (e) => { showData = e.target.checked; drawGraph(); };
+  }
+  window.Studio = { mount, show, redraw: () => {} };
+})();

@@ -23,6 +23,8 @@ your shelves, a glass room where the helper works, a guard, and your assistant, 
    **nothing** until you open a shelf. **Secret** files can never be shared, even if you tick them. There is no privacy dial: one rule.
 3. **Chat.** The helper gets only the opened shelves and the last few messages. Each answer says which files it came from and how it was made.
 
+4. **Build and publish your own helper** in **My helpers**: edit its steps as a picture, practise on your own shelves, publish it with your signature and a price. A tester then scores it and tries to catch it cheating; the score, not your claim, ranks it.
+
 Two of the helpers are malicious on purpose. One reaches for the secret drawer. The other ships real code that tries to send a
 message out of the room, open another program and write outside its notebook. The glass stops all of it, the guard sounds the alarm,
 nothing reaches your desk, and your coins come back. Everything on the floor replays the job's real record.

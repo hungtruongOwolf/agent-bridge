@@ -20,6 +20,7 @@
 
 <nav class="tabs" role="tablist" aria-label="Where do you want to be?">
   <button id="tab-office" role="tab" aria-selected="true" aria-controls="view-office" type="button">My office</button>
+  <button id="tab-studio" role="tab" aria-selected="false" aria-controls="view-studio" type="button">My helpers</button>
   <button id="tab-memory" role="tab" aria-selected="false" aria-controls="view-memory" type="button">My memory</button>
 </nav>
 
@@ -73,6 +74,59 @@
   </div>
 </section>
 
+<!-- Build, test, publish and manage your own helpers. -->
+<section id="view-studio" class="studioview" role="tabpanel" hidden>
+  <aside class="studioleft">
+    <div class="panel"><div class="title">Helpers I built</div><div class="body">
+      <div class="threads" id="helperlist"></div>
+      <form id="newform" class="memform" autocomplete="off">
+        <h3 class="sub">Build a new helper</h3>
+        <label class="fld"><span class="small">Give it a name (letters, digits, dashes)</span><input id="newname" type="text" maxlength="41" placeholder="my-first-helper" required></label>
+        <label class="fld"><span class="small">Start from</span><select id="newtemplate"></select></label>
+        <button class="btn go2" type="submit">Create it</button>
+      </form>
+      <p class="small warnline" id="studionote" role="status"></p>
+    </div></div>
+  </aside>
+  <div class="studiomid">
+    <div class="panel" id="studioempty" hidden><div class="title">Your own helpers</div><div class="body">
+      <p>Anyone can build a helper and offer it on the market. A helper is a short list of steps, like: look through the files, think, check the answer, hand it over. You can see and change those steps as a picture, practise on your own files, then publish it. A tester checks it and tries to catch it cheating, and its trust score comes from that.</p>
+      <p>Start on the left by giving your first helper a name.</p>
+    </div></div>
+    <div id="studiomain" hidden>
+      <div class="panel"><div class="title" id="helpertitle">Helper</div><div class="body">
+        <div id="problems" aria-live="polite"></div>
+        <div class="gtools">
+          <span class="small muted">Add a step:</span>
+          <button class="btn" id="addfiles" type="button">Look through files</button>
+          <button class="btn" id="addweb" type="button">Look on the web</button>
+          <button class="btn" id="addthink" type="button">Think</button>
+          <button class="btn" id="addcheck" type="button">Check</button>
+          <button class="btn" id="addprogram" type="button">Run a program</button>
+          <button class="btn" id="adddeliver" type="button">Hand over</button>
+          <span class="gspace"></span>
+          <label class="small"><input type="checkbox" id="showdata" checked> Show what each step reads</label>
+          <button class="btn" id="tidy" type="button">Tidy up</button>
+        </div>
+        <div class="graphwrap"><svg id="graph" role="img" aria-label="The steps this helper runs, as a picture. Use the panel on the right to change them without dragging."></svg></div>
+        <p class="small muted">Green arrow: what comes next. Red dashed arrow: where it goes if the check fails. Thin grey line: which earlier results a step reads.</p>
+      </div></div>
+    </div>
+  </div>
+  <aside class="studioright" id="studiopanel">
+    <div class="panel"><div class="title">This helper</div><div class="body">
+      <div class="ptabs" role="tablist">
+        <button id="ptab-steps" role="tab" type="button">A step</button>
+        <button id="ptab-about" role="tab" type="button">About</button>
+        <button id="ptab-try" role="tab" type="button">Try it</button>
+        <button id="ptab-publish" role="tab" type="button">Publish</button>
+        <button id="ptab-text" role="tab" type="button">Edit as text</button>
+      </div>
+      <div id="panelbody"></div>
+    </div></div>
+  </aside>
+</section>
+
 <section id="view-memory" class="memview" role="tabpanel" hidden>
   <div class="panel memintro"><div class="title">My memory</div><div class="body">
     <p>Everything a helper could ever be allowed to look at, kept on shelves like a small library. <b>Nothing is learned behind your back.</b>
@@ -118,6 +172,7 @@
 <script src="/static/story.js"></script>
 <script src="/static/market.js"></script>
 <script src="/static/memory.js"></script>
+<script src="/static/studio.js"></script>
 <script src="/static/chat.js"></script>
 <script src="/static/app.js"></script>
 </body>

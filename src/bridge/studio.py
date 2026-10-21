@@ -302,7 +302,11 @@ class Studio:
             layout = json.loads(self._layout_file(hid).read_text(encoding="utf-8"))
         except (OSError, ValueError):
             pass
-        return {"id": hid, "manifest": manifest, "workflow_text": text, "graph": g, "caps": caps, "problems": problems,
+        try:
+            wf_obj = yaml.safe_load(text)
+        except yaml.YAMLError:
+            wf_obj = None
+        return {"id": hid, "manifest": manifest, "workflow_text": text, "workflow": wf_obj if isinstance(wf_obj, dict) else None, "graph": g, "caps": caps, "problems": problems,
                 "layout": layout if isinstance(layout, dict) else {}, "versions": self._versions(hid),
                 "suites": [{"id": s, "title": SUITE_TITLES.get(s, s)} for s in available() if not s.endswith("-dev")]}
 

@@ -18,14 +18,15 @@
   /* ---------- screens ---------- */
   function showView(name) {
     view = name;
-    ["office", "chat", "memory"].forEach((v) => { $("view-" + v).hidden = v !== name; });
-    ["office", "memory"].forEach((v) => {
+    ["office", "chat", "studio", "memory"].forEach((v) => { $("view-" + v).hidden = v !== name; });
+    ["office", "studio", "memory"].forEach((v) => {
       const on = v === name || (v === "office" && name === "chat"), t = $("tab-" + v);
       t.setAttribute("aria-selected", String(on)); t.tabIndex = on ? 0 : -1;
     });
     try { sessionStorage.setItem("ab-view", name === "chat" ? "office" : name); } catch (e) { /* remembering the tab is optional */ }
     if (name === "office") { window.Market.start(); window.MemoryUI.redraw(); } else window.Market.stop();
     if (name === "memory") window.MemoryUI.show();
+    if (name === "studio") window.Studio.show();
     if (name === "chat" && office) window.dispatchEvent(new Event("resize"));
   }
 
@@ -365,19 +366,19 @@
   function mount(bridge) {
     B = bridge;
     $("tab-office").parentNode.addEventListener("keydown", (e) => {
-      const tabs = ["office", "memory"], i = tabs.findIndex((n) => $("tab-" + n) === document.activeElement);
+      const tabs = ["office", "studio", "memory"], i = tabs.findIndex((n) => $("tab-" + n) === document.activeElement);
       if (i < 0) return; let j = i;
-      if (e.key === "ArrowRight" || e.key === "ArrowLeft") j = (i + 1) % 2; else if (e.key === "Home") j = 0; else if (e.key === "End") j = 1; else return;
+      if (e.key === "ArrowRight") j = (i + 1) % 3; else if (e.key === "ArrowLeft") j = (i + 2) % 3; else if (e.key === "Home") j = 0; else if (e.key === "End") j = 2; else return;
       e.preventDefault(); showView(tabs[j]); $("tab-" + tabs[j]).focus();
     });
-    $("tab-office").onclick = () => showView("office"); $("tab-memory").onclick = () => showView("memory");
+    $("tab-office").onclick = () => showView("office"); $("tab-studio").onclick = () => showView("studio"); $("tab-memory").onclick = () => showView("memory");
     $("backtofloor").onclick = back;
     $("composer").onsubmit = send;
     $("draft").oninput = () => { clearTimeout(draftTimer); draftTimer = setTimeout(loadContext, 350); };
     $("draft").onkeydown = (e) => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); $("composer").requestSubmit(); } };
     $("profileclose").onclick = () => $("profile").close();
     let v = "office"; try { v = sessionStorage.getItem("ab-view") || "office"; } catch (e) { /* default tab */ }
-    showView(v === "memory" ? "memory" : "office");
+    showView(v === "memory" || v === "studio" ? v : "office");
   }
   window.ChatUI = { mount, profile, startWith, startNew, open, show: showView, redraw: () => { if (view === "chat" && cur) { drawBudget(); } } };
 })();
