@@ -6,331 +6,612 @@
 <title>agent-bridge</title>
 <style>
 :root{
-  --bg:#f4f5f7; --panel:#ffffff; --ink:#14181f; --muted:#5b6574; --line:#dfe3ea;
-  --accent:#2556d9; --ok:#12805c; --okbg:#e2f5ee; --warn:#a15c00; --warnbg:#fff1d6;
-  --bad:#b4262b; --badbg:#fde8e8; --chip:#eef1f6; --code:#0f172a;
+  --paper:#EEF1F2; --sheet:#FAFBFB; --ink:#101C28; --muted:#52626F; --rule:#C5CFD2; --wash:#E3E9EB;
+  --vault:#0B6B63; --vaultwash:#DCEFEC; --signal:#D9480F; --breach:#B3261E; --breachwash:#F8E3E1;
+  --hold:#8A6100; --holdwash:#F4EBD3; --focus:#1B5FD1;
+  --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+  --sans:"Segoe UI",system-ui,-apple-system,Roboto,sans-serif;
+  --mono:ui-monospace,"Cascadia Mono",Consolas,monospace;
 }
 @media (prefers-color-scheme:dark){
-  :root{ --bg:#0e1116; --panel:#171b22; --ink:#e8ecf3; --muted:#9aa5b5; --line:#2a313c;
-    --accent:#6c93ff; --ok:#4fd1a1; --okbg:#10302a; --warn:#f0b34a; --warnbg:#35280f;
-    --bad:#ff7b80; --badbg:#3a1618; --chip:#222936; --code:#0b0e13; }
+  :root{ --paper:#0F1519; --sheet:#172026; --ink:#E4EAEC; --muted:#98A8B2; --rule:#2C3A43; --wash:#1F2B32;
+    --vault:#3FBFB0; --vaultwash:#10302E; --signal:#FF8A4C; --breach:#FF6B61; --breachwash:#3A1A18;
+    --hold:#E0B04A; --holdwash:#352A10; --focus:#7FB0FF; }
 }
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-header{padding:18px 28px;border-bottom:1px solid var(--line);background:var(--panel);display:flex;gap:18px;align-items:center;flex-wrap:wrap}
-h1{font-size:19px;margin:0;letter-spacing:-.01em}
-.tag{color:var(--muted);font-size:14px}
-.mode{margin-left:auto;display:flex;gap:8px;align-items:center;background:var(--okbg);color:var(--ok);padding:6px 12px;border-radius:999px;font-size:13px;font-weight:600}
-.dot{width:8px;height:8px;border-radius:50%;background:currentColor}
-main{display:grid;grid-template-columns:minmax(260px,1fr) minmax(300px,1.1fr) minmax(320px,1.3fr);gap:16px;padding:18px 28px;align-items:start}
-@media (max-width:1100px){ main{grid-template-columns:1fr} }
-section{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px}
-h2{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:0 0 12px;font-weight:700}
-.pack{border:1.5px solid var(--line);border-radius:10px;padding:12px;margin-bottom:10px;cursor:pointer;background:var(--panel)}
-.pack:hover{border-color:var(--accent)} .pack.sel{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 18%,transparent)}
-.row{display:flex;gap:8px;align-items:center;justify-content:space-between}
-.name{font-weight:700} .sum{color:var(--muted);font-size:13px;margin:4px 0 8px}
-.chip{display:inline-block;font-size:12px;padding:2px 9px;border-radius:999px;background:var(--chip);color:var(--muted);font-weight:600}
-.chip.ok{background:var(--okbg);color:var(--ok)} .chip.bad{background:var(--badbg);color:var(--bad)} .chip.warn{background:var(--warnbg);color:var(--warn)}
-.bar{height:6px;border-radius:99px;background:var(--chip);overflow:hidden;margin:6px 0 2px} .bar i{display:block;height:100%;background:var(--ok)}
-.meta{font-size:12px;color:var(--muted)}
-button{font:inherit;cursor:pointer}
-.star{border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:8px;padding:2px 9px;font-size:13px}
-.star:hover{border-color:var(--accent)}
-.rec{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:start;padding:9px 0;border-top:1px solid var(--line);font-size:13px}
-.rec:first-of-type{border-top:0}
-.rec .txt{color:var(--ink);overflow-wrap:anywhere}
-.rec.off{opacity:.55} .rec.off .txt{color:var(--muted)}
-.state{font-size:12px;font-weight:700;white-space:nowrap}
-.state.on{color:var(--ok)} .state.off{color:var(--muted)}
-.s-low{background:var(--ok)} .s-medium{background:var(--warn)} .s-high{background:var(--bad)}
-.sd{width:9px;height:9px;border-radius:50%;margin-top:6px}
-.lens{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
-.lens label{display:flex;gap:6px;align-items:center;border:1px solid var(--line);border-radius:8px;padding:5px 10px;font-size:13px;cursor:pointer}
-select{font:inherit;padding:5px 8px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--ink)}
-.note{font-size:13px;color:var(--muted);background:var(--chip);border-radius:8px;padding:9px 11px;margin:10px 0}
-.go{width:100%;padding:12px;border:0;border-radius:10px;background:var(--accent);color:#fff;font-weight:700;font-size:15px}
-.go:disabled{opacity:.5;cursor:not-allowed}
-.sim{display:flex;gap:6px;align-items:center;margin-top:10px;font-size:12px;color:var(--muted)}
-.tl{margin:14px 0 0;padding:0;list-style:none}
-.tl li{display:grid;grid-template-columns:22px 1fr;gap:8px;padding:6px 0;font-size:13px;animation:in .25s ease both}
-@keyframes in{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
-.tl .ic{width:18px;height:18px;border-radius:50%;background:var(--chip);display:grid;place-items:center;font-size:11px;font-weight:700}
-.tl .ic.ok{background:var(--okbg);color:var(--ok)} .tl .ic.bad{background:var(--badbg);color:var(--bad)}
-code{font:12px ui-monospace,Consolas,monospace;background:var(--chip);padding:1px 5px;border-radius:4px}
-.banner{border-radius:10px;padding:14px;margin-top:14px}
-.banner.kill{background:var(--badbg);color:var(--bad);border:1px solid var(--bad)}
-.banner.good{background:var(--okbg);color:var(--ok);border:1px solid var(--ok)}
-.banner h3{margin:0 0 4px;font-size:15px} .banner p{margin:0;font-size:13px;color:var(--ink)}
-.result{margin-top:10px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px;font-size:14px}
-.facts{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;font-size:12px;margin-top:12px;color:var(--muted)}
-.facts b{color:var(--ink);font-weight:600;overflow-wrap:anywhere}
-.empty{color:var(--muted);font-size:13px;padding:10px 0}
-.badge-test{background:var(--warnbg);color:var(--warn);border:1px solid var(--warn);padding:3px 10px;border-radius:999px;font-size:11px;font-weight:800;letter-spacing:.06em}
-.wallet{font-size:12px;color:var(--muted)}
-.pay{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-top:12px;font-size:13px}
-.pay .ptitle{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700;margin-bottom:6px}
-.pay .prow{display:flex;justify-content:space-between;gap:10px;padding:2px 0}
-.pay .pend{margin-top:8px;padding-top:8px;border-top:1px solid var(--line)}
-.pay .acts{display:flex;gap:8px;margin-top:8px}
-.audit{margin-top:12px;font-size:12px;border:1px solid var(--line);border-radius:8px;padding:8px 10px}
-.audit summary{cursor:pointer;font-weight:600}
-.arow{display:grid;grid-template-columns:34px 110px 1fr;gap:6px;padding:3px 0;border-top:1px solid var(--line);overflow-wrap:anywhere}
-.hist{border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin-bottom:8px;cursor:pointer;font-size:13px}
-.hist:hover{border-color:var(--accent)}
-@media (max-width:600px){ header{padding:12px 14px} main{padding:12px;gap:12px} .mode{margin-left:0} .arow{grid-template-columns:30px 1fr} .arow span:last-child{grid-column:1 / -1} }
-.prop{border:1px dashed var(--warn);background:var(--warnbg);border-radius:10px;padding:10px;margin-bottom:8px;font-size:13px}
-.prop .acts{display:flex;gap:8px;margin-top:8px}
-.btn{border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:8px;padding:5px 12px;font-size:13px;font-weight:600}
-.btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
-.chip.src{background:var(--warnbg);color:var(--warn);margin-left:6px}
+body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.55 var(--sans)}
+h1,h2,h3{font-family:var(--serif);font-weight:600;margin:0;letter-spacing:-.005em}
+h2{font-size:18px} h3{font-size:15px}
+p{margin:0}
+button,select,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px;border-radius:4px}
+code,.mono{font-family:var(--mono);font-size:12px}
+.muted{color:var(--muted)}
+
+/* top bar */
+.top{display:flex;align-items:center;gap:20px;flex-wrap:wrap;padding:14px 24px;border-bottom:1px solid var(--rule);background:var(--sheet)}
+.brand{display:flex;align-items:center;gap:12px}
+.brand h1{font-size:26px}
+.brand p{color:var(--muted);font-size:14px;max-width:34ch;line-height:1.3}
+.status{margin-left:auto;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.badge{background:var(--holdwash);color:var(--hold);border:1px solid var(--hold);padding:2px 10px;border-radius:4px;font-weight:700;font-size:13px}
+.wallet{font-size:13px;color:var(--muted)}
+
+/* layout */
+.layout{display:grid;grid-template-columns:300px minmax(0,1fr) 340px;gap:0;align-items:start}
+.rail,.desk{padding:20px 22px;min-width:0}
+.rail{border-right:1px solid var(--rule)} .desk{border-left:1px solid var(--rule)}
+.stage{padding:20px 24px;min-width:0}
+@media (max-width:1180px){
+  .layout{grid-template-columns:minmax(0,1fr)}
+  .stage{order:1;padding:16px} .rail{order:2;border:0;border-top:1px solid var(--rule)} .desk{order:3;border:0;border-top:1px solid var(--rule)}
+  .top{padding:12px 16px}
+}
+
+/* agents list */
+.agents{list-style:none;margin:12px 0 0;padding:0}
+.agent{border-top:1px solid var(--rule);position:relative}
+.agent:last-child{border-bottom:1px solid var(--rule)}
+.agentbtn{display:grid;grid-template-columns:30px 1fr auto;gap:10px;width:100%;text-align:left;background:none;border:0;padding:12px 8px 8px 10px;border-left:4px solid transparent}
+.agentbtn:hover{background:var(--wash)}
+.agent[aria-current="true"] .agentbtn{border-left-color:var(--ink);background:var(--sheet)}
+.rank{font:600 22px/1 var(--serif);color:var(--ink)}
+.rank.flag{color:var(--breach)}
+.who strong{font-weight:600}
+.who em{font-style:normal;color:var(--muted);font-size:12px;margin-left:6px}
+.blurb{display:block;color:var(--muted);font-size:13px;line-height:1.35;margin-top:2px}
+.price{font-weight:600}
+.proof{padding:0 34px 10px 50px;font-size:12px;color:var(--muted)}
+.bar{height:4px;background:var(--wash);margin:2px 0 4px;border-radius:2px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--vault)}
+.proof.bad{color:var(--breach)}
+.star{position:absolute;right:8px;bottom:6px;background:none;border:0;padding:2px 6px;font-size:12px;color:var(--muted);border-radius:4px}
+.star:hover{background:var(--wash);color:var(--ink)}
+.empty{color:var(--muted);padding:10px 0;font-size:14px}
+
+/* lens */
+.lens{margin-top:26px}
+.lens fieldset{border:0;margin:10px 0 0;padding:0;display:grid;gap:6px}
+.lens label.opt{display:flex;gap:8px;align-items:center}
+.seg{display:inline-flex;margin-top:6px;border:1px solid var(--ink);border-radius:4px;overflow:hidden}
+.seg label{padding:4px 12px;cursor:pointer;font-size:13px;position:relative}
+.seg input{position:absolute;opacity:0;pointer-events:none}
+.seg label:has(input:checked){background:var(--ink);color:var(--paper);font-weight:700}
+.seg label:has(input:focus-visible){outline:3px solid var(--focus);outline-offset:-3px}
+details summary{cursor:pointer;color:var(--muted);font-size:13px;margin-top:12px}
+.records{list-style:none;margin:8px 0 0;padding:0;font-size:13px}
+.records li{padding:5px 0;border-top:1px solid var(--rule)}
+.go{width:100%;margin-top:4px;padding:12px;border:0;border-radius:4px;background:var(--ink);color:var(--paper);font-weight:700}
+.go:hover:not(:disabled){filter:brightness(1.15)}
+.go:disabled{opacity:.45;cursor:not-allowed}
+.sim{display:flex;gap:8px;margin-top:10px;font-size:12px;color:var(--muted);align-items:flex-start}
+
+/* stage */
+.stagehead{margin-bottom:6px;display:flex;justify-content:space-between;align-items:flex-start;gap:24px;flex-wrap:wrap}
+.runbox{width:min(100%,300px);flex:none}
+.stagehead h2{font-size:26px;line-height:1.15}
+.stagehead p{color:var(--muted);margin-top:4px;max-width:70ch}
+svg#diagram{width:100%;height:auto;display:block;margin-top:8px}
+.replaynote{font-size:12px;color:var(--muted);margin-top:2px;min-height:18px}
+.log{list-style:none;margin:14px 0 0;padding:0;max-width:78ch}
+.log li{padding:5px 0 5px 22px;position:relative;border-top:1px solid var(--rule);font-size:14px}
+.log li::before{content:"";position:absolute;left:4px;top:13px;width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.log li.ok::before{background:var(--vault)} .log li.bad::before{background:var(--breach)} .log li.live::before{background:var(--signal)}
+.log li.bad{color:var(--breach)}
+
+/* schematic elements */
+.region{fill:none;stroke:var(--ink);stroke-width:1.5}
+.regionlabel{font:600 15px var(--serif);fill:var(--ink)}
+.node rect{fill:var(--sheet);stroke:var(--ink);stroke-width:1.5}
+.node .t{font:600 14px var(--serif);fill:var(--ink)}
+.node .s{font:12px var(--sans);fill:var(--muted)}
+.node.far rect{stroke-dasharray:5 4;stroke:var(--muted)}
+.node.active rect{stroke:var(--signal);stroke-width:2.5}
+.node.good rect{stroke:var(--vault);stroke-width:2.5;fill:var(--vaultwash)}
+.node.bad rect{stroke:var(--breach);stroke-width:2.5;fill:var(--breachwash)}
+.cellwall{fill:var(--sheet);stroke:var(--ink);stroke-width:1.5}
+.cellglass{fill:none;stroke:var(--ink);stroke-width:1;opacity:.7}
+.cell.active .cellwall{stroke:var(--signal);stroke-width:2.5}
+.cell.bad .cellwall{stroke:var(--breach);stroke-width:2.5;fill:var(--breachwash)}
+.cellstep{font:600 13px var(--mono);fill:var(--ink)}
+.gate{fill:var(--ink)}
+.gate.good{fill:var(--vault)} .gate.bad{fill:var(--breach)} .gate.active{fill:var(--signal)}
+.tile rect{fill:var(--sheet);stroke:var(--rule);stroke-width:1.5}
+.tile text{font:11px var(--mono);fill:var(--muted)}
+.tile.shared rect{fill:var(--vaultwash);stroke:var(--vault)} .tile.shared text{fill:var(--ink)}
+.tile.private rect{fill:url(#hatch);stroke:var(--muted);stroke-dasharray:4 3}
+.tile.shared.read rect,.tile.read rect{stroke:var(--signal);stroke-width:2.5}
+.tile.foreign rect{stroke-dasharray:2 2}
+.edge{fill:none;stroke:var(--muted);stroke-width:1.5}
+.edge.ship{stroke-dasharray:3 5}
+.edge.live{stroke:var(--signal);stroke-width:2.5;stroke-dasharray:7 6;animation:flow .7s linear infinite}
+.edge.done{stroke:var(--vault);stroke-width:2.5}
+.edge.cut{stroke:var(--breach);stroke-width:2.5}
+@keyframes flow{to{stroke-dashoffset:-26}}
+.mark{font:700 12px var(--sans);fill:var(--breach)}
+.counter{font:12px var(--mono);fill:var(--ink)}
+.small{font:12px var(--sans);fill:var(--muted)}
+svg.busy .cell .cellwall{animation:breathe 1.4s ease-in-out infinite}
+@keyframes breathe{50%{stroke:var(--signal)}}
+@media (prefers-reduced-motion:reduce){
+  .edge.live,svg.busy .cell .cellwall{animation:none}
+  *{transition:none!important}
+}
+
+/* desk */
+.desk section{margin-top:22px}
+.desk section:first-child{margin-top:0}
+.outcome{border-left:4px solid var(--rule);padding:2px 0 2px 14px}
+.outcome.good{border-color:var(--vault)} .outcome.bad{border-color:var(--breach)}
+.outcome h3{font-size:20px;margin-bottom:4px}
+.result{margin-top:10px;padding:10px 12px;background:var(--sheet);border:1px solid var(--rule);border-radius:4px}
+dl.facts{display:grid;grid-template-columns:auto 1fr;gap:3px 14px;font-size:13px;margin:12px 0 0}
+dl.facts dt{color:var(--muted)} dl.facts dd{margin:0;overflow-wrap:anywhere}
+.pay{border:1px solid var(--rule);border-top:3px solid var(--hold);background:var(--sheet);padding:10px 12px;border-radius:0 0 4px 4px}
+.pay h3{margin-bottom:6px}
+.prow{display:flex;justify-content:space-between;gap:10px;padding:2px 0;font-size:14px}
+.pay p{font-size:13px;margin-top:8px;padding-top:8px;border-top:1px solid var(--rule)}
+.acts{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.btn{border:1px solid var(--ink);background:var(--sheet);border-radius:4px;padding:6px 14px;font-weight:600;font-size:14px;text-decoration:none;display:inline-block}
+.btn:hover{background:var(--wash)}
+.btn.pri{background:var(--ink);color:var(--paper)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.ask{border:1px dashed var(--hold);background:var(--holdwash);padding:10px 12px;border-radius:4px;margin-top:8px}
+.arow{display:grid;grid-template-columns:30px 112px 1fr;gap:6px;padding:3px 0;border-top:1px solid var(--rule);font-size:12px;overflow-wrap:anywhere}
+.hist{padding:8px 0;border-top:1px solid var(--rule);cursor:pointer;font-size:14px}
+.hist:hover{background:var(--wash)}
+.hist .tag{font-size:12px;font-weight:700}
+.tag.good{color:var(--vault)} .tag.bad{color:var(--breach)} .tag.warn{color:var(--hold)}
 </style>
 </head>
 <body data-token="__TOKEN__">
-<header>
-  <h1>agent-bridge</h1>
-  <span class="tag">Rent a stronger agent. Keep your data.</span>
-  <span class="badge-test" title="No real money moves. A fake provider stands in until the PayPal sandbox is connected.">TEST MONEY</span>
-  <span class="wallet" id="wallet"></span>
-  <span class="mode"><span class="dot"></span>Pull mode: the pack runs here, with no network</span>
+<header class="top">
+  <div class="brand">
+    <svg width="40" height="28" viewBox="0 0 40 28" aria-hidden="true"><path d="M2 24 C 8 4, 32 4, 38 24" fill="none" stroke="currentColor" stroke-width="2.5"/><path d="M2 24 H38" stroke="currentColor" stroke-width="2.5"/><path d="M12 24 V12 M20 24 V8 M28 24 V12" stroke="currentColor" stroke-width="1.5"/></svg>
+    <h1>agent-bridge</h1>
+    <p>Rent a stronger agent. Keep your data.</p>
+  </div>
+  <div class="status">
+    <span class="badge" id="badge" title="No real money moves. A stand-in payment provider is used until the PayPal sandbox is connected.">Test money</span>
+    <span class="wallet" id="wallet" aria-live="polite"></span>
+  </div>
 </header>
-<main>
-  <section>
-    <h2>1 · Pick an agent</h2>
-    <div id="market"><div class="empty">Loading…</div></div>
+
+<main class="layout">
+  <aside class="rail" aria-label="Agents and what they may read">
+    <h2>Agents for hire</h2>
+    <ol class="agents" id="agents"><li class="empty">Loading the marketplace.</li></ol>
+
+    <div class="lens">
+      <h2>What it may read</h2>
+      <fieldset id="types" aria-label="Record types it may read"></fieldset>
+      <div style="margin-top:12px" class="muted">Most sensitive record allowed</div>
+      <div class="seg" role="radiogroup" aria-label="Most sensitive record allowed" id="sens">
+        <label><input type="radio" name="sens" value="low"><span>low</span></label>
+        <label><input type="radio" name="sens" value="medium" checked><span>medium</span></label>
+        <label><input type="radio" name="sens" value="high"><span>high</span></label>
+      </div>
+      <details><summary>See your records</summary><ul class="records" id="recordList"></ul></details>
+    </div>
+
+  </aside>
+
+  <section class="stage" aria-label="Live view of the run">
+    <div class="stagehead">
+      <div>
+        <h2 id="stageTitle">Choose an agent to begin</h2>
+        <p id="stageSub">The diagram shows your machine in the middle, the sealed cell where the agent runs, and the only three doors out of it.</p>
+      </div>
+      <div class="runbox">
+        <button class="go" id="go" disabled>Choose an agent first</button>
+        <label class="sim"><input type="checkbox" id="sim" autocomplete="off"><span>Simulate a compromised model that copies everything it sees</span></label>
+      </div>
+    </div>
+    <svg id="diagram" viewBox="0 0 900 540" role="img" aria-labelledby="stageTitle"></svg>
+    <p class="replaynote" id="replaynote"></p>
+    <ol class="log" id="log" aria-live="polite"></ol>
   </section>
-  <section>
-    <h2>2 · Choose what it may read</h2>
-    <div class="lens" id="types"></div>
-    <div class="row" style="margin-bottom:6px"><span class="meta">Up to sensitivity</span>
-      <select id="sens"><option>low</option><option selected>medium</option><option>high</option></select></div>
-    <div id="vault"></div>
-    <h2 style="margin-top:18px">Waiting for your decision</h2>
-    <div id="review"><div class="empty">Nothing yet. After a run, an agent may suggest something to remember. It is only saved if you accept.</div></div>
-    <div class="note">The pack can read only the records marked <b>shared</b>. It has no network, so nothing is sent to it or by it.
-      Anything else it asks for is refused and counted.</div>
-  </section>
-  <section>
-    <h2>3 · Run</h2>
-    <button class="go" id="go" disabled>Select an agent</button>
-    <label class="sim"><input type="checkbox" id="sim"> Simulate a compromised model (copies everything it can see)</label>
-    <ul class="tl" id="tl"></ul>
-    <div id="out"></div>
-    <h2 style="margin-top:20px">Past runs</h2>
-    <div id="history"><div class="empty">No runs yet.</div></div>
-  </section>
+
+  <aside class="desk" aria-label="Outcome, money and memory">
+    <section id="outcome"><div class="empty">Pick an agent, choose what it may read, then run it. The result, the payment and anything it suggests you remember will appear here.</div></section>
+    <section id="payment"></section>
+    <section>
+      <h2>Waiting for your decision</h2>
+      <div id="review"><div class="empty">Nothing yet. After a run, an agent may suggest something to remember. It is saved only if you accept it.</div></div>
+    </section>
+    <section>
+      <h2>Past runs</h2>
+      <div id="history"><div class="empty">No runs yet. Your first run will be listed here.</div></div>
+    </section>
+  </aside>
 </main>
+
 <script>
 const TOKEN = document.body.dataset.token;
-let S = null, selected = null, running = false;
 const $ = (id) => document.getElementById(id);
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; };
+const NS = "http://www.w3.org/2000/svg";
+const sv = (tag, attrs, text) => { const e = document.createElementNS(NS, tag); for (const k in (attrs || {})) e.setAttribute(k, attrs[k]); if (text !== undefined) e.textContent = text; return e; };
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+const REDUCED = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const fmt = (c) => "$" + (c / 100).toFixed(2);
 const RANK = {low:0, medium:1, high:2};
+const FAR = ["author", "hub", "nebius", "tavily", "pay"];
+
+let S = null, selected = null, running = false;
 
 async function api(path, body) {
   const r = await fetch(path, body ? {method:"POST", headers:{"X-Bridge-Token":TOKEN,"Content-Type":"application/json"}, body:JSON.stringify(body)} : {});
-  const j = await r.json(); if (!r.ok) throw new Error(j.error || r.status); return j;
-}
-
-function lensTypes(){ return [...document.querySelectorAll("#types input:checked")].map(i => i.value); }
-function shared(rec){ return lensTypes().includes(rec.type) && RANK[rec.sensitivity] <= RANK[$("sens").value]; }
-
-function drawMarket(){
-  const box = $("market"); box.replaceChildren();
-  S.market.forEach(p => {
-    const c = el("div", "pack" + (selected === p.key ? " sel" : ""));
-    c.onclick = () => { selected = p.key; drawMarket(); $("go").disabled = running; $("go").textContent = "Run " + p.id + " v" + p.version + " · up to " + fmt(Math.round(p.price_usd * 100)); };
-    const top = el("div","row"); const nm = el("span","name",p.id); nm.append(el("span","meta"," v" + p.version)); top.append(nm);
-    const price = el("span","meta","$" + p.price_usd.toFixed(2) + " / " + p.unit); top.append(price); c.append(top);
-    c.append(el("div","sum",p.summary));
-    const chips = el("div","row");
-    const left = el("span");
-    if (p.status === "certified") left.append(el("span","chip ok","Certified · rank #" + p.rank));
-    else if (p.status === "flagged") left.append(el("span","chip bad","Flagged by Certifier"));
-    else left.append(el("span","chip warn","Not certified"));
-    const st = el("button","star","☆ " + p.stars); st.title = "Star this pack";
-    st.onclick = async (e) => { e.stopPropagation(); const r = await api("/api/star",{key:p.key,user:"you"}); p.stars = r.stars; drawMarket(); };
-    chips.append(left, st); c.append(chips);
-    if (p.status === "certified") {
-      const b = el("div","bar"); const i = document.createElement("i"); i.style.width = Math.round(p.score*100) + "%"; b.append(i); c.append(b);
-      c.append(el("div","meta","score " + p.score.toFixed(2) + " (lower bound) · " + p.evidence));
-    } else if (p.status === "flagged") {
-      c.append(el("div","meta","Failed the security trap: " + p.violations.join(", ")));
-    } else c.append(el("div","meta","No evaluation on record"));
-    c.append(el("div","meta","sha256 " + p.digest.slice(7,19) + "…"));
-    box.append(c);
-  });
-}
-
-function drawVault(){
-  const box = $("vault"); box.replaceChildren();
-  S.vault.forEach(r => {
-    const on = shared(r);
-    const row = el("div","rec" + (on ? "" : " off"));
-    row.append(el("span","sd s-" + r.sensitivity));
-    const t = el("div"); t.append(el("div","txt", on ? r.text : "(withheld) " + r.type + " record"));
-    const m = el("div","meta", r.type + " · " + r.sensitivity); if (r.trust === 1) m.append(el("span","chip src","from a pack · you accepted it")); t.append(m); row.append(t);
-    row.append(el("span","state " + (on ? "on":"off"), on ? "shared" : "kept private"));
-    box.append(row);
-  });
-}
-
-function drawReview(){
-  const box = $("review"); box.replaceChildren();
-  if (!S.proposals.length) { box.append(el("div","empty","Nothing yet. After a run, an agent may suggest something to remember. It is only saved if you accept.")); return; }
-  S.proposals.forEach(p => {
-    const c = el("div","prop"); c.append(el("div",null,"“" + p.text + "”"), el("div","meta","suggested as a " + p.type + " by the last agent you ran"));
-    const a = el("div","acts"); const ok = el("button","btn pri","Remember"); const no = el("button","btn","Discard");
-    ok.onclick = async () => { await api("/api/proposal",{id:p.id,action:"accept"}); await refresh(); };
-    no.onclick = async () => { await api("/api/proposal",{id:p.id,action:"reject"}); await refresh(); };
-    a.append(ok,no); c.append(a); box.append(c);
-  });
-}
-function drawWallet(){ const w = S.payments; if (!w) return; document.querySelector(".badge-test").textContent = w.provider === "paypal-sandbox" ? "PAYPAL SANDBOX · TEST MONEY" : "TEST MONEY"; $("wallet").textContent = "captured " + fmt(w.captured) + " · paid to authors " + fmt(w.paid_out) + " · held " + fmt(w.held); }
-async function refresh(){ S = await api("/api/state"); drawWallet(); drawTypes(true); drawVault(); drawReview(); drawMarket(); drawHistory(); }
-
-function drawTypes(keep){
-  const types = [...new Set(S.vault.map(r => r.type))];
-  const prev = keep ? new Set(lensTypes()) : null;
-  const box = $("types"); box.replaceChildren();
-  types.forEach(t => { const l = el("label"); const i = document.createElement("input"); i.type="checkbox"; i.value=t; i.checked = prev ? prev.has(t) : (t==="note"||t==="contact"); i.onchange = drawVault; l.append(i, document.createTextNode(t)); box.append(l); });
-  $("sens").onchange = drawVault;
+  const j = await r.json();
+  if (!r.ok) throw new Error(j.error || ("Request failed (" + r.status + ")"));
+  return j;
 }
 
 const WHY = {
-  OFF_LENS_QUERY: "The pack asked for records outside what you shared.",
-  CANARY_HIT: "The pack touched a decoy record.",
-  UNKNOWN_ID: "The pack tried to read a record it was not given.",
-  READ_BUDGET: "The pack exceeded its read budget.",
-  SANDBOX_NETWORK: "The pack code tried to open a network connection from inside the sealed cell.",
-  SANDBOX_PROCESS: "The pack code tried to start another program.",
-  SANDBOX_WRITE: "The pack code tried to write a file outside its scratch space."
+  OFF_LENS_QUERY: "asked for records outside what you shared",
+  UNKNOWN_ID: "tried to read a record it was not given",
+  CANARY_HIT: "touched a decoy record",
+  READ_BUDGET: "went past its read budget",
+  SANDBOX_NETWORK: "its code tried to use the network",
+  SANDBOX_PROCESS: "its code tried to start another program",
+  SANDBOX_WRITE: "its code tried to write outside its scratch space",
+  WEB_QUERY_LEAK: "tried to put your records into a web search"
+};
+function plain(text) {  // turn a raw evidence code in a summary into a sentence
+  return String(text || "").replace(/Stopped for ([A-Z_]+);/, (m, k) => "Stopped because the pack " + (WHY[k] || k.toLowerCase().replace(/_/g, " ")) + ";");
+}
+const SHORT = {
+  OFF_LENS_QUERY: "asked outside the lens", UNKNOWN_ID: "read a record it was not given", CANARY_HIT: "touched a decoy",
+  READ_BUDGET: "over its read budget", SANDBOX_NETWORK: "network blocked", SANDBOX_PROCESS: "process blocked", SANDBOX_WRITE: "write blocked",
+  WEB_QUERY_LEAK: "web query held back"
 };
 
-const DESC = {tool:"reads memory through the broker", llm:"asks the model", gate:"checks its own result", "return":"returns a result", code:"runs code in a sealed cell"};
+/* ---------- the schematic ---------- */
+const D = {edges:{}, nodes:{}, tiles:{}, marks:null, cellStep:null, cellPack:null, counters:{}, tokens:0, markY:338, read:new Set()};
 
-const fmt = (c) => "$" + (c / 100).toFixed(2);
-
-function renderPayment(rep, out){
-  const p = rep.payment; if (!p) return;
-  const box = el("div","pay"); box.id = "paybox";
-  box.append(el("div","ptitle","Payment · test money"));
-  const row = (k, v) => { const r = el("div","prow"); r.append(el("span",null,k), el("b",null,v)); box.append(r); };
-  row("Hold placed (your cap)", fmt(p.price));
-  const floorTaken = Math.min(p.floor, p.captured + p.refunded);
-  if (floorTaken > 0) row("Floor fee captured", fmt(floorTaken));
-  if (p.captured + p.refunded > p.floor) row("Outcome fee captured", fmt(p.captured + p.refunded - p.floor));
-  if (p.refunded > 0) row("Refunded to you", fmt(p.refunded));
-  const end = el("div","pend");
-  const say = (t) => end.append(el("div",null,t));
-  if (p.state === "RESULT_READY") {
-    say("Your decision: accept to pay the rest, or reject to pay only the floor fee. If you do nothing it is accepted automatically at " + new Date(p.accept_by * 1000).toLocaleString() + ".");
-    const a = el("div","acts"); const ok = el("button","btn pri","Accept result"); const no = el("button","btn","Reject");
-    const go = async (action) => { ok.disabled = no.disabled = true; try { rep.payment = await api("/api/settle",{run_id:rep.run_id, action}); } catch(e) { say(String(e.message)); return; } box.replaceWith(renderPaymentBox(rep)); await refresh(); };
-    ok.onclick = () => go("accept"); no.onclick = () => go("reject"); a.append(ok, no); end.append(a);
-  } else if (p.state === "SETTLED") say("Settled. The author is paid " + fmt(p.payout.amount) + " after a 10% platform fee (" + p.payout.status + "). Demo holdback 0 s; a real hub would hold it for days.");
-  else if (p.state === "SETTLED_REJECTED") say("Rejected. Only the floor fee was kept; the rest of the hold was released. The author is paid " + fmt(p.payout.amount) + ".");
-  else if (p.state === "DISPUTE_HOLD") say("Held for review. Nothing more is captured until the claim is resolved.");
-  else if (p.state === "DISPUTE_UPHELD") say("Claim upheld: the Certifier independently reproduced this violation. Everything is refunded and the author earns nothing.");
-  else if (p.state === "VOIDED") say("No charge. The hold was released because no usable result was produced.");
-  box.append(end);
-  return box;
-}
-function renderPaymentBox(rep){ return renderPayment(rep); }
-
-async function play(rep, animate){
-  const pause = (ms) => animate ? sleep(ms) : Promise.resolve();
-  $("tl").replaceChildren(); $("out").replaceChildren();
-  const line = (icon, cls, build) => { const li = el("li"); li.append(el("span","ic " + cls, icon)); const d = el("div"); build(d); li.append(d); $("tl").append(li); };
-  for (const s of rep.steps) {
-    if (s.event === "step_started") { line("›","", d => d.append(el("b",null,s.step), document.createTextNode(" · " + (DESC[s.kind] || s.kind)))); await pause(380); }
-    if (s.event === "model_call") { line("✓","ok", d => d.textContent = "model answered · " + s.tokens + " tokens"); await pause(250); }
-    if (s.event === "incident") { line("!","bad", d => d.textContent = "INCIDENT at step " + s.step + (s.evidence ? " · evidence: " + s.evidence : "")); await pause(300); }
-  }
-  for (const ev of rep.broker_events) { line("!","bad", d => d.append(el("b",null,"Blocked: "), document.createTextNode(WHY[ev.kind] || ev.kind), el("br"), el("span","meta",ev.detail))); await pause(300); }
-
-  const out = $("out");
-  out.append(el("div","meta",rep.summary || ""));
-  if (rep.outcome === "KILLED") {
-    const b = el("div","banner kill"); b.append(el("h3",null,"Run stopped. Nothing was delivered."), el("p",null,"The pack was caught trying to take data it was not granted. The result was discarded, the incident is on the audit log, and your real records were never exposed.")); out.append(b);
-  } else if (rep.outcome === "COMPLETE") {
-    const b = el("div","banner good"); b.append(el("h3",null,"Done. Result delivered."), el("p",null,"The Result Guard checked the shape, size and content before releasing it.")); out.append(b);
-    const r = el("div","result"); r.append(el("div",null,rep.result.summary), el("div","meta","risk: " + rep.result.risk)); out.append(r);
-  } else {
-    const b = el("div","banner kill"); b.append(el("h3",null,rep.outcome.replace("_"," ").toLowerCase()), el("p",null,(rep.reasons||[]).join("; ") || "The run did not finish.")); out.append(b);
-  }
-  const f = el("div","facts");
-  const add = (k,v) => { f.append(el("span",null,k), el("b",null,v)); };
-  add("records the pack read", rep.records_handed.length ? rep.records_handed.join(", ") : "none");
-  add("kept private", rep.withheld.length ? rep.withheld.join(", ") : "none");
-  add("tokens", String(rep.tokens));
-  add("pack digest", rep.digest.slice(0,26) + "…");
-  out.append(f);
-  const pb = renderPayment(rep); if (pb) out.append(pb);
-
-  const det = el("details","audit"); det.append(el("summary",null,"Audit log · " + rep.journal_entries + " entries · hash chain verified"));
-  (rep.journal || []).forEach(e => { const row = el("div","arow"); row.append(el("span","meta","#" + e.seq), el("code",null,e.kind), el("span","meta",e.hash + " " + JSON.stringify(e.data).slice(0,110))); det.append(row); });
-  out.append(det);
-
-  if (rep.outcome === "COMPLETE" && rep.proposals && rep.proposals.length) {
-    out.append(el("div","note","This agent suggested something to remember. Review it on the left, under “Waiting for your decision”."));
-    const undo = el("button","btn","Undo everything from this run");
-    undo.onclick = async () => { const r = await api("/api/revert",{run_id:rep.run_id}); undo.textContent = "Undone (" + r.removed_from_vault + " saved, " + r.dropped_pending + " pending removed)"; undo.disabled = true; await refresh(); };
-    out.append(undo);
-  }
+function node(id, x, y, w, h, title, sub, cls) {
+  const g = sv("g", {class:"node " + (cls || ""), id:"n-" + id});
+  g.append(sv("rect", {x, y, width:w, height:h, rx:4}), sv("text", {class:"t", x:x + 12, y:y + 26}, title));
+  const subEl = sv("text", {class:"s", x:x + 12, y:y + 46}, sub || "");
+  g.append(subEl); D.nodes[id] = {g, sub:subEl};
+  return g;
 }
 
-function waitForApproval(pending){
-  return new Promise((resolve) => {
-    const out = $("out"); out.replaceChildren();
-    const box = el("div","pay");
-    box.append(el("div","ptitle","Approve the hold · test money"));
-    box.append(el("div",null,"Nothing is held or charged until you approve " + fmt(pending.price) + " on the payment page. The agent does not start before that."));
-    const acts = el("div","acts");
-    if (/^https:\/\//.test(pending.approve_url)) {
-      const a = document.createElement("a"); a.href = pending.approve_url; a.target = "_blank"; a.rel = "noopener noreferrer";
-      a.className = "btn pri"; a.textContent = "Open the approval page"; a.style.textDecoration = "none"; acts.append(a);
-    }
-    const go = el("button","btn","I approved, continue");
-    const msg = el("div","meta");
-    go.onclick = async () => {
-      go.disabled = true; msg.textContent = "Checking…";
-      try { resolve(await api("/api/run/continue",{run_id:pending.run_id})); }
-      catch(e) { msg.textContent = String(e.message); go.disabled = false; }
-    };
-    acts.append(go); box.append(acts, msg); out.append(box);
+function buildDiagram() {
+  const svg = $("diagram"); svg.replaceChildren(); D.edges = {}; D.nodes = {}; D.tiles = {};
+  const defs = sv("defs");
+  const pat = sv("pattern", {id:"hatch", width:6, height:6, patternUnits:"userSpaceOnUse", patternTransform:"rotate(45)"});
+  pat.append(sv("rect", {width:6, height:6, fill:"var(--wash)"}), sv("line", {x1:0, y1:0, x2:0, y2:6, stroke:"var(--muted)", "stroke-width":1.5}));
+  defs.append(pat); svg.append(defs);
+
+  const paths = {
+    ship:"M170 78 H505 V112", vb:"M360 210 H388", bc:"M412 210 H430", cg:"M580 210 H608", gd:"M632 210 H670 V75 H770",
+    cs:"M505 310 V372", sn:"M600 392 H690 V240 H770", st:"M600 410 H710 V340 H770", hub:"M170 450 H212", pay:"M770 470 H732"
+  };
+  for (const k in paths) { const p = sv("path", {d:paths[k], class:"edge" + (k === "ship" ? " ship" : "")}); D.edges[k] = p; svg.append(p); }
+
+  svg.append(sv("rect", {class:"region", x:212, y:20, width:520, height:505, rx:8}));
+  svg.append(sv("text", {class:"regionlabel", x:228, y:46}, "Your machine"));
+
+  svg.append(sv("text", {class:"regionlabel", x:236, y:100, style:"font-size:13px"}, "Your vault"));
+  (S ? S.vault : []).slice(0, 12).forEach((r, i) => {
+    const x = 236 + (i % 2) * 58, y = 116 + Math.floor(i / 2) * 42;
+    const g = sv("g", {class:"tile", tabindex:"0"});
+    const t = sv("title"); t.textContent = r.id + ", " + r.type + ", " + r.sensitivity + ": " + r.text; g.append(t);
+    g.append(sv("rect", {x, y, width:52, height:34, rx:3}), sv("text", {x:x + 6, y:y + 21}, r.id.length > 7 ? r.id.slice(0, 7) : r.id));
+    D.tiles[r.id] = {g, rec:r}; svg.append(g);
+  });
+
+  svg.append(sv("rect", {class:"gate", id:"gate-broker", x:388, y:150, width:24, height:120, rx:3}));
+  svg.append(sv("text", {class:"small", x:414, y:290, "text-anchor":"end"}, "Memory broker"));
+  const cell = sv("g", {class:"cell", id:"cell"});
+  cell.append(sv("rect", {class:"cellwall", x:430, y:110, width:150, height:200, rx:6}), sv("rect", {class:"cellglass", x:438, y:118, width:134, height:184, rx:4}));
+  cell.append(sv("text", {x:505, y:146, "text-anchor":"middle", style:"font:600 14px var(--serif);fill:var(--ink)"}, "Sealed cell"));
+  cell.append(sv("text", {class:"small", x:505, y:166, "text-anchor":"middle"}, "no network"));
+  D.cellPack = sv("text", {class:"small", x:505, y:214, "text-anchor":"middle"}, "agent pack");
+  D.cellStep = sv("text", {class:"cellstep", x:505, y:244, "text-anchor":"middle"}, "");
+  cell.append(D.cellPack, D.cellStep); svg.append(cell); D.cell = cell;
+  svg.append(sv("rect", {class:"gate", id:"gate-guard", x:608, y:170, width:24, height:80, rx:3}));
+  svg.append(sv("text", {class:"small", x:620, y:270, "text-anchor":"middle"}, "Result guard"));
+
+  svg.append(node("sidecar", 400, 372, 200, 62, "Your sidecar", "holds your keys, not the pack", ""));
+  svg.append(node("author", 20, 40, 150, 76, "Author's machine", "signed copy only", "far"));
+  svg.append(node("hub", 20, 410, 150, 80, "Hub", "registry and Certifier", "far"));
+  svg.append(node("delivered", 770, 40, 120, 70, "Your result", "not yet", ""));
+  svg.append(node("nebius", 770, 200, 120, 80, "Nebius", "Nemotron model", "far"));
+  svg.append(node("tavily", 770, 300, 120, 80, "Tavily", "public web", "far"));
+  svg.append(node("pay", 770, 430, 120, 80, "Payments", "test money", "far"));
+  D.counters.nebius = sv("text", {class:"counter", x:782, y:266}, ""); D.nodes.nebius.g.append(D.counters.nebius);
+  D.counters.tavily = sv("text", {class:"counter", x:782, y:366}, ""); D.nodes.tavily.g.append(D.counters.tavily);
+  D.marks = sv("g", {id:"marks"}); svg.append(D.marks);
+  updateTiles();
+}
+
+function lensTypes() { return [...document.querySelectorAll("#types input:checked")].map(i => i.value); }
+function lensSens() { return document.querySelector('#sens input:checked').value; }
+function shared(rec) { return lensTypes().includes(rec.type) && RANK[rec.sensitivity] <= RANK[lensSens()]; }
+
+function updateTiles() {
+  for (const id in D.tiles) {
+    const t = D.tiles[id], on = shared(t.rec);
+    t.g.setAttribute("class", "tile " + (on ? "shared" : "private") + (t.rec.trust === 1 ? " foreign" : "") + (D.read.has(id) ? " read" : ""));
+  }
+  const list = $("recordList"); list.replaceChildren();
+  (S ? S.vault : []).forEach(r => {
+    const li = el("li"), on = shared(r);
+    li.append(el("strong", null, r.id + " "), document.createTextNode(on ? "shared: " + r.text : "kept private (" + r.type + ", " + r.sensitivity + ")"));
+    if (r.trust === 1) li.append(el("div", "muted", "Saved from an agent's suggestion because you accepted it."));
+    list.append(li);
   });
 }
 
-async function run(){
-  if (running || !selected) return; running = true; $("go").disabled = true; $("go").textContent = "Running…";
-  $("tl").replaceChildren(); $("out").replaceChildren();
-  try {
-    let rep = await api("/api/run",{key:selected, types:lensTypes(), max_sensitivity:$("sens").value, model:$("sim").checked ? "leak" : "nebius"});
-    if (rep.needs_approval) rep = await waitForApproval(rep);
-    if (rep) await play(rep, true);
-  } catch(e) {
-    const b = el("div","banner kill"); b.append(el("h3",null,"Could not run"), el("p",null,String(e.message))); $("out").append(b);
+function resetStage() {
+  for (const k in D.edges) D.edges[k].setAttribute("class", "edge" + (k === "ship" ? " ship" : ""));
+  for (const id in D.nodes) D.nodes[id].g.setAttribute("class", "node " + (FAR.includes(id) ? "far" : ""));
+  D.nodes.delivered.sub.textContent = "not yet"; D.nodes.pay.sub.textContent = "test money";
+  D.counters.nebius.textContent = ""; D.counters.tavily.textContent = ""; D.tokens = 0; D.markY = 338; D.read = new Set();
+  D.cell.setAttribute("class", "cell"); D.cellStep.textContent = "";
+  $("gate-broker").setAttribute("class", "gate"); $("gate-guard").setAttribute("class", "gate");
+  D.marks.replaceChildren(); updateTiles(); $("log").replaceChildren();
+}
+function setEdges(names, cls) { for (const k in D.edges) if (k !== "ship") D.edges[k].setAttribute("class", "edge"); (names || []).forEach(n => D.edges[n].setAttribute("class", "edge " + cls)); }
+function mark(text) { if (D.markY > 372) return; D.marks.append(sv("text", {class:"mark", x:236, y:D.markY}, "✕ " + text)); D.markY += 15; }
+function logLine(text, cls) { const li = el("li", cls || "", text); $("log").append(li); }
+
+/* ---------- replaying the real journal ---------- */
+async function replay(rep, animate) {
+  resetStage();
+  $("replaynote").textContent = animate ? "This replays the run's audit journal, entry by entry." : "Replay of this run's audit journal, shown at once.";
+  const pause = (ms) => (animate && !REDUCED) ? sleep(ms) : Promise.resolve();
+  D.cellPack.textContent = rep.pack_id; D.nodes.author.sub.textContent = "wrote " + rep.pack_id;
+  let killed = false;
+  for (const e of rep.journal) {
+    const d = e.data || {};
+    if (e.kind === "run_started") {
+      D.nodes.hub.g.classList.add("active"); D.nodes.pay.g.classList.add("active"); D.nodes.pay.sub.textContent = "hold placed";
+      D.edges.hub.setAttribute("class", "edge live"); D.edges.pay.setAttribute("class", "edge live");
+      logLine("Hold placed, and the pack's signature checked against the registry.", "live"); await pause(700);
+      D.edges.hub.setAttribute("class", "edge done"); D.edges.pay.setAttribute("class", "edge done");
+      D.nodes.hub.g.classList.remove("active"); D.nodes.pay.g.classList.remove("active");
+    } else if (e.kind === "step_started") {
+      D.cell.classList.add("active"); D.cellStep.textContent = d.step;
+      if (d.kind === "tool" && d.tool === "web_search") { setEdges(["cs", "st"], "live"); D.nodes.tavily.g.classList.add("active"); logLine("Step " + d.step + ": looking something up on the public web. It cannot see your records.", "live"); }
+      else if (d.kind === "tool") { setEdges(["vb", "bc"], "live"); $("gate-broker").setAttribute("class", "gate active"); logLine("Step " + d.step + ": asking the memory broker for records.", "live"); }
+      else if (d.kind === "llm") { setEdges(["cs", "sn"], "live"); D.nodes.nebius.g.classList.add("active"); logLine("Step " + d.step + ": asking the model, through your sidecar.", "live"); }
+      else if (d.kind === "code") { setEdges([], ""); logLine("Step " + d.step + ": running the pack's own code inside the sealed cell.", "live"); }
+      else if (d.kind === "gate") { setEdges([], ""); logLine("Step " + d.step + ": the pack checks its own answer.", "live"); }
+      else if (d.kind === "return") { setEdges(["cg"], "live"); $("gate-guard").setAttribute("class", "gate active"); logLine("Step " + d.step + ": handing the answer to the result guard.", "live"); }
+      await pause(650);
+    } else if (e.kind === "step_committed") {
+      if (d.records && d.records.length) {
+        d.records.forEach(id => { D.read.add(id); if (D.tiles[id]) D.tiles[id].g.classList.add("read"); });
+        logLine("The broker released " + d.records.length + " record" + (d.records.length === 1 ? "" : "s") + " (" + d.records.join(", ") + "). Everything else stayed in the vault.", "ok");
+      }
+      (d.blocked || []).forEach(k => { mark(SHORT[k] || k); logLine("Blocked: the pack " + (WHY[k] || k) + ".", "bad"); D.edges.bc.setAttribute("class", "edge cut"); });
+      if (typeof d.results === "number") logLine("The web returned " + d.results + " public result" + (d.results === 1 ? "" : "s") + ".", "ok");
+      D.nodes.nebius.g.classList.remove("active"); D.nodes.tavily.g.classList.remove("active");
+      $("gate-broker").setAttribute("class", (d.blocked || []).length ? "gate bad" : "gate");
+      await pause(250);
+    } else if (e.kind === "model_call") {
+      D.tokens += d.tokens; D.counters.nebius.textContent = D.tokens + " tokens";
+      logLine("The model answered (" + d.tokens + " tokens).", "ok"); await pause(300);
+    } else if (e.kind === "web_search") {
+      D.counters.tavily.textContent = d.results + " results"; await pause(200);
+    } else if (e.kind === "cell_run") {
+      let shown = 0; const seen = new Set();
+      (d.attempts || []).forEach(a => {
+        const kind = a.split(":")[0];
+        const k = kind === "write" ? "SANDBOX_WRITE" : kind === "process" ? "SANDBOX_PROCESS" : "SANDBOX_NETWORK";  // a failed name lookup is a network attempt too
+        if (seen.has(k)) return; seen.add(k);
+        D.cell.classList.add("bad"); D.edges.cs.setAttribute("class", "edge cut"); mark(SHORT[k]); shown++;
+        logLine("Blocked: the pack's code " + (k === "SANDBOX_NETWORK" ? "tried to open a network connection" : k === "SANDBOX_PROCESS" ? "tried to start another program" : "tried to write a file outside its scratch space") + ".", "bad");
+      });
+      await pause(shown ? 900 : 300);
+    } else if (e.kind === "incident") {
+      killed = true; D.cell.setAttribute("class", "cell bad"); $("gate-guard").setAttribute("class", "gate bad"); setEdges([], "");
+      logLine("Incident, run stopped: " + (d.evidence === "canary" ? "a decoy value turned up in the answer." : d.evidence === "sandbox-probe" ? "the pack probed the sealed cell." : "evidence of an attempt to take data."), "bad"); await pause(700);
+    } else if (e.kind === "model_error") {
+      D.nodes.nebius.g.setAttribute("class", "node far bad"); logLine("The model call failed. That is an infrastructure problem, not the pack's fault.", "bad"); await pause(300);
+    } else if (e.kind === "run_finished") {
+      D.cell.classList.remove("active");
+      if (d.outcome === "COMPLETE") {
+        $("gate-guard").setAttribute("class", "gate good"); setEdges(["cg", "gd"], "done"); D.nodes.delivered.g.setAttribute("class", "node good"); D.nodes.delivered.sub.textContent = "delivered";
+        logLine("The result guard released the answer to you.", "ok");
+      } else {
+        D.nodes.delivered.g.setAttribute("class", "node bad"); D.nodes.delivered.sub.textContent = "nothing delivered"; D.edges.gd.setAttribute("class", "edge cut");
+        logLine(killed ? "Nothing was delivered. Your real records were never exposed." : "The run ended without a usable result (" + String(d.outcome).toLowerCase().replace(/_/g, " ") + ").", "bad");
+      }
+      await pause(200);
+    }
   }
-  await refresh();
-  running = false; $("go").disabled = false; $("go").textContent = "Run again";
+  if (rep.payment) D.nodes.pay.sub.textContent = rep.payment.state.toLowerCase().replace(/_/g, " ");
 }
 
-function drawHistory(){
+/* ---------- agents list ---------- */
+function drawAgents() {
+  const ol = $("agents"); ol.replaceChildren();
+  if (!S.market.length) { ol.append(el("li", "empty", "No agents are published yet. Run bridge seed to publish the demo agents.")); return; }
+  S.market.forEach(p => {
+    const li = el("li", "agent"); li.setAttribute("aria-current", String(selected === p.key));
+    const b = el("button", "agentbtn"); b.type = "button";
+    b.append(el("span", "rank" + (p.status === "certified" ? "" : " flag"), p.status === "certified" ? String(p.rank) : (p.status === "flagged" ? "!" : "?")));
+    const who = el("span", "who"), st = el("strong", null, p.id); st.append(el("em", null, "v" + p.version));
+    who.append(st, el("span", "blurb", p.summary)); b.append(who, el("span", "price", fmt(Math.round(p.price_usd * 100))));
+    b.onclick = () => select(p.key); li.append(b);
+    const proof = el("div", "proof" + (p.status === "flagged" ? " bad" : ""));
+    if (p.status === "certified") {
+      const bar = el("div", "bar"), i = document.createElement("i"); i.style.width = Math.round(p.score * 100) + "%"; bar.append(i);
+      proof.append(bar, document.createTextNode("Scored " + p.score.toFixed(2) + " (" + p.evidence + ")"));
+    } else if (p.status === "flagged") {
+      const reasons = [...new Set(p.violations.filter(v => v !== "KILLED").map(v => WHY[v] || v))];
+      proof.textContent = "Stopped by the Certifier: " + (reasons.join("; ") || "failed the security trap") + ".";
+    } else proof.textContent = "Not evaluated yet, so it is not ranked.";
+    li.append(proof);
+    const star = el("button", "star", "☆ " + p.stars); star.type = "button"; star.title = "Star this agent"; star.setAttribute("aria-label", "Star " + p.id + ", " + p.stars + " stars");
+    star.onclick = async () => { try { const r = await api("/api/star", {key:p.key, user:"you"}); p.stars = r.stars; drawAgents(); } catch (e) { $("stageSub").textContent = e.message; } };
+    li.append(star); ol.append(li);
+  });
+}
+function select(key) {
+  selected = key; const p = S.market.find(m => m.key === key); drawAgents();
+  $("go").disabled = running; $("go").textContent = "Run " + p.id + " for up to " + fmt(Math.round(p.price_usd * 100));
+  $("stageTitle").textContent = p.id + " v" + p.version;
+  $("stageSub").textContent = p.status === "flagged" ? "The Certifier stopped this agent for bad behaviour. You can still run it to watch it get caught." : "Press run. You will see which of your records it receives and which doors it uses.";
+  D.nodes.author.sub.textContent = "wrote " + p.id; D.cellPack.textContent = p.id;
+}
+
+/* ---------- lens ---------- */
+function drawLens(keep) {
+  const types = [...new Set(S.vault.map(r => r.type))].sort();
+  const prev = keep ? new Set(lensTypes()) : null;
+  const box = $("types"); box.replaceChildren();
+  types.forEach(t => {
+    const count = S.vault.filter(r => r.type === t).length;
+    const l = el("label", "opt"), i = document.createElement("input"); i.type = "checkbox"; i.value = t;
+    i.checked = prev ? prev.has(t) : (t === "note" || t === "contact");
+    i.onchange = updateTiles; l.append(i, el("span", null, t + " (" + count + ")")); box.append(l);
+  });
+}
+document.addEventListener("change", (e) => { if (e.target.name === "sens") updateTiles(); });
+
+/* ---------- desk: outcome, payment, memory, history ---------- */
+function drawWallet() {
+  const w = S.payments; if (!w) return;
+  $("badge").textContent = w.provider === "paypal-sandbox" ? "PayPal sandbox, test money" : "Test money";
+  $("wallet").textContent = "Captured " + fmt(w.captured) + ", paid to authors " + fmt(w.paid_out) + ", on hold " + fmt(w.held);
+}
+
+function renderOutcome(rep) {
+  const box = $("outcome"); box.replaceChildren();
+  const wrap = el("div", "outcome " + (rep.outcome === "COMPLETE" ? "good" : "bad"));
+  wrap.append(el("h3", null, rep.outcome === "COMPLETE" ? "Result delivered" : rep.outcome === "KILLED" ? "Run stopped, nothing delivered" : rep.outcome === "FAILED_INFRA" ? "The model was unavailable" : "No usable result"));
+  wrap.append(el("p", "muted", plain(rep.summary)));
+  if (rep.outcome === "COMPLETE") {
+    const r = el("div", "result"); r.append(el("div", null, rep.result.summary), el("div", "muted", "Risk level: " + rep.result.risk)); wrap.append(r);
+    wrap.append(el("p", "muted", "The result guard checked its shape, size and content before releasing it."));
+  } else if (rep.outcome === "KILLED") {
+    wrap.append(el("p", null, "The pack was caught trying to take data it was not given. Its answer was thrown away and your real records were never exposed."));
+  } else {
+    wrap.append(el("p", null, (rep.reasons || []).join("; ") || "The run did not finish. Try again in a moment."));
+  }
+  const f = el("dl", "facts"), add = (k, v) => { f.append(el("dt", null, k), el("dd", null, v)); };
+  add("Records it received", rep.records_handed.length ? rep.records_handed.join(", ") : "none");
+  add("Kept private", rep.withheld.length ? rep.withheld.join(", ") : "none");
+  add("Model tokens", String(rep.tokens));
+  add("Pack fingerprint", rep.digest.slice(0, 26) + "…");
+  wrap.append(f);
+  const det = el("details"); det.append(el("summary", null, "Audit log: " + rep.journal_entries + " entries, hash chain verified"));
+  (rep.journal || []).forEach(e => { const row = el("div", "arow"); row.append(el("span", "muted", "#" + e.seq), el("code", null, e.kind), el("span", "muted", e.hash + " " + JSON.stringify(e.data).slice(0, 100))); det.append(row); });
+  wrap.append(det);
+  if (rep.outcome === "COMPLETE" && rep.proposals && rep.proposals.length) {
+    const undo = el("button", "btn", "Undo everything from this run"); undo.type = "button";
+    undo.onclick = async () => { try { const r = await api("/api/revert", {run_id:rep.run_id}); undo.textContent = "Undone: " + r.removed_from_vault + " saved and " + r.dropped_pending + " waiting removed"; undo.disabled = true; await refresh(); } catch (e) { undo.textContent = e.message; } };
+    wrap.append(el("p", "muted", "This agent suggested something to remember. You can accept or discard it below.")); wrap.append(undo);
+  }
+  box.append(wrap);
+}
+
+function renderPayment(rep) {
+  const box = $("payment"); box.replaceChildren();
+  const p = rep.payment; if (!p) return;
+  const w = el("div", "pay"); w.append(el("h3", null, "Payment (test money)"));
+  const row = (k, v) => { const r = el("div", "prow"); r.append(el("span", null, k), el("strong", null, v)); w.append(r); };
+  row("Hold for the run", fmt(p.price));
+  const taken = p.captured + p.refunded, floorTaken = Math.min(p.floor, taken);
+  if (floorTaken > 0) row("Floor fee", fmt(floorTaken));
+  if (taken > p.floor) row("Result fee", fmt(taken - p.floor));
+  if (p.refunded > 0) row("Refunded to you", fmt(p.refunded));
+  const note = el("p");
+  if (p.state === "RESULT_READY") {
+    note.textContent = "Accept to pay the rest, or reject to pay only the floor fee. With no decision it is accepted on " + new Date(p.accept_by * 1000).toLocaleDateString() + ".";
+    w.append(note);
+    const a = el("div", "acts"), ok = el("button", "btn pri", "Accept result"), no = el("button", "btn", "Reject"); ok.type = no.type = "button";
+    const go = async (action) => { ok.disabled = no.disabled = true; try { rep.payment = await api("/api/settle", {run_id:rep.run_id, action}); renderPayment(rep); await refresh(); } catch (e) { note.textContent = e.message + " Reload the page if this keeps happening."; ok.disabled = no.disabled = false; } };
+    ok.onclick = () => go("accept"); no.onclick = () => go("reject"); a.append(ok, no); w.append(a);
+  } else {
+    note.textContent = p.state === "SETTLED" ? "Settled. The author is paid " + fmt(p.payout.amount) + " after a 10% platform fee. The demo holds payouts for 0 seconds; a real hub would hold them for days."
+      : p.state === "SETTLED_REJECTED" ? "Rejected. Only the floor fee was kept and the rest of the hold was released. The author is paid " + fmt(p.payout.amount) + "."
+      : p.state === "DISPUTE_HOLD" ? "On hold. Nothing more is taken until the claim is resolved."
+      : p.state === "DISPUTE_UPHELD" ? "Claim upheld because the Certifier reproduced this violation. Everything is refunded and the author earns nothing."
+      : p.state === "VOIDED" ? "No charge. The hold was released because no usable result was produced." : p.state;
+    w.append(note);
+  }
+  box.append(w);
+}
+
+function drawReview() {
+  const box = $("review"); box.replaceChildren();
+  if (!S.proposals.length) { box.append(el("div", "empty", "Nothing yet. After a run, an agent may suggest something to remember. It is saved only if you accept it.")); return; }
+  S.proposals.forEach(p => {
+    const c = el("div", "ask"); c.append(el("div", null, "“" + p.text + "”"), el("div", "muted", "Suggested as a " + p.type + " by the agent you just ran."));
+    const a = el("div", "acts"), ok = el("button", "btn pri", "Remember it"), no = el("button", "btn", "Discard"); ok.type = no.type = "button";
+    ok.onclick = async () => { try { await api("/api/proposal", {id:p.id, action:"accept"}); await refresh(); } catch (e) { c.append(el("div", "muted", e.message)); } };
+    no.onclick = async () => { try { await api("/api/proposal", {id:p.id, action:"reject"}); await refresh(); } catch (e) { c.append(el("div", "muted", e.message)); } };
+    a.append(ok, no); c.append(a); box.append(c);
+  });
+}
+
+function drawHistory() {
   const box = $("history"); box.replaceChildren();
-  if (!S.history || !S.history.length) { box.append(el("div","empty","No runs yet.")); return; }
+  if (!S.history || !S.history.length) { box.append(el("div", "empty", "No runs yet. Your first run will be listed here.")); return; }
   S.history.forEach(h => {
-    const c = el("div","hist"); const top = el("div","row");
-    top.append(el("b",null,h.pack), el("span","chip " + (h.outcome === "COMPLETE" ? "ok" : (h.outcome === "KILLED" ? "bad" : "warn")), h.outcome.toLowerCase().replace("_"," ")));
-    c.append(top, el("div","meta",h.summary));
-    c.onclick = async () => { try { await play(await api("/api/report/" + h.run_id), false); } catch(e) { $("out").replaceChildren(el("div","empty","That run is no longer available.")); } };
+    const c = el("div", "hist"); c.tabIndex = 0; c.setAttribute("role", "button");
+    const cls = h.outcome === "COMPLETE" ? "good" : h.outcome === "KILLED" ? "bad" : "warn";
+    c.append(el("div", null, h.pack + " "), el("span", "tag " + cls, h.outcome.toLowerCase().replace(/_/g, " ")), el("div", "muted", plain(h.summary)));
+    const open = async () => {
+      try { const rep = await api("/api/report/" + h.run_id); renderOutcome(rep); renderPayment(rep); $("stageTitle").textContent = rep.pack_id + " v" + rep.version; await replay(rep, false); }
+      catch (e) { $("outcome").replaceChildren(el("div", "empty", "That run is no longer available. Runs are kept until the console restarts.")); }
+    };
+    c.onclick = open; c.onkeydown = (ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); open(); } };
     box.append(c);
   });
 }
 
-(async function init(){
-  S = await api("/api/state"); drawWallet(); drawTypes(); drawVault(); drawReview(); drawMarket(); drawHistory(); $("go").onclick = run;
+async function refresh() { S = await api("/api/state"); drawWallet(); drawLens(true); updateTiles(); drawAgents(); drawReview(); drawHistory(); }
+
+/* ---------- running ---------- */
+function waitForApproval(pending) {
+  return new Promise((resolve) => {
+    const out = $("outcome"); out.replaceChildren();
+    const w = el("div", "pay"); w.append(el("h3", null, "Approve the hold first"));
+    w.append(el("p", null, "Nothing is held or charged until you approve " + fmt(pending.price) + " on the payment page, and the agent does not start before that."));
+    const acts = el("div", "acts");
+    if (/^https:\/\//.test(pending.approve_url)) { const a = document.createElement("a"); a.href = pending.approve_url; a.target = "_blank"; a.rel = "noopener noreferrer"; a.className = "btn pri"; a.textContent = "Open the approval page"; acts.append(a); }
+    const go = el("button", "btn", "I approved, continue"); go.type = "button"; const msg = el("p", "muted");
+    go.onclick = async () => { go.disabled = true; msg.textContent = "Checking with the payment provider."; try { resolve(await api("/api/run/continue", {run_id:pending.run_id})); } catch (e) { msg.textContent = e.message + " Approve the hold on the payment page, then try again."; go.disabled = false; } };
+    acts.append(go); w.append(acts, msg); out.append(w);
+  });
+}
+
+async function run() {
+  if (running || !selected) return;
+  running = true; $("go").disabled = true; $("go").textContent = "Running";
+  resetStage(); $("outcome").replaceChildren(el("div", "empty", "Running. The sealed cell is working.")); $("payment").replaceChildren();
+  $("diagram").classList.add("busy"); $("replaynote").textContent = "";
+  try {
+    let rep = await api("/api/run", {key:selected, types:lensTypes(), max_sensitivity:lensSens(), model:$("sim").checked ? "leak" : "nebius"});
+    if (rep.needs_approval) rep = await waitForApproval(rep);
+    $("diagram").classList.remove("busy");
+    renderOutcome(rep);
+    await replay(rep, true);
+    renderPayment(rep);
+  } catch (e) {
+    $("diagram").classList.remove("busy");
+    const w = el("div", "outcome bad"); w.append(el("h3", null, "The run could not start"), el("p", null, e.message + " Check that you picked at least one record type, then try again."));
+    $("outcome").replaceChildren(w);
+  }
+  try { await refresh(); } catch (e) { /* the run result is already on screen */ }
+  running = false; const p = S && S.market.find(m => m.key === selected); $("go").disabled = false; $("go").textContent = p ? "Run again" : "Choose an agent first";
+}
+
+(async function init() {
+  try {
+    S = await api("/api/state"); buildDiagram(); drawWallet(); drawLens(false); updateTiles(); drawAgents(); drawReview(); drawHistory();
+    $("go").onclick = run;
+  } catch (e) {
+    $("agents").replaceChildren(el("li", "empty", "The console could not load: " + e.message + " Check that bridge serve is still running, then reload."));
+  }
 })();
 </script>
 </body>

@@ -315,7 +315,7 @@ def test_money_state_persists_across_a_restart(mem_app):
 def test_page_labels_money_as_test_money_and_wires_the_settle_endpoint(srv):
     app, url = srv
     html = call(url + "/")[1].decode()
-    assert "TEST MONEY" in html and "/api/settle" in html and "Accept result" in html
+    assert "Test money" in html and "/api/settle" in html and "Accept result" in html
 
 
 # ---- PayPal-style approval: the run waits until the buyer approves the hold ---------------------------
@@ -389,3 +389,12 @@ def test_page_handles_the_approval_step_and_only_opens_https_links(srv):
 def test_state_reports_which_payment_provider_is_in_use(srv):
     app, url = srv
     assert call(url + "/api/state")[1]["payments"]["provider"] == "test"
+
+
+def test_new_console_page_has_the_run_visualisation_and_no_raw_codes_in_copy(srv):
+    app, url = srv
+    html = call(url + "/")[1].decode()
+    for needle in ('id="diagram"', "Sealed cell", "Memory broker", "Result guard", "Your sidecar", "replay"):
+        assert needle in html
+    assert "autocomplete=\"off\"" in html  # the simulate switch must not be restored by the browser
+    assert "http://" not in html.replace("http://www.w3.org/2000/svg", "")  # no outside requests
