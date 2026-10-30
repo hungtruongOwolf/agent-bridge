@@ -30,6 +30,7 @@ from ..memory.quarantine import Quarantine
 from ..memory.service import MemoryService
 from ..memory.vault import Vault
 from ..pack.digest import tree_digest
+from ..payments import webhooks
 from ..payments.ledger import Ledger
 from ..payments.provider import FakeProvider
 from ..payments.subscriptions import Subscriptions
@@ -70,6 +71,8 @@ class App:
         # money is TEST money: a fake provider now, the PayPal sandbox client when credentials exist
         self.ledger = ledger or Ledger(FakeProvider(path=self.world.state / "provider.json"),
                                        path=self.world.state / "ledger.json", holdback_s=0)
+        if self.ledger.on_event is None:  # outbound webhook (BRIDGE_WEBHOOK_URL); off when unset
+            self.ledger.on_event = webhooks.from_env(self.env_file)
         self.subs = Subscriptions(self.world.state / "subscriptions.json")  # monthly plans bought by the buyer
 
         self.payments = PaymentsService(ledger=self.ledger, subs=self.subs, threads=self.threads, registry=self.world.registry,

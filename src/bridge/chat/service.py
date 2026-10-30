@@ -14,7 +14,7 @@ from ..memory.broker import Lens as RunLens
 from ..memory.broker import MemoryBroker
 from ..memory.tree import MemoryTree, pretty
 from ..memory.vault import under
-from ..payments.ledger import TERMINAL, PendingError, StateError
+from ..payments.ledger import TERMINAL, NotHelpfulLimit, PendingError, StateError
 from ..payments.provider import ProviderError
 from .plain import answer_text, blocked_phrase, failure_message, how_made, stopped_message
 from .threads import ThreadError, clean_lens
@@ -377,6 +377,8 @@ class ChatService:
         with self.app.lock:
             try:
                 self.app.ledger.reject(m.run_id, self.app.clock(), "not helpful")
+            except NotHelpfulLimit as e:
+                raise ThreadError(str(e)) from e
             except StateError as e:
                 raise ThreadError("that answer was already counted as good") from e
             self.app.ledger.release_payouts(self.app.clock())

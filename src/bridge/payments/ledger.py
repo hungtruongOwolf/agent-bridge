@@ -30,10 +30,21 @@ from .provider import PaymentProvider, ProviderError
 
 TERMINAL = {"SETTLED", "SETTLED_REJECTED", "DISPUTE_UPHELD", "VOIDED"}
 APPROVAL_WINDOW_S = 15 * 60
+# "Not helpful" cap: a buyer may mark one helper not helpful at most this many times in this window. Beyond that the
+# press is REFUSED (the run stays RESULT_READY and falls to auto-accept, so the author is paid in full), because
+# silently accepting would charge the buyer for something they just said they did not want.
+NOT_HELPFUL_MAX = 5
+NOT_HELPFUL_WINDOW_S = 24 * 3600
+NOT_HELPFUL_LIMIT_MESSAGE = ("You have marked this helper not helpful several times today. "
+                             "Please try another helper or come back tomorrow.")
 
 
 class StateError(Exception):
     """The requested transition is not allowed from the row's current state."""
+
+
+class NotHelpfulLimit(StateError):
+    """The buyer has used up the 'not helpful' presses for this helper today."""
 
 
 class PendingError(Exception):
@@ -71,9 +82,10 @@ class Row:
 
 class Ledger:
     def __init__(self, provider: PaymentProvider, *, path: Path | None = None, floor_pct: int = 25,
-                 fee_pct: int = 10, holdback_s: float = 0.0, retries: int = 3):
+                 fee_pct: int = 10, holdback_s: float = 0.0, retries: int = 3, on_event=None):
         self.provider, self.path = provider, Path(path) if path else None
         self.floor_pct, self.fee_pct, self.holdback_s, self.retries = floor_pct, fee_pct, holdback_s, retries
+        self.on_event = on_event  # optional callable(dict): told about settlements, payouts, refunds, disputes; must not block
         self.rows: dict[str, Row] = {}
         self._lock = threading.RLock()
         self.docs = None
@@ -119,6 +131,24 @@ class Ledger:
             raise StateError(f"cannot go to {new}: the run is {row.state}")
         row.events.append({"t": now, "from": row.state, "to": new, "why": reason})
         row.state, row.rev = new, row.rev + 1
+
+    def _emit(self, name: str, row: Row, now: float, **extra) -> None:
+        """Tell the optional listener. It never breaks a payment: whatever it does wrong is swallowed here."""
+        if self.on_event is None:
+            return
+        try:
+            self.on_event({"event": name, "run_id": row.run_id, "helper": row.pack_key.split("@")[0], "status": row.state,
+                           "price": row.price, "captured": row.captured(),
+                           "refunded": sum(c["amount"] for c in row.captures if c["id"] in row.refunded),
+                           "payout": row.payout.get("amount", 0), "at": now, **extra})
+        except Exception:
+            pass
+
+    def not_helpful_count(self, requester: str, pack_key: str, now: float) -> int:
+        """How many times this buyer marked this helper (any version) not helpful inside the window. Read from the rows, so it survives a restart."""
+        helper, since = pack_key.split("@")[0], now - NOT_HELPFUL_WINDOW_S
+        return sum(1 for r in self.rows.values() if r.requester == requester and r.pack_key.split("@")[0] == helper
+                   and any(e["to"] == "SETTLED_REJECTED" and e["from"] == "RESULT_READY" and e["t"] > since for e in r.events))
 
     # -- provider calls with retry and write-ahead intent ---------------------------------------
     def _do(self, row: Row, op: str, fn):
@@ -262,6 +292,7 @@ class Ledger:
                 raise
             self._finish_settlement(row, now)
             self._save()
+            self._emit("payment.settled", row, now)
             return row
 
     def _finish_settlement(self, row: Row, now: float) -> None:
@@ -272,9 +303,12 @@ class Ledger:
     def reject(self, run_id: str, now: float, reason: str = "rejected") -> Row:
         with self._lock:
             row = self._row(run_id)
+            if row.state == "RESULT_READY" and self.not_helpful_count(row.requester, row.pack_key, now) >= NOT_HELPFUL_MAX:
+                raise NotHelpfulLimit(NOT_HELPFUL_LIMIT_MESSAGE)
             self._move(row, {"RESULT_READY"}, "SETTLED_REJECTED", now, reason)
             self._finish_settlement(row, now)
             self._save()
+            self._emit("payment.settled", row, now)
             return row
 
     def _void_remainder(self, row: Row) -> None:
@@ -304,6 +338,9 @@ class Ledger:
                 self._capture(row, row.floor, "floor")
                 self._finish_settlement(row, now)
             self._save()
+            if upheld:
+                self._emit("payment.refunded", row, now)
+            self._emit("dispute.resolved", row, now, upheld=upheld)
             return row
 
     def fail_infra(self, run_id: str, now: float, reason: str = "infrastructure failure") -> Row:
@@ -360,6 +397,7 @@ class Ledger:
                         continue
                     p["status"] = "paid"
                     paid += 1
+                    self._emit("payout.paid", row, now)
             self._save()
         return paid
 

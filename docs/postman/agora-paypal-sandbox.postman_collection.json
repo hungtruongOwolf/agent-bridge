@@ -1,0 +1,457 @@
+{
+  "info": {
+    "name": "Agora PayPal sandbox",
+    "description": "Mirrors the requests src/bridge/payments/paypal.py sends. SANDBOX ONLY, test money. Run in order; step 3 is manual.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. OAuth token",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 200', () => pm.response.to.have.status(200));",
+              "const j = pm.response.json();",
+              "pm.test('has access_token', () => pm.expect(j.access_token).to.be.a('string'));",
+              "pm.environment.set('access_token', j.access_token);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/x-www-form-urlencoded"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/v1/oauth2/token",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "v1",
+            "oauth2",
+            "token"
+          ]
+        },
+        "description": "Same call as PayPalSandbox._auth_token: client credentials with HTTP Basic.",
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "username",
+              "value": "{{client_id}}",
+              "type": "string"
+            },
+            {
+              "key": "password",
+              "value": "{{client_secret}}",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            {
+              "key": "grant_type",
+              "value": "client_credentials"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "2. Create order (AUTHORIZE, 0.40 USD)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 201', () => pm.response.to.have.status(201));",
+              "const j = pm.response.json();",
+              "pm.environment.set('order_id', j.id);",
+              "const link = (j.links || []).find(l => ['approve','payer-action'].includes(l.rel));",
+              "pm.test('has approval link', () => pm.expect(link).to.exist);",
+              "if (link) { console.log('OPEN THIS LINK AS THE SANDBOX BUYER: ' + link.href); }"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "PayPal-Request-Id",
+            "value": "agora-postman-order-{{$guid}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/v2/checkout/orders",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "v2",
+            "checkout",
+            "orders"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{access_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"intent\": \"AUTHORIZE\",\n  \"purchase_units\": [\n    {\n      \"reference_id\": \"postman-run-1\",\n      \"amount\": {\n        \"currency_code\": \"USD\",\n        \"value\": \"0.40\"\n      }\n    }\n  ],\n  \"application_context\": {\n    \"return_url\": \"http://127.0.0.1:8787/paypal/return\",\n    \"cancel_url\": \"http://127.0.0.1:8787/paypal/cancel\",\n    \"user_action\": \"PAY_NOW\",\n    \"shipping_preference\": \"NO_SHIPPING\"\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "3. Approve the order (manual step)",
+      "event": [],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "https://www.sandbox.paypal.com/checkoutnow?token={{order_id}}",
+          "protocol": "https",
+          "host": [
+            "www",
+            "sandbox",
+            "paypal",
+            "com"
+          ],
+          "path": [
+            "checkoutnow"
+          ],
+          "query": [
+            {
+              "key": "token",
+              "value": "{{order_id}}"
+            }
+          ]
+        },
+        "description": "NOT an API call. Open the approve/payer-action link printed in the Postman console by step 2 (or this URL) in a browser and log in with the sandbox PERSONAL (buyer) account to approve. Step 4 fails with ORDER_NOT_APPROVED until you do."
+      }
+    },
+    {
+      "name": "4. Authorize the order",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 201', () => pm.response.to.have.status(201));",
+              "const a = pm.response.json().purchase_units[0].payments.authorizations[0];",
+              "pm.test('authorization created', () => pm.expect(a.status).to.be.oneOf(['CREATED','PENDING']));",
+              "pm.environment.set('authorization_id', a.id);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "PayPal-Request-Id",
+            "value": "agora-postman-authorize-{{$guid}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/v2/checkout/orders/{{order_id}}/authorize",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "v2",
+            "checkout",
+            "orders",
+            "{{order_id}}",
+            "authorize"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{access_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "5. Partial capture 0.25 (final_capture false)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 201', () => pm.response.to.have.status(201));",
+              "const j = pm.response.json();",
+              "pm.test('capture completed or pending', () => pm.expect(j.status).to.be.oneOf(['COMPLETED','PENDING']));",
+              "pm.environment.set('capture_id', j.id);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "PayPal-Request-Id",
+            "value": "agora-postman-capture-{{$guid}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/v2/payments/authorizations/{{authorization_id}}/capture",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "v2",
+            "payments",
+            "authorizations",
+            "{{authorization_id}}",
+            "capture"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{access_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"amount\": {\n    \"currency_code\": \"USD\",\n    \"value\": \"0.25\"\n  },\n  \"final_capture\": false\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "6. Void the remainder of the authorization",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 200 or 204', () => pm.expect(pm.response.code).to.be.oneOf([200,204]));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "PayPal-Request-Id",
+            "value": "agora-postman-void-{{$guid}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/v2/payments/authorizations/{{authorization_id}}/void",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "v2",
+            "payments",
+            "authorizations",
+            "{{authorization_id}}",
+            "void"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{access_token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "7. Refund the capture",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 201', () => pm.response.to.have.status(201));",
+              "pm.test('refund completed or pending', () => pm.expect(pm.response.json().status).to.be.oneOf(['COMPLETED','PENDING']));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "PayPal-Request-Id",
+            "value": "agora-postman-refund-{{$guid}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/v2/payments/captures/{{capture_id}}/refund",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "v2",
+            "payments",
+            "captures",
+            "{{capture_id}}",
+            "refund"
+          ]
+        },
+        "description": "",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{access_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "8. Create payout (0.20 USD)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 201', () => pm.response.to.have.status(201));",
+              "const id = pm.response.json().batch_header.payout_batch_id;",
+              "pm.test('has payout_batch_id', () => pm.expect(id).to.be.a('string'));",
+              "pm.environment.set('payout_batch_id', id);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "PayPal-Request-Id",
+            "value": "agora-postman-payout-{{$guid}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/v1/payments/payouts",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "v1",
+            "payments",
+            "payouts"
+          ]
+        },
+        "description": "Receiver must be a sandbox account email; set payout_receiver_email in the environment. Payouts must be enabled for the sandbox business account.",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{access_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"sender_batch_header\": {\n    \"sender_batch_id\": \"agora-postman-{{$guid}}\",\n    \"email_subject\": \"agent-bridge payout (sandbox)\"\n  },\n  \"items\": [\n    {\n      \"recipient_type\": \"EMAIL\",\n      \"receiver\": \"{{payout_receiver_email}}\",\n      \"sender_item_id\": \"agora-postman-item-{{$guid}}\",\n      \"amount\": {\n        \"value\": \"0.20\",\n        \"currency\": \"USD\"\n      }\n    }\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    }
+  ]
+}
