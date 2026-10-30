@@ -146,4 +146,4 @@ All in `docs/submission/paypal/gallery/` (1920 x 1280, all under 1 MB).
 
 The story uses different pictures (the five diagrams in `story/`), plus the receipts and the PayPal-calls images again.
 
-Picture captions to paste where Devpost asks for one (order as in the table): 1 "Agora: paid per job, even on the buyer's PC", 2 "The whole flow, run on PayPal's own sandbox", 2 "The buyer approves a hold: the ceiling", 3 "Approval on the (practice) PayPal page", 4 "The receipt: 25¢ of 40¢", 5 "Authors pick a plan", 6 "One PayPal call per money step".
+Picture captions (same order as the table): 1 "Agora: paid per job, even on the buyer's PC". 2 "The whole flow, run on PayPal's own sandbox". 3 "The buyer approves a hold: the ceiling". 4 "Approval on the (practice) PayPal page". 5 "The receipt: 25¢ of the 40¢ hold". 6 "The Earnings ledger". 7 "The hosted demo with a sample history". 8 "Authors pick a plan". 9 "One PayPal call per money step".
