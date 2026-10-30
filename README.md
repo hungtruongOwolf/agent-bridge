@@ -24,6 +24,12 @@ even though it runs on the buyer's machine. Test money only.
 - **Status:** the client is verified against a local practice server that copies PayPal's API (80 payment tests, no keys needed:
   `pytest tests/payments`). See `docs/paypal-setup.md` for running it against PayPal's own sandbox and what is verified.
 
+The **Earnings** tab (`/earnings`, data from the read-only `GET /api/earnings`) lists every run of the helpers you built and, on a second tab, what you spent:
+date, helper, plan, the hold, price, what was charged, the author's share, the platform fee, what was given back, a plain status
+(Paid, Deposit only, Refunded, On hold, Waiting) and the receipt reference, with a bar chart per run. It uses **AG Grid Community** (sorting, filters,
+pagination) and **AG Charts Community**, both MIT licensed and vendored in `src/bridge/web/static/vendor/` with their licence files, so the console still works offline.
+Enterprise-only features (set filters, row grouping, integrated charts) are not used; a "by helper" summary stands in for grouping.
+
 ## See it in two minutes
 
 The console is a **market floor**. Every chat you have open is a small stall with its own helper, all on one picture, so you can see who is
@@ -95,42 +101,27 @@ pytest                         # ~310 tests; the container tests are skipped if 
 Set `BRIDGE_DOCKER` to use something else (for example `podman`). Without an engine, `bridge seed` still
 works: packs that need a cell are published but left *uncertified*, and never shown as safe.
 
+## Deal Finder and Channel3
+
+`deal-finder` is a shopping helper: you say what you want and your budget, it searches real product listings through
+[Channel3](https://www.trychannel3.com) (a product-data API for AI shopping agents), and Nemotron shortlists three with a reason and a link
+each. It is a public step like the Tavily one: it reads none of your files, only the words of your request go out, and the workflow check refuses
+to publish a helper that wires a product search to private data. It costs 10 / 25 / 40 cents (light / standard / deep); a lookup makes a run
+standard, and it is paid through the same PayPal flow as any helper. It cannot buy anything.
+
+- Set `CHANNEL3_API_KEY` in `.env` (or the environment). Without it the helper uses a small fixed sample catalog and the answer says
+  "Recorded product data". `bridge seed` and the Certifier always use that recorded catalog, so testing is repeatable and spends no searches.
+- Verified: the client, the answer shape and the checks against fake HTTP and the recorded catalog (`tests/engine/test_channel3.py`, `tests/test_deal_finder.py`),
+  and the request/response shape against Channel3's published docs (`POST https://api.trychannel3.com/v1/search`, `x-api-key` header).
+- Not verified: no live call to Channel3 has been made (no key yet), so real prices, stock and links are untested; the 429 error body and where
+  a key is created are not stated in the docs pages read. Channel3 lists 1,000 free searches a month, then $0.007 each.
+
 ## Payments (test money)
 
 Each run is a hire. The requester places a hold for the pack's price, the pack runs, and money moves only through a
 ledger state machine: a **floor fee** is captured when a result exists, the **outcome fee** only when you accept
 (or when the accept window passes), and a rejected result keeps only the floor. A run that is stopped for theft is
 **held, not voided**; the hold is refunded when the Certifier independently reproduces the violation for that exact
-## Deal Finder and Channel3
-
-`deal-finder` is a shopping helper: you say what you want and your budget, it searches real product listings through
-[Channel3](https://www.trychannel3.com) (a product-data API for AI shopping agents), and Nemotron shortlists three with a reason and a link
-each. It is a public step like the Tavily one: it reads none of your files, only the words of your request go out, and the workflow check refuses
-to publish a helper that wires a product search to private data. It costs 10 / 25 / 40 cents (light / standard / deep); a lookup makes a run
-standard, and it is paid through the same PayPal flow as any helper. It cannot buy anything.
-
-- Set `CHANNEL3_API_KEY` in `.env` (or the environment). Without it the helper uses a small fixed sample catalog and the answer says
-  "Recorded product data". `bridge seed` and the Certifier always use that recorded catalog, so testing is repeatable and spends no searches.
-- Verified: the client, the answer shape and the checks against fake HTTP and the recorded catalog (`tests/engine/test_channel3.py`, `tests/test_deal_finder.py`),
-  and the request/response shape against Channel3's published docs (`POST https://api.trychannel3.com/v1/search`, `x-api-key` header).
-- Not verified: no live call to Channel3 has been made (no key yet), so real prices, stock and links are untested; the 429 error body and where
-  a key is created are not stated in the docs pages read. Channel3 lists 1,000 free searches a month, then $0.007 each.
-
-## Deal Finder and Channel3
-
-`deal-finder` is a shopping helper: you say what you want and your budget, it searches real product listings through
-[Channel3](https://www.trychannel3.com) (a product-data API for AI shopping agents), and Nemotron shortlists three with a reason and a link
-each. It is a public step like the Tavily one: it reads none of your files, only the words of your request go out, and the workflow check refuses
-to publish a helper that wires a product search to private data. It costs 10 / 25 / 40 cents (light / standard / deep); a lookup makes a run
-standard, and it is paid through the same PayPal flow as any helper. It cannot buy anything.
-
-- Set `CHANNEL3_API_KEY` in `.env` (or the environment). Without it the helper uses a small fixed sample catalog and the answer says
-  "Recorded product data". `bridge seed` and the Certifier always use that recorded catalog, so testing is repeatable and spends no searches.
-- Verified: the client, the answer shape and the checks against fake HTTP and the recorded catalog (`tests/engine/test_channel3.py`, `tests/test_deal_finder.py`),
-  and the request/response shape against Channel3's published docs (`POST https://api.trychannel3.com/v1/search`, `x-api-key` header).
-- Not verified: no live call to Channel3 has been made (no key yet), so real prices, stock and links are untested; the 429 error body and where
-  a key is created are not stated in the docs pages read. Channel3 lists 1,000 free searches a month, then $0.007 each.
-
 pack. Outages and crashes release the hold with no charge. The author is paid after a platform fee; the demo holdback
 is 0 seconds and the console says so. Everything is labelled as test coins.
 
@@ -207,6 +198,7 @@ In Pull mode the helper runs on your machine and its author receives nothing, so
   of the sandbox, run through the real client code and shown with an approval page and receipts), and the PayPal sandbox client. The
   client has been tested against the practice server only; it has **not been run against the live sandbox yet** (see `docs/paypal-setup.md`
   for what the owner needs to provide). Nothing real moves in any mode.
+- **"Not helpful" is capped.** A buyer can mark one helper not helpful at most 5 times in 24 hours (`NOT_HELPFUL_MAX` in the ledger). The sixth press is refused with a plain message and the answer stays open, so it is auto-accepted at the deadline and the author is paid in full. The count is read from the saved ledger, so a restart does not reset it. Someone with many buyer identities could still dodge it; there is no identity check in the demo.
 - **The model service reads what a helper's steps send it** (minus the placeholders above). Information already shown to a helper cannot be taken back.
 - **Detection is evidence, not proof.** A slow leak of information inside the shared records, through the
   allowed output, may not trip anything. The guarantee is that the pack sees only what you shared and the
@@ -228,7 +220,6 @@ In Pull mode the helper runs on your machine and its author receives nothing, so
 
 ## Layout
 
-- **"Not helpful" is capped.** A buyer can mark one helper not helpful at most 5 times in 24 hours (`NOT_HELPFUL_MAX` in the ledger). The sixth press is refused with a plain message and the answer stays open, so it is auto-accepted at the deadline and the author is paid in full. The count is read from the saved ledger, so a restart does not reset it. Someone with many buyer identities could still dodge it; there is no identity check in the demo.
 ```
 src/bridge/pack/      workflow language, digest, signing, capabilities
 src/bridge/engine/    flowd engine, journal, Nebius and Tavily clients

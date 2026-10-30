@@ -51,6 +51,14 @@ Five plans: one flat price; by files read; by thinking used (tokens); by how har
 
 Every answer has a receipt in plain words: *"Standard: 2 thinking steps, 3 files read: 25¢ of the 40¢ hold."* The author's payout shows 23 cents because of a small platform fee. Everything is labelled as test money.
 
+### More in the console
+
+- **Earnings.** A ledger for authors and buyers built on **AG Grid Community** and AG Charts Community: every run with its hold, price, charge, author share, platform fee and what was given back, sortable and filterable, with a bar chart per run.
+- **Deal Finder.** A shopping helper that searches product listings through **Channel3** and shortlists three with reasons and links. It reads none of your files and cannot buy anything. Run with no key it uses a small catalog labelled "Recorded product data"; we have not yet made a live Channel3 call.
+- **Events for Zapier.** The ledger can send `payment.settled`, `payout.paid`, `payment.refunded` and `dispute.resolved` to a webhook URL (off by default, no private data in the payload). We documented a Zapier "Catch Hook" recipe; we have not yet run it through Zapier itself.
+- **A Postman collection** of the PayPal sandbox calls the client makes (token, order, authorize, partial capture, void, refund, payout), not yet run against the live sandbox.
+- **A cap on "Not helpful"**: five presses a day per buyer and helper, so the small deposit can't be dodged forever.
+
 ## How we built it
 
 - **A ledger with one state machine.** One row per hire: awaiting approval, authorized, running, result ready, settled, rejected, dispute hold, dispute upheld, voided. Every transition is checked under one lock, so *accept* and *kill* can never both win. We tested it with many racing pairs.
@@ -76,7 +84,7 @@ The platform underneath is the open-source **agent-bridge** project (the helper 
 - A money state machine that is race-safe, restart-safe and retry-safe. We checked that the payment tests really fail when idempotency or the state guard is removed.
 - Money that follows evidence: an honest result is paid, a proven cheat is refunded, an outage costs nothing.
 - Five pricing plans, with a preview of what each run would cost before an author publishes.
-- About 660 automated tests across the platform.
+- About 720 automated tests across the platform.
 
 ## What we learned
 
@@ -122,6 +130,7 @@ All in `docs/submission/paypal/gallery/` (1920 x 1280, all under 1 MB).
 | 4 | `g04-receipts.png` | Receipts: 25¢ charged of the 40¢ hold; not helpful = deposit only |
 | 5 | `g06-plans.png` | The Publish panel: plan picker with light / standard / deep prices |
 | 6 | `g05-paypal-api.png` | Which PayPal call does each money step |
+| 7 | `g07-earnings.png` | The Earnings ledger (AG Grid) |
 
 The story uses different pictures (the four diagrams in `story/`), plus the receipts and the PayPal-calls images again.
 

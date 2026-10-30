@@ -30,7 +30,7 @@ Do not mix them: the form is signed with a statement that the information is tru
 | Organization Name | N/A |
 | New, or existed before Oct 1, 2026? | **New.** The first commit is 2026-10-20 (186 commits, all dated 2026-10-20 to 2026-10-30). |
 | If it existed before, explain | N/A |
-| Additional sponsor tools | **None, used other AI tools.** (We did not use AG Grid, APIMatic, Astropods, Bryntum, Channel3, Elastic, KERNEL, Postman, Render or Zapier.) |
+| Additional sponsor tools | **AG Grid** (the Earnings ledger and chart, Community edition) and **Channel3** (the Deal Finder helper; no live call yet, see the note in the answer). Do not tick Render until it is actually deployed. Do not tick Zapier or Postman: we built a webhook and a collection but have not run them through those products. |
 | Public code repository URL | `https://github.com/hungtruongOwolf/agent-bridge` (must be public with the MIT licence by submission; the README now has a "How it uses PayPal and AI" section) |
 | Working demo / test build URL | `https://agora-replay.vercel.app`: the interactive replay in `demo-site/` (deploy steps in `demo-site/README.md`). If you do not deploy it, use `https://github.com/hungtruongOwolf/agent-bridge#quickstart`. |
 | APIMatic Context Plugin | Leave empty (not used). |
@@ -54,7 +54,7 @@ Do not mix them: the form is signed with a statement that the information is tru
 
 > **PayPal tools:** Orders v2 with intent AUTHORIZE for the buyer's hold (the ceiling, 40 cents in the demo); capture of part of the authorization (`final_capture: false`) for the real price (25 cents); void for the released remainder; refund when the independent certifier has flagged a helper; Payouts to pay the author; OAuth client credentials; and a `PayPal-Request-Id` on every call so a lost reply never charges twice. Code: `src/bridge/payments/paypal.py` (a sandbox client that refuses any non-sandbox host) and `ledger.py` (one state machine per hire).
 >
-> **How it was verified, stated plainly:** the client has been exercised end to end against a local practice server that copies PayPal's API (approval page, authorize, capture, void, refund, payouts), with 80 automated payment tests that need no keys (`pytest tests/payments`). It has **not yet been run against PayPal's own sandbox**; that mode (`bridge serve --payments paypal`, see `docs/paypal-setup.md`) is included and selectable but unverified. No real money moves anywhere.
+> **How it was verified, stated plainly:** the client has been exercised end to end against a local practice server that copies PayPal's API (approval page, authorize, capture, void, refund, payouts), with about 720 automated tests (80 of them cover payments) that need no keys (`pytest tests/payments`). It has **not yet been run against PayPal's own sandbox**; that mode (`bridge serve --payments paypal`, see `docs/paypal-setup.md`) is included and selectable but unverified. No real money moves anywhere.
 >
 > **AI tools:** NVIDIA Nemotron (`nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B`) on Nebius Token Factory runs the helpers' thinking steps, and the same model scores every helper in the certifier whose flag decides whether a full refund is allowed. The price of a run comes from what the engine recorded, never from what the helper says. Code: `src/bridge/engine/nebius.py`.
 

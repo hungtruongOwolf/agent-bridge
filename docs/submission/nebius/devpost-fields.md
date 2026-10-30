@@ -71,7 +71,7 @@ Imagine a helper for your tax papers, one for your contracts, one that reads you
 
 - A measurable result: three versions of one helper, the same Nemotron, the same sixteen questions, scoring 9, 13 and 14. The ranking shows setups, not models.
 - A helper with real malicious code is stopped live, and a second one that reaches for a bait note is caught by behaviour.
-- About 660 automated tests, and a README quickstart.
+- About 720 automated tests, and a README quickstart.
 
 ## What we learned
 

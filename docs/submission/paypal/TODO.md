@@ -17,15 +17,15 @@ Written 2026-10-30. Tick items off as they are done.
 
 ## B. Raise the score (the criteria: implementation, design, impact, innovation, presentation)
 
-- [ ] **B1. Host the real app on Render** (sponsor prizes: Render credits). A Dockerfile and `render.yaml`; bind to `0.0.0.0` through an env switch, allow the public host
+- [x] (code done; deploy is the owner's step) **B1. Host the real app on Render** (sponsor prizes: Render credits). A Dockerfile and `render.yaml`; bind to `0.0.0.0` through an env switch, allow the public host
   in the Host-header check (keep the token and CSRF rules), Nebius key as a Render secret with a spending cap per visitor, workflow helpers only (no Docker-in-Docker).
   With a public URL the PayPal sandbox return page also works the way PayPal expects.
-- [ ] **B2. Author ledger with AG Grid** (sponsor prizes up to $5,000). A "Earnings" view: receipts, holds, captures, refunds, payouts; sort, filter, group by helper.
+- [x] **B2. Author ledger with AG Grid** (sponsor prizes up to $5,000). A "Earnings" view: receipts, holds, captures, refunds, payouts; sort, filter, group by helper.
   Read official AG Grid docs first; use the community edition.
-- [ ] **B3. No-key demo mode**: a deterministic local model for the payment flow so judges can run the money flow without a Nebius key.
-- [ ] **B4. Zapier webhook** on settled / paid out (for example an email to the author). Cheap. No prize of its own.
-- [ ] **B5. Postman collection** of the PayPal sandbox calls we use (helps diagnose A1 and doubles as documentation). No prize of its own.
-- [ ] **B6. Cap on "Not helpful"** presses (a known product gap): a buyer can press it as often as they like. Build the cap or document it as a limit.
+- [x] **B3. No-key demo mode**: a deterministic local model for the payment flow so judges can run the money flow without a Nebius key.
+- [x] **B4. Zapier webhook** on settled / paid out (for example an email to the author). Cheap. No prize of its own.
+- [x] **B5. Postman collection** of the PayPal sandbox calls we use (helps diagnose A1 and doubles as documentation). No prize of its own.
+- [x] **B6. Cap on "Not helpful"** presses (a known product gap): a buyer can press it as often as they like. Build the cap or document it as a limit.
 - [ ] **B7. Targets for the special prizes** "Best Use of PayPal + AI" and "Best Use of Agentic Commerce": make the agent-to-agent hire visible in the video and the write-up.
 
 ## C. Skip (not a fit): Bryntum, Channel3, Elastic, KERNEL, Astropods, APIMatic (low value for the effort).
@@ -40,3 +40,8 @@ Written 2026-10-30. Tick items off as they are done.
 
 - Astropods: read, not a fit (agent governance for organizations; no documented SDK or spend hooks; no prize).
 - Deploy: the Vercel replay is live at https://agora-replay.vercel.app (the long per-deployment address asks for a Vercel login: do not use it).
+
+## F. Done 2026-10-30 (see git log)
+
+Judge mode + Render blueprint (`docs/hosting.md`), AG Grid Earnings, Deal Finder (Channel3, recorded data until a key is set), webhooks, Postman collection, Not-helpful cap. 719 tests pass.
+Still owner-side: A1 sandbox, deploy on Render (repo public, Render > New > Blueprint), Channel3 key, YouTube video, form.
