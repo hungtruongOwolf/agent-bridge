@@ -1,27 +1,33 @@
-/* n04: Trust by evidence. The list of helpers with their trust, price and test line; one helper's page; the ones flagged for cheating. */
+/* n04 (version 2): My memory. The map and its count, the tick panel of a chat, and the secret shelves. Timed to a voice of about 14 seconds. */
 import { sleep } from "../recorder.mjs";
+
+const soft = async (f) => { try { await f(); } catch (e) { console.error("skipped:", e.message); } };
 
 export default async function (rec) {
   await rec.goto("/");
-  await sleep(1200);
+  const chat = await rec.chatPath("Weekly account review");
+  await rec.goto("/memory");
+  await sleep(700);
   await rec.start("n04");
-  await sleep(900);
-  await rec.click("a.stall.newstall", null, { after: 1200 });                       // Open a new stall: the helpers for hire
-  await rec.scrollTo("#hirepanel", null, { gap: 100 });
-  await rec.hover(".pick", "Deal Brief", { ms: 800 });
-  await sleep(1400);
-  await rec.hover(".pick", "Quick Skim", { ms: 800 });
-  await sleep(1200);
-  rec.mark("meet");
-  await rec.click(".pick a.btn", "Meet", { nth: 0, after: 2200 });                  // the profile: what it does and its test results
-  const dlg = await rec.find("#profile");
-  const b = await dlg.boundingBox();
-  await rec.wheel(b.x + b.width / 2, b.y + b.height / 2, 520, 5, 140);
-  await sleep(1500);
-  rec.mark("flagged");
-  await rec.click("#profile [data-close]", "Close", { after: 900 });
-  await rec.scrollTo("#picker .small.muted", "caught cheating", { block: "center" }); // helpers caught cheating in tests
-  await rec.hover("#picker .small", "caught cheating", { ms: 700 });
-  await sleep(2200);
+  await rec.scrollTo("#memmap", null, { gap: 140 });
+  await rec.click("#mapfit", "Fit", { after: 300 });
+  await soft(async () => { const el = await rec.findText("139 notes", { part: true, within: "#memmap, .memtop, main" }); await rec.ring(el, "139 notes, on shelves"); });
+  await rec.cam(await rec.find("#memmap"), 1.2, { ms: 1500 });
+  await sleep(700);
+  await rec.unring();
+  await rec.camReset(500);
+  rec.mark("panel");
+  await rec.goto(chat);
+  await sleep(300);
+  await rec.scrollTo("#sidepanel", null, { gap: 100 });
+  await rec.clickEl(await rec.findIn("#sidebody li", "Work", ".twist"), { after: 500 });
+  const acc = await rec.findIn("#sidebody li", "Accounts", "input[type=checkbox]");
+  await rec.ring(acc, "Only what I tick");
+  await rec.cam(acc, 1.45, { ms: 900, dx: 120 });
+  await sleep(1100);
+  await rec.unring();
+  rec.mark("secret");
+  await soft(async () => { const chip = await rec.findText("5 secret", { within: "#sidebody" }); await rec.ring(chip, "Secret: never shared"); await rec.cam(chip, 1.6, { ms: 800, dx: 140 }); });
+  await sleep(1900);
   await rec.stop();
 }

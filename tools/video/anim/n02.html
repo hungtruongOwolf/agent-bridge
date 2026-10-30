@@ -1,77 +1,261 @@
 <!doctype html>
 <meta charset="utf-8">
-<title>n02 Pull mode</title>
+<title>n02 Choosing blind</title>
 <body>
 <script type="module">
-import { stage, label, setPos, fontFace, background, panel, shelf, paper, lock, cloud, glassRoom, person, ME, AGENT, K, seg, ease, arc, lerp, px, box, DUR, W, H, fade } from "./lib.js";
+import { stage, label, fontFace, person, K, seg, lerp, ease, px, box, DUR, W, H, clamp, paper, folder, lock, laptop, panel, AGENT, ME } from "./lib.js";
+import { sentenceTimes, Camera, spring, burst, flow, Words, glow, vignette, rng, out5, bar } from "./fx.js";
 fontFace();
 const S = stage(), c = S.c;
-const T = (s) => (s / 12) * DUR;
-const cols = [K.coral, K.mint, K.sky, K.lemon, K.lilac];
-const lblMachine = label(S.text, "Your machine", { x: 22, y: 20, size: 24, weight: 800 });
-const lblWork = label(S.text, "Work", { x: 114, y: 44, size: 22, weight: 800 });
-const lblAcc = label(S.text, "Accounts", { x: 114, y: 76, size: 22, weight: 800 });
-const lblSecret = label(S.text, "Secret<br><span style=\"font-size:16px;font-weight:600\">never shown</span>", { x: 114, y: 130, size: 22, weight: 800, color: K.coral });
-const lblRoom = label(S.text, "Sealed room", { x: 176, y: 26, size: 22, weight: 800, color: K.ink700 });
-const lblCloud = label(S.text, "Stays home<br><span style=\"font-size:16px;font-weight:600\">no network</span>", { x: 256, y: 86, size: 20, weight: 800, color: K.ink500 });
-const ribbon = label(S.text, "Pull mode", { x: 0, y: 150, size: 34, font: "pixel", align: "center", w: 320, weight: 400, bg: K.cream100, pad: 14, border: true, shadow: true });
-const sub = label(S.text, "The agent comes to your data.", { x: 0, y: 164, size: 24, align: "center", w: 320, weight: 700, color: K.ink700 });
-ribbon.style.width = "auto"; ribbon.style.left = "50%"; ribbon.style.transform = "translateX(-50%)";
+const VO = "And even if you're willing, there's a second problem: which agent is actually good? A helper is an agent with one job, running on a model. The setup around the model decides how good it is: its instructions and its checks. We measured this. Same model, NVIDIA Nemotron, same sixteen questions, and three versions of one helper went from nine right to fourteen right. From the outside you can't see a setup. So you're choosing blind, and to try one you hand over your data.";
+const ss = sentenceTimes(VO, DUR), A = (i) => ss[i].a, B = (i) => ss[i].b;
 
-window.seek = (t) => {
-  background(c);
-  c.save(); c.scale(2, 2);
-  const inA = seg(t, 0, T(0.8));
-  c.globalAlpha = inA;
-  panel(c, 8, 8, 114, 74, K.cream100);
-  // shelves on the left: Work and Accounts open up, Money stays shut
-  const w1 = seg(t, T(4.0), T(4.6)), w2 = seg(t, T(5.0), T(5.6));
-  shelf(c, 14, 20, 40, cols, 1, w1 * (1 - seg(t, T(9), T(10))));
-  shelf(c, 14, 36, 40, cols.slice().reverse(), 1, w2 * (1 - seg(t, T(9), T(10))));
-  shelf(c, 14, 52, 40, cols, 1, 0);
-  // the secret cabinet: dark and locked
-  box(c, 14, 62, 40, 16, K.ink700);
-  px(c, 18, 66, 14, 8, K.ink);
-  const shake = t > T(6.4) && t < T(7.2) ? Math.round(Math.sin(t * 60)) : 0;
-  lock(c, 42 + shake, 66, false, 0, K.lemon);
-  px(c, 14, 62, 40, 1, K.coral);
-  // the glass room with a desk
-  glassRoom(c, 78, 22, 38, 50, 1);
-  box(c, 84, 58, 26, 8, K.wood);
-  box(c, 91, 52, 12, 6, K.ink700);
-  px(c, 93, 54, 8, 2, K.skyL);
-  // the door in the right wall
-  const door = ease.inOut(seg(t, T(1.2), T(1.8))) * (1 - ease.inOut(seg(t, T(3.2), T(3.8))));
-  px(c, 118, 54, 5, 20, K.cream100);
-  px(c, 118, 54 + 20 * (1 - door), 5, 20 * door, K.woodD || K.wall);
+const put = (el, x, y, a = 1, sc = 1, rot = 0) => { el.style.left = x + "px"; el.style.top = y + "px"; el.style.opacity = a; el.style.transform = `translate(-50%,-50%) scale(${sc}) rotate(${rot}deg)`; };
+const pill = (html, o = {}) => { const e = label(S.text, html, Object.assign({ x: 0, y: 0, size: 28, weight: 800, bg: K.cream50, pad: 8, border: true, shadow: true }, o)); e.style.opacity = 0; return e; };
+const at = (x, y, s, fn) => { c.save(); c.translate(x, y); c.scale(s, s); fn(); c.restore(); };
+const shadow = (x, y, w) => { c.globalAlpha = 0.16; px(c, x - w / 2, y, w, 2, K.ink); px(c, x - w / 2 + 2, y + 2, w - 4, 1, K.ink); c.globalAlpha = 1; };
+function bg(t, p) {
+  const g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, "#FFF8E7"); g.addColorStop(1, "#F1E3B8");
+  c.fillStyle = g; c.fillRect(0, 0, W, H);
+  glow(c, 40, 30, 120, K.skyL, 0.5); glow(c, 290, 150, 110, K.lilacL, 0.55);
+  const r = rng(11);
+  for (let i = 0; i < 44; i++) {
+    const bx = r() * 420, by = r() * H, sp = 0.15 + r() * 0.5, sz = r() < 0.2 ? 2 : 1;
+    const x = (((bx - p.x * sp * 0.6 - t * (1 + r() * 2)) % 420) + 420) % 420 - 50;
+    c.globalAlpha = 0.5; px(c, x, by + Math.sin(t + i) * 2, sz, sz, K.cream300);
+  }
   c.globalAlpha = 1;
-  // the cloud outside, small and cut off
-  cloud(c, 140, 28, 0.55, K.ink100, false, t);
-  px(c, 130, 36, 20, 1, K.coral);
-  // the stranger's agent walks in, sits at the desk and works
-  const walk = ease.inOut(seg(t, T(1.0), T(3.6)));
-  const x = lerp(152, 97, walk), moving = t > T(1.0) && t < T(3.7);
-  const pose = t < T(1.0) ? "idle" : moving ? "walk" : t < T(3.9) ? "idle" : "sit";
-  const y = lerp(70, 70, walk);
-  person(c, x, y, { ...AGENT, pose, facing: moving ? "l" : "f" }, t * 1000);
-  // papers copied from the open shelves to the desk (read only)
-  [[w1, 0, 34, 24], [w2, 1, 34, 40]].forEach(([w, i, sx, sy]) => {
-    const a = T(4.6) + i * T(0.8), u = seg(t, a, a + T(0.9));
-    if (u > 0 && u < 1) { const p = arc([sx + 20, sy], [97, 56], ease.inOut(u), 14); paper(c, p.x, p.y); }
-    if (u >= 1) paper(c, 88 + i * 10, 55);
+}
+const QM = ["01110", "10001", "00001", "00010", "00100", "00000", "00100"];
+function qmark(x, y, s, col) { QM.forEach((row, j) => [...row].forEach((ch, i) => { if (ch === "1") px(c, x + i * s - 2 * s, y + j * s - 3 * s, s, s, col); })); }
+function hand(x, y) {
+  at(x, y, 1.5, () => { box(c, -5, -7, 10, 8, "#E0AC82"); box(c, -1, 1, 3, 9, "#E0AC82"); box(c, -8, -4, 3, 5, "#E0AC82"); box(c, 5, -5, 3, 3, "#E0AC82"); });
+}
+function eye(x, y, s, look) {
+  at(x, y, s, () => {
+    for (let pass = 0; pass < 2; pass++) for (let j = -5; j <= 5; j++) {
+      const w = Math.round(11 * Math.sqrt(Math.max(0, 1 - (j * j) / 30))); const o = pass === 0 ? 1 : 0;
+      px(c, -w - o, j - o, 2 * w + 1 + 2 * o, pass === 0 ? 3 : 2, pass === 0 ? K.ink : K.cream50);
+    }
+    box(c, -3 + look, -3, 6, 6, K.sky); px(c, -1 + look, -1, 3, 3, K.ink); px(c, -2 + look, -3, 1, 1, K.cream50);
+    for (let i = -3; i <= 3; i++) px(c, i * 3, -9 + Math.abs(i), 1, 2, K.ink);   // lashes
+  });
+}
+function scrollIcon(x, y, s) { at(x, y, s, () => { box(c, -5, -3, 10, 6, K.lemonL); px(c, -3, -1, 6, 1, K.ink300); px(c, -3, 1, 4, 1, K.ink300); box(c, -8, -4, 4, 8, K.lemon); px(c, -7, -2, 2, 4, K.cream50); box(c, 4, -4, 4, 8, K.lemon); px(c, 5, -2, 2, 4, K.cream50); }); }
+function checkIcon(x, y, s) { at(x, y, s, () => { box(c, -6, -8, 12, 16, K.cream50); for (let i = 0; i < 3; i++) { px(c, -4, -5 + i * 5, 2, 2, K.mint); px(c, -1, -5 + i * 5, 5, 1, K.ink300); } }); }
+
+const GY = 130;
+const XS = [160, 560, 960, 1360];   // station centres in world x
+
+/* ---- DOM labels ---- */
+const pOne = pill("helper: one job", { size: 28 });
+const pModel = pill("model: Nemotron", { size: 28, bg: K.mintL });
+const pSetup = pill("the setup", { size: 34, bg: K.lemonL });
+const pIns = pill("instructions", { size: 28 }), pChk = pill("checks", { size: 28 });
+const pWhich = Words(S.text, "which one is good?", { x: 10, y: 6, w: 300, size: 54, align: "center", at: B(0) - 2.4 });
+const pStamp = label(S.text, "MEASURED", { x: 0, y: 0, size: 70, font: "pixel", weight: 400, color: K.coral, bg: K.cream50, pad: 18, border: true, shadow: true }); pStamp.style.opacity = 0;
+const pBadge1 = pill("Same model: NVIDIA Nemotron", { size: 28, bg: K.mintL });
+const pBadge2 = pill("Same 16 questions", { size: 28, bg: K.skyL });
+const VERS = [{ n: "Version 1", v: 9, col: K.coral }, { n: "Version 2", v: 13, col: K.lemon }, { n: "Version 3", v: 14, col: K.mint }];
+const pVer = VERS.map((v) => { const e = pill(v.n, { size: 28, border: false, shadow: false, bg: "transparent" }); return e; });
+const pNum = VERS.map(() => { const e = label(S.text, '<span>0</span><span style="font-size:24px;opacity:.55;font-weight:700"> / 16</span>', { x: 0, y: 0, size: 44, weight: 800 }); e.style.opacity = 0; e.style.width = '190px'; e.style.textAlign = 'left'; return e; });
+const pHidden = pill("can't see the setup", { size: 34 });
+const pBlind = pill("choosing blind", { size: 34 }), pHand = pill("hand over your data", { size: 34, color: K.coral });
+
+/* ---- camera ---- */
+const cam = new Camera([
+  { t: 0, x: XS[0], y: 92, zoom: 1.0 }, { t: A(1) - 0.2, x: XS[0], y: 92, zoom: 1.06 }, { t: A(1) + 0.9, x: XS[0], y: 94, zoom: 1.3 },
+  { t: A(4) + 0.3, x: XS[0], y: 92, zoom: 1.3 },
+  { t: A(4) + 1.3, x: XS[1], y: 90, zoom: 1.0 }, { t: A(5) - 0.5, x: XS[1], y: 90, zoom: 1.04 },
+  { t: A(5) + 0.4, x: XS[2], y: 98, zoom: 1.0 }, { t: A(5) + 2.4, x: XS[2], y: 98, zoom: 1.8 },
+  { t: A(6) - 0.1, x: XS[2], y: 98, zoom: 1.8 }, { t: A(6) + 1.0, x: XS[3], y: 90, zoom: 1.12 }, { t: DUR, x: XS[3], y: 90, zoom: 1.14 },
+]);
+
+function ground() {
+  px(c, -140, GY, 600, 60, K.cream300); px(c, -140, GY, 600, 1, K.ink);
+  for (let i = 0; i < 22; i++) px(c, -120 + i * 26 + (i % 2) * 7, GY + 8 + (i % 3) * 8, 9, 2, K.cream200);
+}
+
+function station0(t) {
+  c.save(); c.translate(XS[0] - 160, 0);
+  ground();
+  const hop = ease.inOut(seg(t, A(1) + 0.4, A(1) + 1.1));
+  // block under the helper
+  const bu = spring(seg(t, A(1) + 0.3, A(1) + 0.9));
+  if (bu > 0) { const h = 22 * bu; box(c, 115, GY - h, 90, h, K.mint); px(c, 116, GY - h + 1, 88, 3, K.mintL); for (let i = 0; i < 5; i++) px(c, 122 + i * 17, GY - h + 8, 8, 2, "#4a9068"); }
+  // the ring, back half
+  const sT = A(2) + 0.1, ring = spring(seg(t, sT, sT + 1.0));
+  const cx = 160, cyR = GY - 22 - 20, rx = 38, ry = 10;
+  const inRing = (front) => {
+    if (ring <= 0) return;
+    for (let i = 0; i < 48; i++) {
+      const a = i / 48 * Math.PI * 2; if ((Math.sin(a) > 0) !== front) continue;
+      if (i / 48 > ring) continue;
+      c.globalAlpha = (front ? 1 : 0.55) * (0.6 + 0.4 * Math.sin(t * 5 + i * 0.5));
+      const x = cx + Math.cos(a) * rx, y = cyR + Math.sin(a) * ry;
+      px(c, x - 1, y - 1, 3, 3, K.ink); px(c, x, y, 1, 1, K.lemon);
+    }
+    c.globalAlpha = 1;
+  };
+  if (t > A(2)) { glow(c, cx, cyR, 52 * ring, K.lemon, 0.35 * ring * (0.8 + 0.2 * Math.sin(t * 3))); inRing(false); }
+  // the middle helper (inside the crate, then up onto the block)
+  const pop1 = spring(seg(t, 0.3, 0.9));
+  if (pop1 > 0) {
+    const sc = lerp(1, 1.6, hop), hy = lerp(GY - 4, GY - 22, hop) - Math.sin(Math.PI * hop) * 16;
+    at(160, hy, sc * Math.min(1, pop1), () => person(c, 0, 0, { ...AGENT }, t * 1000));
+  }
+  // crates
+  [0, 1, 2].forEach((i) => {
+    const cx0 = 70 + 90 * i, pop = spring(seg(t, 0.1 + i * 0.2, 0.7 + i * 0.2));
+    const out = i === 1 ? 0 : ease.inOut(seg(t, A(1), A(1) + 0.8));
+    const X = cx0 + (i === 0 ? -1 : 1) * out * 240, oa = i === 1 ? 1 : 1 - out;
+    const glassA = i === 1 ? 1 - seg(t, A(1) + 0.15, A(1) + 0.6) : 1;
+    if (pop <= 0 || oa <= 0.02 || glassA <= 0.02) return;
+    const bob = Math.sin(t * 2 + i * 1.7) * 1.2;
+    c.save(); c.translate(X, GY); c.scale(1, pop); c.translate(-X, -GY);
+    shadow(X, GY, 52);
+    if (i !== 1) { c.globalAlpha = oa; person(c, X, GY - 4, { ...AGENT }, t * 1000); }
+    c.globalAlpha = glassA * oa * 0.62; px(c, X - 25, GY - 52, 50, 52, K.skyL);
+    c.globalAlpha = glassA * oa; px(c, X - 26, GY - 53, 52, 1, K.ink); px(c, X - 26, GY, 52, 1, K.ink); px(c, X - 26, GY - 53, 1, 54, K.ink); px(c, X + 25, GY - 53, 1, 54, K.ink);
+    px(c, X - 26, GY - 56, 52, 4, K.ink700); px(c, X - 20, GY - 49, 3, 22, "#FFFFFF"); px(c, X - 14, GY - 49, 1, 14, "#FFFFFF");
+    qmark(X, GY - 36 + bob, 3, K.ink);
+    c.globalAlpha = 1;
+    c.restore();
+  });
+  // the hand, undecided
+  const hu = 1 - seg(t, A(1) - 0.3, A(1) + 0.3);
+  if (hu > 0 && t > 0.6) {
+    const hx = 160 + 92 * Math.sin(t * 0.9), hy = 28 + Math.sin(t * 3) * 1.5 - (1 - hu) * 60;
+    c.globalAlpha = hu; hand(hx, hy + 14); c.globalAlpha = 1;
+  }
+  // the ring, front half, and the orbiting icons
+  inRing(true);
+  const iu = spring(seg(t, A(2) + 3.0, A(2) + 3.6)), cu = spring(seg(t, A(2) + 4.3, A(2) + 4.9));
+  const th1 = Math.PI + 0.5 * Math.sin(t * 1.2), th2 = 0.5 * Math.sin(t * 1.2 + 1.3);
+  if (iu > 0) { glow(c, cx + Math.cos(th1) * rx, cyR + Math.sin(th1) * ry, 16 * iu, K.lemon, 0.5 * iu); scrollIcon(cx + Math.cos(th1) * rx, cyR + Math.sin(th1) * ry, 1.4 * iu); }
+  if (cu > 0) { glow(c, cx + Math.cos(th2) * rx, cyR + Math.sin(th2) * ry, 16 * cu, K.mint, 0.5 * cu); checkIcon(cx + Math.cos(th2) * rx, cyR + Math.sin(th2) * ry, 1.3 * cu); }
+  c.restore();
+}
+
+function stationChart(t) {
+  const u0 = spring(seg(t, A(4) + 0.5, A(4) + 1.3));
+  c.save(); c.translate(XS[1] - 160, 0);
+  at(160, 83, 0.9 + 0.1 * u0, () => { c.translate(-160, -83); panel(c, 10, 6, 300, 154, K.cream100); });
+  px(c, 230, 46, 1, 100, K.ink300); px(c, 70, 147, 160, 1, K.ink300); for (let i = 0; i < 5; i++) px(c, 70 + i * 40, 147, 1, 3, K.ink300);
+  const rows = [58, 88, 118];
+  VERS.forEach((v, i) => {
+    const t0 = A(4) + 5.4 + i * 0.7, u = seg(t, t0, t0 + 1.0), h = 18, y = rows[i], win = i === 2;
+    if (win && u > 0) { const pulse = 0.5 + 0.5 * Math.sin(t * 4); glow(c, 70 + 80 * (14 / 16) * out5(u) + 10, y + h / 2, 100 * out5(u), K.lemon, (0.45 + 0.2 * pulse) * out5(u)); }
+    bar(c, 70, y, 160, h, v.v, 16, u, v.col, K.cream200);
+    if (win) burst(c, t, t0 + 1.0, 70 + 160 * 14 / 16, y + 9, { n: 22, seed: 8, colors: [K.lemon, K.mint, K.cream50], life: 1.0, speed: 46, size: 2, gravity: 25 });
+    if (win && u >= 1) { for (let k = 0; k < 4; k++) { const ph = (t * 0.8 + k / 4) % 1; c.globalAlpha = Math.sin(ph * Math.PI); px(c, 70 + 160 * (14 / 16) * (k + 1) / 5, y - 3 - ph * 8, 2, 2, K.lemon); } c.globalAlpha = 1; }
   });
   c.restore();
-  // labels
-  const show = (el, x, y, a, b) => setPos(el, x, y, seg(t, a, b) * (1 - seg(t, T(10.4), T(11))));
-  show(lblMachine, 22, 20, T(0.4), T(1));
-  show(lblWork, 114, 44, T(4.2), T(4.8));
-  show(lblAcc, 114, 76, T(5.2), T(5.8));
-  show(lblSecret, 114, 130, T(5.8), T(6.4));
-  show(lblRoom, 176, 26, T(3.6), T(4.2));
-  show(lblCloud, 256, 86, T(2.0), T(2.6));
-  ribbon.style.opacity = seg(t, T(7.6), T(8.2)); ribbon.style.top = "6px";
-  setPos(sub, 0, 168, seg(t, T(9.0), T(9.8)), "");
-  fade(c, seg(t, 0, T(0.4)));
+}
+
+function stationBox(t) {
+  c.save(); c.translate(XS[2] - 160, 0);
+  ground();
+  const bu = spring(seg(t, A(5) - 0.8, A(5) - 0.1));
+  shadow(160, GY, 84);
+  at(160, GY, bu, () => {
+    box(c, -36, -56, 72, 56, K.wood); px(c, -35, -55, 70, 3, "#EFD7AB");
+    box(c, -39, -66, 78, 12, K.woodD);
+    px(c, -2, -66, 4, 66, K.coral); px(c, -2, -66, 4, 1, K.ink);
+    box(c, -9, -40, 18, 14, K.lemon); px(c, -1, -36, 2, 5, K.ink); px(c, -3, -35, 6, 1, K.ink);
+    px(c, -5, -46, 1, 7, K.ink); px(c, 4, -46, 1, 7, K.ink); px(c, -5, -46, 10, 1, K.ink);
+  });
+  const eu = ease.inOut(seg(t, A(5) + 0.5, A(5) + 1.5));
+  const ey = 72, ex = lerp(96, 124, eu) + Math.sin(t * 3) * 2 * eu;
+  if (bu > 0.5) {
+    c.globalAlpha = 0.7 * eu; for (let i = 0; i < 12; i++) { const k = i / 12; px(c, ex + 12 + k * (150 - ex - 12), ey + 2 + k * (GY - 62 - ey), 2, 2, K.sky); } c.globalAlpha = 1;
+    eye(ex, ey, 1.3, Math.round(eu * 2));
+    const bl = seg(t, A(5) + 1.3, A(5) + 1.8);
+    if (bl > 0) {
+      c.save(); c.beginPath(); c.rect(124, GY - 70, 72, 14); c.clip();
+      c.filter = "blur(2.2px)"; c.globalAlpha = 0.9 * bl;
+      px(c, 130, GY - 68, 14, 10, K.lemon); px(c, 150, GY - 68, 10, 10, K.mint); px(c, 166, GY - 68, 16, 10, K.lilac); px(c, 186, GY - 68, 6, 10, K.coral);
+      c.filter = "none"; c.restore(); c.globalAlpha = 1;
+    }
+  }
+  c.restore();
+}
+
+function stationBlind(t) {
+  c.save(); c.translate(XS[3] - 160, 0);
+  ground();
+  const lu = spring(seg(t, A(6) - 0.5, A(6) + 0.2));
+  shadow(52, GY, 90);
+  box(c, 12, 111, 80, 6, K.wood); px(c, 15, 117, 3, 13, K.woodD); px(c, 86, 117, 3, 13, K.woodD);
+  at(52, 111, lu, () => { c.translate(-52, -111); const s = laptop(c, 24, 70, 56, 36, K.cream50); px(c, s.x + 3, s.y + 3, 20, 2, K.ink100); px(c, s.x + 3, s.y + 8, 30, 2, K.ink100); folder(c, s.x + s.w - 12, s.y + s.h - 9, K.lemon); });
+  const pu = spring(seg(t, A(6) - 0.4, A(6) + 0.3));
+  shadow(130, GY, 22);
+  at(130, GY, 1.7 * pu, () => {
+    person(c, 0, 0, { ...ME, facing: "r", pose: "idle" }, t * 1000);
+    px(c, -4, -21, 9, 3, K.ink); px(c, -5, -20, 1, 1, K.ink); px(c, 5, -20, 1, 1, K.ink);
+    box(c, 5, -17, 11, 2, "#E0AC82"); box(c, 16, -18, 3, 4, "#E0AC82");
+  });
+  shadow(236, GY, 70);
+  const bu = spring(seg(t, A(6) - 0.3, A(6) + 0.5));
+  at(236, GY, bu, () => { box(c, -30, -44, 60, 44, K.wood); box(c, -33, -54, 66, 11, K.woodD); px(c, -2, -54, 4, 54, K.coral); qmark(0, -22, 4, K.ink); });
+  const f0 = A(6) + 1.4;
+  if (t > f0) for (let i = 0; i < 6; i++) {
+    const raw = (t - f0) * 0.55 + i / 6, u = raw % 1, e = ease.inOut(u);
+    const x = lerp(76, 222, e), y = lerp(92, 100, e) - Math.sin(e * Math.PI) * 44;
+    c.globalAlpha = clamp(u * 6) * clamp((1 - u) * 6);
+    at(x, y, 1.1, () => { if (i % 2) paper(c, 0, 0); else folder(c, 0, 0, [K.coral, K.lemon, K.mint][i % 3]); });
+    c.globalAlpha = 1;
+  }
+  c.restore();
+}
+
+window.seek = (t) => {
+  const p = cam.at(t);
+  bg(t, p);
+  const shk = t > A(3) + 0.35 && t < A(3) + 0.95 ? 2.4 * (1 - (t - A(3) - 0.35) / 0.6) : 0;
+  cam.apply(c, t, () => {
+    if (p.x < 700) station0(t);
+    if (p.x > 200 && p.x < 900) stationChart(t);
+    if (p.x > 700 && p.x < 1300) stationBox(t);
+    if (p.x > 1000) stationBlind(t);
+  }, shk);
+
+  // slam: sparks, ring, flash (screen space)
+  const sl = A(3) + 0.35;
+  burst(c, t, sl, 160, 90, { n: 30, seed: 3, colors: [K.coral, K.lemon, K.cream50, K.sky], life: 1.0, speed: 90, size: 3, gravity: 60 });
+  const ru = seg(t, sl, sl + 0.55);
+  if (ru > 0 && ru < 1) { const r = 12 + ru * 100; c.globalAlpha = 1 - ru; px(c, 160 - r, 90 - r * 0.5, 2 * r, 2, K.coral); px(c, 160 - r, 90 + r * 0.5, 2 * r, 2, K.coral); px(c, 160 - r, 90 - r * 0.5, 2, r, K.coral); px(c, 160 + r, 90 - r * 0.5, 2, r + 2, K.coral); c.globalAlpha = 1; }
+  const fl = 1 - seg(t, sl, sl + 0.25); if (t >= sl && fl > 0) { c.globalAlpha = 0.45 * fl; px(c, 0, 0, W, H, "#FFFFFF"); c.globalAlpha = 1; }
+  vignette(c, 0.2);
+
+  /* ---- labels ---- */
+  const qa = (i) => (x, y) => cam.toScreen(t, XS[i] + (x - 160), y);
+  const q0 = qa(0), q1 = qa(1), q2 = qa(2), q3 = qa(3);
+  pWhich.update(t);
+  pWhich.el.style.opacity = 1 - seg(t, A(1) - 0.5, A(1) - 0.1);
+  let q = q0(160, 52); put(pOne, q.x, q.y, seg(t, A(1) + 1.0, A(1) + 1.4) * (1 - seg(t, A(2) + 0.1, A(2) + 0.5)), 1);
+  q = q0(160, GY - 10); put(pModel, q.x, q.y, seg(t, A(1) + 1.5, A(1) + 2.0) * (1 - seg(t, A(4) + 0.1, A(4) + 0.5)), 0.85 + 0.15 * spring(seg(t, A(1) + 1.5, A(1) + 2.1)));
+  const gone = 1 - seg(t, A(3) - 0.2, A(3) + 0.2);
+  q = q0(160, 50); put(pSetup, q.x, q.y, seg(t, A(2) + 0.4, A(2) + 0.9) * gone, 0.95 + 0.05 * Math.sin(t * 4));
+  q = q0(100, 74); put(pIns, q.x, q.y, seg(t, A(2) + 3.2, A(2) + 3.7) * gone, 1);
+  q = q0(222, 74); put(pChk, q.x, q.y, seg(t, A(2) + 4.4, A(2) + 4.9) * gone, 1);
+  const su = seg(t, A(3) + 0.1, A(3) + 0.35), land = t - (A(3) + 0.35);
+  const sS = su < 1 ? lerp(3.4, 1, ease.in(su)) : 1 + 0.07 * Math.exp(-land * 7) * Math.cos(land * 28);
+  put(pStamp, 640, 340, clamp(su * 3) * (1 - seg(t, A(4) - 0.2, A(4) + 0.3)), sS, -8);
+  const chartOut = 1 - seg(t, A(5) - 0.6, A(5) - 0.2);
+  q = q1(95, 22); put(pBadge1, q.x, q.y, seg(t, A(4) + 0.5, A(4) + 1.0) * chartOut, 1);
+  q = q1(250, 22); put(pBadge2, q.x, q.y, seg(t, A(4) + 1.3, A(4) + 1.8) * chartOut, 1);
+  VERS.forEach((v, i) => {
+    const rows = [58, 88, 118], t0 = A(4) + 3.4 + i * 0.7, t1 = A(4) + 5.4 + i * 0.7, u = seg(t, t1, t1 + 1.0);
+    q = q1(38, rows[i] + 9); put(pVer[i], q.x, q.y, seg(t, t0, t0 + 0.4) * chartOut, 1);
+    q = q1(236 + 24, rows[i] + 9);
+    pNum[i].firstChild.textContent = Math.round(v.v * out5(u));
+    put(pNum[i], q.x, q.y, seg(t, t1, t1 + 0.2) * chartOut, i === 2 && u >= 1 ? 1.1 : 1);
+    pNum[i].firstChild.style.color = i === 2 ? "#2f7a50" : K.ink;
+  });
+  q = { x: 640, y: 74 }; put(pHidden, q.x, q.y, seg(t, A(5) + 0.9, A(5) + 1.4) * (1 - seg(t, A(6) - 0.4, A(6) - 0.1)), 1);
+  q = q3(146, 84); put(pBlind, q.x, q.y, seg(t, A(6) + 0.3, A(6) + 0.8), 1);
+  q = q3(160, 30); put(pHand, q.x, q.y, seg(t, A(6) + 2.0, A(6) + 2.5), 0.85 + 0.15 * spring(seg(t, A(6) + 2.0, A(6) + 2.6)));
 };
 window.ready = true;
 </script>

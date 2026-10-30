@@ -1,48 +1,276 @@
 <!doctype html>
 <meta charset="utf-8">
-<title>p01 Who pays?</title>
+<title>p01 How do builders get paid</title>
 <body>
 <script type="module">
-import { stage, label, setPos, fontFace, background, panel, paper, coin, thumbDown, mask, person, ME, AGENT, K, seg, ease, arc, lerp, px, box, DUR, W, H, fade } from "./lib.js";
+import { stage, label, fontFace, person, K, seg, ease, lerp, clamp, px, box, coin, lock, paper, folder, laptop, mask, siren, thumbDown, DUR, W, H, SCALE, fade, ME, AGENT, GUARD, arc } from "./lib.js";
+import { sentenceTimes, Camera, spring, burst, flow, Words, glow, vignette, bar, rng, out5, inOut5, smooth } from "./fx.js";
 fontFace();
+const st = document.createElement('style'); st.textContent = 'i{color:#D96A62;font-style:normal}'; document.head.append(st);
+const VO = "Someone spends months tuning an AI agent until it's really good at one job. How do they get paid? On a normal website, that's easy. The work happens on your server, and you keep the door locked until the customer pays. But in our marketplace, agent-bridge, agents run on the customer's own computer, next to their private files. The work and the result are already on the other side of the door. You can't lock anything. And if builders can't get paid, the best agents never get shared.";
+const s = sentenceTimes(VO, DUR);
+const d4 = s[4].b - s[4].a, d3 = s[3].b - s[3].a;
+const cam = new Camera([
+  { t: 0, x: 160, y: 94, zoom: 1.0 }, { t: s[1].b, x: 150, y: 92, zoom: 1.1 },
+  { t: s[2].a - 0.25, x: 150, y: 92, zoom: 1.1 }, { t: s[2].a + 0.6, x: 500, y: 96, zoom: 1.3 },
+  { t: s[4].a - 0.2, x: 505, y: 96, zoom: 1.3 }, { t: s[4].a + 0.6, x: 840, y: 92, zoom: 1.0 },
+  { t: s[6].a - 0.2, x: 840, y: 92, zoom: 1.0 }, { t: s[6].a + 0.4, x: 800, y: 98, zoom: 1.18 },
+  { t: s[7].a - 0.1, x: 800, y: 98, zoom: 1.18 }, { t: s[7].a + 0.8, x: 160, y: 94, zoom: 1.0 },
+]);
 const S = stage(), c = S.c;
-const T = (s) => (s / 10) * DUR;
-const l1 = label(S.text, "Your agent", { x: 20, y: 90, size: 26, weight: 800 });
-const l2 = label(S.text, "Another agent", { x: 196, y: 90, size: 26, weight: 800 });
-const q = label(S.text, "Who pays?", { x: 0, y: 20, size: 40, font: "pixel", align: "center", w: 320, weight: 400 });
-const bad = label(S.text, "Bad work? Cheating?", { x: 0, y: 40, size: 28, align: "center", w: 320, weight: 800, color: K.coral });
-const title = label(S.text, "Money that follows evidence,<br>not trust.", { x: 0, y: 60, size: 34, font: "pixel", align: "center", w: 320, weight: 400, lh: 1.6 });
+function tag(html, o = {}) {
+  const d = document.createElement("div"); d.innerHTML = html;
+  d.style.cssText = `position:absolute;left:0;top:0;white-space:nowrap;font:${o.weight || 800} ${o.size || 28}px/1.2 Inter,system-ui,sans-serif;color:${o.color || K.ink};opacity:0;will-change:transform,opacity;text-align:center;` +
+    (o.bg ? `background:${o.bg};border:3px solid ${K.ink};padding:${o.pad || "5px 14px"};box-shadow:5px 5px 0 rgba(26,19,32,.25);` : "text-shadow:2px 2px 0 rgba(255,253,245,.85);");
+  S.text.append(d); return d;
+}
+const put = (d, x, y, a = 1, s = 1, rot = 0) => { d.style.opacity = a; d.style.transform = `translate(${x}px,${y}px) translate(-50%,-50%) scale(${s}) rotate(${rot}deg)`; };
+const putW = (d, t, wx, wy, a = 1, s = 1, rot = 0) => { const p = cam.toScreen(t, wx, wy); put(d, p.x, p.y, a, s * p.s, rot); };
+const pop = (t, a, d = 0.5) => spring(seg(t, a, a + d), 8, 0.55);
+const vis = (t, a, d = 0.15) => clamp((t - a) / d);
+function bot(c, x, y, t, o = {}) {
+  const g = o.grey, body = g ? K.ink100 : (o.col || K.lilac), bl = Math.floor(t * 2.2) % 6 === 0, by = y - (o.bob ? Math.round(Math.abs(Math.sin(t * 7))) : 0);
+  box(c, x - 4, by - 3, 3, 3, K.ink700); box(c, x + 2, by - 3, 3, 3, K.ink700);
+  box(c, x - 5, by - 11, 11, 8, body); px(c, x - 3, by - 9, 7, 1, g ? K.ink300 : K.cream50);
+  const wv = o.work ? Math.round(Math.sin(t * 10)) : 0;
+  box(c, x - 8, by - 10 + wv, 2, 5, body); box(c, x + 7, by - 10 - wv, 2, 5, body);
+  box(c, x - 6, by - 20, 13, 9, body);
+  px(c, x - 4, by - 18, 9, 5, g ? K.ink300 : K.ink700);
+  px(c, x - 3, by - 17, 2, bl ? 1 : 3, g ? K.ink500 : K.mint); px(c, x + 2, by - 17, 2, bl ? 1 : 3, g ? K.ink500 : K.mint);
+  px(c, x, by - 24, 1, 4, K.ink); box(c, x - 1, by - 27, 3, 3, g ? K.ink300 : K.lemon);
+}
+function gear(c, x, y, r, ang, col = K.ink500) {
+  px(c, x - r - 1, y - r - 1, r * 2 + 3, r * 2 + 3, K.ink); px(c, x - r, y - r, r * 2 + 1, r * 2 + 1, col);
+  for (let i = 0; i < 8; i++) { const a = ang + i * Math.PI / 4, tx = x + Math.cos(a) * (r + 2), ty = y + Math.sin(a) * (r + 2); px(c, tx - 1.5, ty - 1.5, 3, 3, K.ink); px(c, tx - 1, ty - 1, 2, 2, col); }
+  px(c, x - 1, y - 1, 3, 3, K.cream50);
+}
+function sparkle(c, x, y, r, col = K.cream50) { px(c, x - r, y, r * 2 + 1, 1, col); px(c, x, y - r, 1, r * 2 + 1, col); px(c, x - 1, y - 1, 3, 3, col); }
+function room(c, x0, wall, floor, w = 332) {
+  px(c, x0 - 8, 0, w + 16, 128, wall);
+  for (let x = x0 - 8; x < x0 + w + 8; x += 24) px(c, x, 0, 12, 128, "rgba(255,255,255,.3)");
+  px(c, x0 - 8, 126, w + 16, 3, K.ink); px(c, x0 - 8, 129, w + 16, 51, floor);
+  for (let y = 138; y < 180; y += 12) px(c, x0 - 8, y, w + 16, 1, "rgba(26,19,32,.12)");
+}
+function motes(c, p, t, seed, f, n, size, a, col = K.cream50) {
+  const r = rng(seed); c.save(); c.translate(p.x * (1 - f), 0); c.globalAlpha = a;
+  for (let i = 0; i < n; i++) { const bx = r() * 1100 - 50, by = r() * 170; px(c, bx + Math.sin(t * 0.5 + i) * 4, (((by - t * (2 + f * 3)) % 180) + 180) % 180, size, size, col); }
+  c.restore(); c.globalAlpha = 1;
+}
+function speedLines(c, cam, t) {
+  const v = Math.abs(cam.at(t + 0.03).x - cam.at(t - 0.03).x) / 0.06, a = clamp((v - 80) / 400); if (a <= 0) return;
+  const r = rng(Math.floor(t * 40) + 7); c.globalAlpha = a * 0.8;
+  for (let i = 0; i < 24; i++) { const y = r() * H, x = r() * W, l = 30 + r() * 90; px(c, x, y, l, 1, i % 3 ? K.cream50 : K.lemon); }
+  c.globalAlpha = 1;
+}
+function bigCoin(c, x, y, k, mark = false, label = null) { c.save(); c.translate(x, y); c.scale(k, k); coin(c, 0, 0, mark); c.restore(); }
+
+const wA = new Words(S.text, "Months of tuning", { x: 0, y: 3, size: 58, w: 320, align: "center", at: s[0].a + 0.1, leave: s[0].b + 0.1 });
+const wQ = new Words(S.text, "How do they get paid?", { x: 0, y: 3, size: 58, w: 320, align: "center", at: s[1].a + 0.05, leave: s[2].a - 0.1 });
+const wL = new Words(S.text, "You can't <i>lock</i> anything.", { x: 0, y: 3, size: 60, w: 320, align: "center", at: s[6].a + 0.05, leave: s[7].a + 0.1 });
+const wS = new Words(S.text, "The best agents <i>never</i> get shared.", { x: 0, y: 3, size: 56, w: 320, align: "center", at: s[7].a + 0.5 });
+const tMonth = tag("Month 1", { size: 28 });
+const tZoneB = tag("A normal website", { size: 32, bg: K.skyL });
+const tZoneC = tag("agent-bridge", { size: 32, bg: K.lemonL });
+const tSrv = tag("SERVER", { size: 20, color: K.cream50, weight: 800 });
+const tStat = tag("Door locked until paid", { size: 28, bg: K.cream50 });
+const tOwn = tag("Customer's own computer", { size: 28, bg: K.cream50 });
+const tFiles = tag("Private files", { size: 26, bg: K.lemonL });
+const tBuild = tag("Builder, far away", { size: 26 });
+const tHere = tag("Result is already here", { size: 26, bg: K.mintL });
+const tNoLock = tag("No lock. No handle.", { size: 26, bg: K.coralL });
+const tCust = tag("Customer", { size: 24 });
+
+/* ---------- zone A: the builder ---------- */
+function zoneA(t) {
+  room(c, 0, "#FFF8E7", "#E5C896");
+  const g0 = s[0].a, g1 = s[0].b, u0 = seg(t, g0, g1);
+  const early = t < s[5].b;
+  // desk and builder
+  px(c, 60, 122, 4, 20, K.woodD); px(c, 166, 122, 4, 20, K.woodD);
+  person(c, 80, 109, { ...ME, pose: "sit", facing: "r", mood: t > s[7].a + 1.2 ? "bad" : "" }, t * 1000);
+  box(c, 56, 112, 118, 10, K.woodD); px(c, 56, 112, 118, 3, K.wood);
+  const sc = laptop(c, 108, 88, 34, 22, K.ink700);
+  for (let i = 0; i < 4; i++) px(c, sc.x + 2, sc.y + 2 + i * 4, 4 + ((i * 7 + Math.floor(t * 9)) % 14), 1, K.mint);
+  if (early) {
+    // calendar with fast-flipping pages
+    const tau = Math.max(0, t - g0), theta = 2 * tau + 5 * tau * tau / (g1 - g0), ph = theta % 1, cu = pop(t, 0.2, 0.6);
+    c.save(); c.translate(46, 84); c.scale(cu, cu); c.translate(-46, -84);
+    box(c, 24, 44, 44, 40, K.cream50); px(c, 24, 44, 44, 9, K.coral);
+    px(c, 30, 41, 2, 6, K.ink); px(c, 60, 41, 2, 6, K.ink);
+    for (let i = 0; i < 12; i++) px(c, 29 + (i % 4) * 9, 58 + Math.floor(i / 4) * 8, 5, 3, K.ink100);
+    if (tau > 0) {
+      const h = Math.round(31 * Math.abs(Math.cos(ph * Math.PI)));
+      box(c, 24, 53, 44, h, ph < 0.5 ? K.cream50 : K.cream200);
+      if (h > 6) for (let i = 0; i < 3; i++) px(c, 30 + i * 12, 58, 7, 3, K.ink300);
+    }
+    c.restore();
+    // a tuning panel with dials and a rising quality meter
+    const pu = pop(t, 0.5, 0.6);
+    c.save(); c.translate(231, 100); c.scale(pu, pu); c.translate(-231, -100);
+    box(c, 186, 50, 90, 50, K.ink700); px(c, 188, 52, 86, 4, K.ink500);
+    bar(c, 194, 58, 74, 6, u0, 1, 1, u0 > 0.95 ? K.lemon : K.mint);
+    for (let i = 0; i < 3; i++) {
+      const cx = 206 + i * 25, cy = 82, a = Math.sin(tau * (2 + i * 0.8) + i) * 1.3 + tau * (0.5 + i * 0.3);
+      box(c, cx - 9, cy - 9, 18, 18, K.cream50);
+      for (let k = 0; k < 8; k++) px(c, cx + Math.cos(k * Math.PI / 4) * 8, cy + Math.sin(k * Math.PI / 4) * 8, 1, 1, K.ink300);
+      for (let k = 0; k <= 6; k++) px(c, cx + Math.cos(a) * k, cy + Math.sin(a) * k, 1, 1, K.coral);
+      px(c, cx - 1, cy - 1, 3, 3, K.ink);
+    }
+    c.restore();
+    flow(c, t, [142, 98], [190, 78], { col: K.lemon, dots: 6, speed: 0.9, arcLift: 8 });
+    // the agent on the desk
+    const polish = g0 + (g1 - g0) * 0.62, gold = t > polish;
+    const bu = pop(t, 0.3, 0.6);
+    if (gold) glow(c, 158, 98, 34 + Math.sin(t * 6) * 3, K.lemon, 0.75 * (1 - 0.3 * seg(t, polish, s[1].b)));
+    c.save(); c.translate(158, 112); c.scale(bu, bu); bot(c, 0, 0, t, { col: gold ? K.lemon : K.lilac, work: !gold }); c.restore();
+    burst(c, t, polish, 158, 96, { n: 26, speed: 52, life: 1.1, colors: [K.lemon, K.cream50, K.lemonL], seed: 4, gravity: 20 });
+    if (gold) for (let i = 0; i < 4; i++) { const k = (t * 1.6 + i * 0.25) % 1, a = Math.sin(k * Math.PI); sparkle(c, 158 + Math.cos(i * 1.9 + t) * 17, 96 + Math.sin(i * 2.3) * 17 - 4, Math.round(1 + 3 * a), K.cream50); }
+    // the question coin
+    const q = pop(t, s[1].a, 0.7);
+    if (q > 0) { bigCoin(c, 158, 52 + Math.sin(t * 3) * 2.5 - (1 - q) * 14, 4.2 * q, true); glow(c, 158, 52, 26, K.lemon, 0.4 * q); }
+  } else {
+    // the shelf of agents going grey
+    box(c, 40, 66, 250, 5, K.woodD); px(c, 52, 71, 4, 10, K.woodD); px(c, 270, 71, 4, 10, K.woodD);
+    const n = 6, t0 = s[7].a + 0.5, stepT = 0.42;
+    for (let i = 0; i < n; i++) {
+      const ti = t0 + i * stepT, grey = t > ti + 0.12, x = 70 + i * 40, su = pop(t, s[7].a - 0.1 + i * 0.07, 0.5);
+      if (!grey) glow(c, x, 54, 20, K.lemon, 0.5 * su);
+      c.save(); c.translate(x, 65); c.scale(su, su); bot(c, 0, 0, t, { grey, col: [K.lilac, K.sky, K.mint, K.coral, K.lemon, K.peach][i] }); c.restore();
+      burst(c, t, ti + 0.1, x, 52, { n: 8, speed: 18, life: 0.6, colors: [K.ink300, K.ink100], size: 2, seed: 10 + i, gravity: 10 });
+    }
+  }
+}
+
+/* ---------- zone B: a normal website ---------- */
+function zoneB(t) {
+  room(c, 340, "#E3F0F2", "#D9E6DD");
+  const a = s[2].a, tc = s[3].a + d3 * 0.24, tu = tc + 1.0, tr = tu + 0.5;
+  const openU = ease.out(seg(t, tu + 0.15, tu + 0.75));
+  // the rack
+  box(c, 534, 50, 70, 90, K.ink700);
+  px(c, 540, 55, 58, 6, K.ink500); for (let i = 0; i < 5; i++) px(c, 580 + i * 2, 57, 1, 2, Math.floor(t * 3 + i) % 3 ? K.mint : K.lemon);
+  box(c, 542, 64, 54, 66, K.skyL);                       // window
+  gear(c, 552, 78, 4, t * 2.4, K.ink300); gear(c, 563, 72, 3, -t * 3.2 + 0.4, K.lilac);
+  const worked = t > s[3].a + 0.2;
+  bot(c, 580, 126, t, { col: K.lilac, work: worked, bob: false });
+  for (let i = 0; i < 3; i++) if (worked) { const k = (t * 1.3 + i / 3) % 1; px(c, 566 + k * 10, 100 - k * 14, 2, 2, K.lemon); }
+  // the door and its padlock
+  const dw = Math.round(54 * (1 - openU));
+  if (dw > 1) {
+    box(c, 542, 64, dw, 66, K.cream50);
+    for (let y = 70; y < 128; y += 8) px(c, 544, y, Math.max(0, dw - 4), 1, K.ink100);
+    const lp = t > tu ? spring(seg(t, tu, tu + 0.5), 10, 0.5) : 0;
+    const lx = 542 + dw - 9, ly = 94 - lp * 4 * Math.sin(lp * 3);
+    const jit = t > tc + 0.7 && t < tu ? 0.4 : 0;
+    lock(c, lx, ly, t > tu, jit, K.lemon);
+  }
+  px(c, 538, 96, 5, 4, K.ink); px(c, 538, 96, 5, 1, K.lemon);        // coin slot
+  // the customer with a coin
+  const cp = t > tr + 1.1 ? "up" : "idle";
+  person(c, 450, 140, { shirt: K.sky, hat: "glasses", skin: "#C68642", facing: "r", pose: cp }, t * 1000);
+  const cu = seg(t, tc, tc + 0.85);
+  if (cu < 1) {
+    const p = cu <= 0 ? { x: 462, y: 112 + Math.sin(t * 3) } : arc([462, 112], [540, 98], ease.inOut(cu), 20);
+    const k = 1 + 0.3 * Math.sin(cu * Math.PI);
+    if (t >= a - 0.5) { glow(c, p.x, p.y, 10, K.lemon, 0.5); bigCoin(c, p.x, p.y, k * 1.3, false); }
+  }
+  if (t > tc + 0.85 && t < tc + 1.3) burst(c, t, tc + 0.85, 542, 98, { n: 10, speed: 24, life: 0.45, colors: [K.lemon, K.cream50], seed: 2, gravity: 0 });
+  if (t > tu && t < tu + 1.2) burst(c, t, tu, 560, 90, { n: 24, speed: 50, life: 1.0, colors: [K.lemon, K.mint, K.cream50, K.sky], seed: 3, gravity: 30 });
+  if (t > tu + 0.2) glow(c, 569, 96, 40 * openU, K.mint, 0.35);
+  if (t > tr + 0.95) { paper(c, 463, 113, K.mintL); sparkle(c, 468 + Math.sin(t * 4) * 3, 106, 2, K.cream50); }
+  // the result flows out to the customer
+  for (let i = 0; i < 3; i++) {
+    const u = seg(t, tr + i * 0.35, tr + i * 0.35 + 0.95);
+    if (u > 0 && u < 1) { const p = arc([560, 100], [458, 114], ease.inOut(u), 14 + i * 4); paper(c, p.x, p.y, i === 0 ? K.mintL : K.cream50); }
+  }
+  if (t > tr && t < tr + 2.2) flow(c, t, [546, 112], [466, 116], { col: K.mint, dots: 7, speed: 0.9, arcLift: 8 }); // drawn only when door open (alpha below)
+}
+function zoneBflowGuard(t) { }
+
+/* ---------- zone C: agent-bridge ---------- */
+function zoneC(t) {
+  room(c, 680, "#E6F2EA", "#CFE0C8");
+  const a4 = s[4].a, a5 = s[5].a, a6 = s[6].a;
+  // desk and laptop (the customer's computer)
+  const lu = pop(t, a4 + 0.4, 0.7);
+  box(c, 790, 132, 130, 8, K.woodD); px(c, 790, 132, 130, 2, K.wood); px(c, 796, 140, 4, 12, K.woodD); px(c, 910, 140, 4, 12, K.woodD);
+  c.save(); c.translate(850, 132); c.scale(lu, lu); c.translate(-850, -132);
+  const sc = laptop(c, 800, 64, 100, 60, K.cream50);
+  const fp = a4 + d4 * 0.28;
+  for (let i = 0; i < 4; i++) { const fu = pop(t, fp + i * 0.2, 0.45); c.save(); c.translate(870 + (i % 2) * 18, 84 + Math.floor(i / 2) * 17); c.scale(fu, fu); folder(c, 0, 0, [K.lemon, K.sky, K.coral, K.mint][i]); c.restore(); }
+  const bt = a4 + d4 * 0.5, bu = seg(t, bt, bt + 0.7);
+  gear(c, 814, 82, 4, t * 2.4, K.ink300); gear(c, 826, 88, 3, -t * 3.1, K.lilac);
+  if (bu > 0) { bot(c, 826, 119 - (1 - ease.bounce(bu)) * 50, t, { col: K.lilac, work: bu >= 1 }); }
+  const rp = a4 + d4 * 0.82;
+  const pu = pop(t, rp, 0.5), pu2 = seg(t, a5 + 0.2, a5 + 1.1);
+  c.restore();
+  if (pu > 0 && pu2 === 0) { c.save(); c.translate(848, 100); c.scale(pu * 2.2, pu * 2.2); paper(c, 0, 0, K.mintL); c.restore(); glow(c, 848, 100, 16, K.mint, 0.4 * pu); }
+  if (pu2 > 0 && pu2 < 1) { const p = arc([848, 100], [950, 116], ease.inOut(pu2), 22); c.save(); c.translate(p.x, p.y); c.scale(2.2 - 1.0 * pu2, 2.2 - 1.0 * pu2); paper(c, 0, 0, K.mintL); c.restore(); }
+  // the customer
+  const got = t > a5 + 1.1;
+  person(c, 960, 140, { shirt: K.sky, hat: "glasses", skin: "#C68642", facing: "l", pose: got ? "up" : "idle" }, t * 1000);
+  if (got) { paper(c, 951, 112, K.mintL); burst(c, t, a5 + 1.1, 951, 110, { n: 16, speed: 34, life: 0.9, colors: [K.mint, K.lemon, K.cream50], seed: 5, gravity: 20 }); sparkle(c, 962 + Math.sin(t * 5) * 8, 104, 2 + Math.round(Math.abs(Math.sin(t * 4)) * 2), K.cream50); }
+  // the builder, far away, reaching for the door
+  const reach = t > a5 + 0.4;
+  person(c, 718, 140, { ...ME, facing: "r", pose: reach ? "up" : "idle" }, t * 1000);
+  // the door: smooth, no lock, no handle
+  const du = ease.out(seg(t, a5, a5 + 0.7));
+  if (du > 0) {
+    const oy = (1 - du) * -90;
+    box(c, 756, 78 + oy, 26, 62, K.wood); for (let y = 84; y < 138; y += 9) px(c, 758, y + oy, 22, 1, K.woodD);
+    px(c, 754, 76 + oy, 30, 3, K.ink);
+  }
+  // a padlock tries to attach and slides off
+  const tl = a6, lu2 = seg(t, tl, tl + 0.45), sl = seg(t, tl + 0.95, tl + 1.5);
+  if (t > tl && sl < 1) {
+    let x = 769, y = 40 + 62 * ease.in(lu2);
+    if (lu2 >= 1) { y = 102 + Math.sin((t - tl - 0.45) * 40) * 0.8 * (1 - seg(t, tl + 0.45, tl + 0.9)); }
+    let rot = 0;
+    if (sl > 0) { x = 769 - 22 * sl; y = 102 + 55 * sl * sl; rot = -sl * 1.5; }
+    c.save(); c.translate(x, y + 4); c.rotate(rot); c.globalAlpha = 1 - sl * sl; lock(c, 0, -4, false, 0, K.lemon);
+    c.globalAlpha = 1; c.restore();
+    if (lu2 >= 1 && sl < 0.2) burst(c, t, tl + 0.45, 769, 104, { n: 10, speed: 22, life: 0.5, colors: [K.lemon, K.coral], seed: 6, gravity: 20 });
+    if (sl > 0.15) { c.globalAlpha = 1 - sl; for (let k = 0; k < 6; k++) { px(c, 764 + k, 98 + k, 1, 1, K.coral); px(c, 774 - k, 98 + k, 1, 1, K.coral); } c.globalAlpha = 1; }
+  }
+}
 
 window.seek = (t) => {
-  background(c);
-  c.save(); c.scale(2, 2);
-  const inA = ease.out(seg(t, 0, T(0.8)));
-  c.globalAlpha = inA;
-  panel(c, 8, 52, 56, 36, K.cream100); panel(c, 96, 52, 56, 36, K.cream100);
-  const cheating = t > T(6.6);
-  person(c, 36, 84, { ...ME, pose: "idle", facing: "r" }, t * 1000);
-  person(c, 124, 84, { ...AGENT, pose: t > T(2.8) && t < T(4.4) ? "sit" : "idle", facing: "l", mask: cheating, stripes: cheating }, t * 1000);
-  c.globalAlpha = 1;
-  // the task goes over
-  let u = seg(t, T(1.4), T(2.8));
-  if (u > 0 && u < 1) { const p = arc([44, 60], [112, 60], ease.inOut(u), 14); paper(c, p.x, p.y, K.lemonL); }
-  // a coin hangs between them with a question mark
-  const cu = ease.back(seg(t, T(3.6), T(4.4)));
-  if (cu > 0) coin(c, 80, 40 - Math.sin(t * 3) * 2, true);
-  // the answer comes back, and it is bad
-  u = seg(t, T(4.6), T(5.8));
-  if (u > 0 && u < 1) { const p = arc([112, 60], [48, 60], ease.inOut(u), 14); paper(c, p.x, p.y, K.cream50); }
-  if (u >= 1 && t < T(7.6)) { paper(c, 48, 60, K.cream50); thumbDown(c, 48, 60); }
-  if (cheating && t < T(8)) mask(c, 124, 66);
-  c.restore();
-  const out = 1 - seg(t, T(7.6), T(8.2));
-  setPos(l1, 20, 90, seg(t, T(0.4), T(1)) * out); setPos(l2, 196, 90, seg(t, T(0.4), T(1)) * out);
-  setPos(q, 0, 20, seg(t, T(3.4), T(4.0)) * out, "");
-  setPos(bad, 0, 40, seg(t, T(5.6), T(6.2)) * out, "");
-  fade(c, seg(t, 0, T(0.4)));
-  const f = seg(t, T(8), T(8.8));
-  if (f > 0) { c.globalAlpha = f; px(c, 0, 0, W, H, K.cream100); c.globalAlpha = 1; }
-  setPos(title, 0, 62, seg(t, T(8.4), T(9.4)), "");
+  const p = cam.at(t);
+  const shake = (t > s[6].a + 0.38 && t < s[6].a + 0.75) ? 1.4 : 0;
+  c.fillStyle = K.cream100; c.fillRect(0, 0, W, H);
+  cam.apply(c, t, () => {
+    motes(c, p, t, 1, 0.45, 40, 1, 0.5, "#FFFFFF");
+    zoneA(t); zoneB(t); zoneC(t);
+    // dividers
+    px(c, 332, 0, 16, 180, K.ink700); px(c, 672, 0, 16, 180, K.ink700);
+    motes(c, p, t, 2, 1.5, 14, 2, 0.28, K.cream50);
+  }, shake);
+  speedLines(c, cam, t);
+  vignette(c, 0.2);
+  fade(c, seg(t, 0, 0.35));
+
+  wA.update(t); wQ.update(t); wL.update(t); wS.update(t);
+  // labels
+  const m = 1 + Math.min(5, Math.floor(seg(t, s[0].a, s[0].b) * 6));
+  tMonth.innerHTML = "Month " + m;
+  const ca = pop(t, 0.5, 0.5) * (t < s[1].a + 0.2 ? 1 : 0);
+  putW(tMonth, t, 46, 94, ca > 0 ? Math.min(1, ca) : 0, Math.max(0.01, ca));
+  const zb = pop(t, s[2].a + 0.3, 0.5);
+  putW(tZoneB, t, 468, 42, clamp(zb * 2), Math.max(0.01, zb));
+  putW(tSrv, t, 569, 59, vis(t, s[3].a), 1);
+  const tc = s[3].a + d3 * 0.24, tu = tc + 1.0;
+  tStat.innerHTML = t > tu ? "Paid: door opens" : "Door locked until paid";
+  tStat.style.background = t > tu ? K.mintL : K.cream50;
+  putW(tStat, t, 505, 151, vis(t, s[3].a - 0.4) * (1 - seg(t, s[4].a - 0.3, s[4].a)), Math.max(0.01, pop(t, s[3].a - 0.4, 0.5)));
+  const zc = pop(t, s[4].a + 0.5, 0.5);
+  putW(tZoneC, t, 840, 26, clamp(zc * 2) * (1 - seg(t, s[6].a - 0.4, s[6].a - 0.1)), Math.max(0.01, zc));
+  const fo = 1 - seg(t, s[6].a - 0.2, s[6].a + 0.2);
+  putW(tOwn, t, 850, 158, vis(t, s[4].a + 0.6) * fo, Math.max(0.01, pop(t, s[4].a + 0.6, 0.5)));
+  putW(tFiles, t, 880, 55, vis(t, s[4].a + d4 * 0.3 + 0.8) * fo, Math.max(0.01, pop(t, s[4].a + d4 * 0.3 + 0.8, 0.5)));
+  putW(tBuild, t, 726, 156, vis(t, s[5].a + 0.3) * fo, Math.max(0.01, pop(t, s[5].a + 0.3, 0.5)));
+  putW(tHere, t, 953, 88, vis(t, s[5].a + 1.2) * fo, Math.max(0.01, pop(t, s[5].a + 1.2, 0.5)));
+  putW(tNoLock, t, 769, 62, vis(t, s[5].a + 0.9) * fo, Math.max(0.01, pop(t, s[5].a + 0.9, 0.5)));
+  put(tCust, -999, -999, 0);
 };
 window.ready = true;
 </script>

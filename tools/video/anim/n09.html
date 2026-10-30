@@ -1,66 +1,211 @@
 <!doctype html>
 <meta charset="utf-8">
-<title>n09 Why it matters</title>
+<title>n09 A whole neighbourhood</title>
 <body>
 <script type="module">
-import { stage, label, setPos, fontFace, background, panel, shelf, lock, coin, person, lookFor, ME, K, seg, ease, arc, lerp, px, box, DUR, W, H, fade } from "./lib.js";
+import { stage, label, fontFace, person, K, seg, lerp, ease, px, box, DUR, W, H, clamp, paper, folder, lock, laptop, shelf, glassRoom, AGENT, ME } from "./lib.js";
+import { sentenceTimes, Camera, spring, burst, flow, Words, vignette, rng, out5 } from "./fx.js";
 fontFace();
 const S = stage(), c = S.c;
-const T = (s) => (s / 12) * DUR;
-const folks = [
-  { name: "Founder", note: "client notes", look: { shirt: K.mint, hat: "cap", skin: "#E0AC82", hair: K.ink } },
-  { name: "Freelancer", note: "project files", look: { shirt: K.sky, hat: "headset", skin: "#C68642", hair: "#3B2A20" } },
-  { name: "Receptionist", note: "patient list", look: { shirt: K.coral, hat: "glasses", skin: "#F5CBA7", hair: "#8A5A2B" } }
+const VO = "Now think about what that opens up. Imagine a helper for your tax papers. One for your contracts. One that reads your whole codebase. The same room and the same rules, whatever is on your shelves. The setup comes to you, and your files stay where they are. That's Pull mode, and this is agent-bridge.";
+const ss = sentenceTimes(VO, DUR), A = (i) => ss[i].a, B = (i) => ss[i].b;
+const CARD = DUR - 3.2;   // the end card owns the last three seconds
+
+const put = (el, x, y, a = 1, sc = 1, rot = 0) => { el.style.left = x + "px"; el.style.top = y + "px"; el.style.opacity = a; el.style.transform = `translate(-50%,-50%) scale(${sc}) rotate(${rot}deg)`; };
+const pill = (html, o = {}) => { const e = label(S.text, html, Object.assign({ x: 0, y: 0, size: 28, weight: 800, bg: K.cream50, pad: 8, border: true, shadow: true }, o)); e.style.opacity = 0; return e; };
+const at = (x, y, s, fn) => { c.save(); c.translate(x, y); c.scale(s, s); fn(); c.restore(); };
+const shadow = (x, y, w) => { c.globalAlpha = 0.16; px(c, x - w / 2, y, w, 2, K.ink); px(c, x - w / 2 + 2, y + 2, w - 4, 1, K.ink); c.globalAlpha = 1; };
+const hex = (h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+const glow = (cx, x, y, r, col, a = 0.5) => { const [R, G, B] = hex(col); const g = c.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, `rgba(${R},${G},${B},1)`); g.addColorStop(1, `rgba(${R},${G},${B},0)`); c.globalAlpha = a; c.fillStyle = g; c.fillRect(x - r, y - r, r * 2, r * 2); c.globalAlpha = 1; };
+const mix = (a, b, u) => { const A_ = hex(a), B_ = hex(b); return `rgb(${A_.map((v, i) => Math.round(lerp(v, B_[i], u))).join(",")})`; };
+
+const dusk = (t) => ease.inOut(seg(t, A(4) + 2.4, A(4) + 6.0));
+function bg(t, p) {
+  const d = dusk(t);
+  const g = c.createLinearGradient(0, 0, 0, H); const m3 = (a, b, c3, u) => (u < 0.5 ? mix(a, b, u * 2) : mix(b, c3, (u - 0.5) * 2)); g.addColorStop(0, m3("#FFF8E7", "#EFA982", "#262445", d)); g.addColorStop(1, m3("#F1E3B8", "#F5C37A", "#403868", d));
+  c.fillStyle = g; c.fillRect(0, 0, W, H);
+  glow(c, 40, 30, 120, d > 0.5 ? K.lilac : K.skyL, 0.5 * (1 - d) + 0.25 * d); glow(c, 290, 150, 110, K.lilacL, 0.5 * (1 - d));
+  const r = rng(11);
+  for (let i = 0; i < 70; i++) {
+    const bx = r() * 420, by = r() * H, sp = 0.1 + r() * 0.4, sz = r() < 0.25 ? 2 : 1;
+    const x = (((bx - p.x * sp * 0.2 - t * (0.6 + r() * 1.5)) % 420) + 420) % 420 - 50;
+    c.globalAlpha = 0.45 + 0.5 * d * (0.5 + 0.5 * Math.sin(t * 2 + i)); px(c, x, by + Math.sin(t + i) * 2, sz, sz, d > 0.4 ? K.lemonL : K.cream300);
+  }
+  c.globalAlpha = 1;
+}
+
+/* ---- document icons ---- */
+function docTax(x, y, s, t) {
+  at(x, y, s, () => { box(c, -7, -9, 14, 18, K.cream50); px(c, -7, -9, 14, 4, K.mint); px(c, -7, -9, 14, 1, K.ink); for (let i = 0; i < 3; i++) { px(c, -5, -3 + i * 4, 3, 3, K.ink); px(c, -4, -2 + i * 4, 1, 1, K.cream50); px(c, 0, -2 + i * 4, 6, 1, K.ink300); } const k = seg(t, 0, 1); px(c, -4, -2, 1, 1, K.mint); });
+}
+function docContract(x, y, s, t) {
+  at(x, y, s, () => { box(c, -7, -9, 14, 18, K.cream50); for (let i = 0; i < 3; i++) px(c, -5, -6 + i * 3, 10, 1, K.ink300); px(c, -5, 3, 10, 1, K.ink); [[-5, 2], [-4, 1], [-3, 2], [-2, 0], [-1, 2], [0, 1], [1, 2], [2, 1]].forEach(([dx, dy]) => px(c, dx, dy, 1, 1, K.coral)); });
+}
+function docCode(x, y, s, t) {
+  at(x, y, s, () => { box(c, -9, -8, 18, 16, K.ink700); const g = K.mint; px(c, -6, -4, 1, 2, g); px(c, -7, -2, 1, 2, g); px(c, -6, 0, 1, 2, g); px(c, -5, -5, 2, 1, g); px(c, -5, 2, 2, 1, g); px(c, 6, -4, 1, 2, g); px(c, 7, -2, 1, 2, g); px(c, 6, 0, 1, 2, g); px(c, 4, -5, 2, 1, g); px(c, 4, 2, 2, 1, g); px(c, -1, -2, 2, 1, K.coral); px(c, -1, 0, 3, 1, K.lemon); });
+}
+const KINDS = [
+  { name: "Tax papers", col: [K.mint, K.lemon], look: { shirt: K.lemon, hat: "visor" }, doc: docTax, glow: K.mint },
+  { name: "Contracts", col: [K.sky, K.lilac], look: { shirt: K.sky, hat: "glasses" }, doc: docContract, glow: K.sky },
+  { name: "Codebase", col: [K.coral, K.peach], look: { shirt: K.coral, hat: "headset" }, doc: docCode, glow: K.coral },
 ];
-const helpers = [
-  { name: "Deal Brief", score: 92, price: "60¢", look: lookFor("deal-brief", "certified") },
-  { name: "Action Finder", score: 88, price: "30¢", look: lookFor("action-finder", "certified") },
-  { name: "Quick Skim", score: 81, price: "15¢", look: lookFor("quick-skim", "certified") }
-];
-const rows = [38, 86, 134];                   // vertical centre of each row, in pixel-world units
-const L = folks.map((f, i) => ({ name: label(S.text, f.name, { x: 50, y: rows[i] - 18, size: 22, weight: 800 }), note: label(S.text, f.note + ", locked", { x: 50, y: rows[i] - 3, size: 16, weight: 600, color: K.ink500 }) }));
-const R = helpers.map((h, i) => ({ name: label(S.text, h.name, { x: 222, y: rows[i] - 18, size: 22, weight: 800 }), score: label(S.text, `Tested: ${h.score} / 100`, { x: 222, y: rows[i] - 3, size: 16, weight: 700, color: "#2f7a4d" }), price: label(S.text, h.price, { x: 284, y: rows[i] - 18, size: 22, weight: 800, color: K.ink700 }) }));
-const head1 = label(S.text, "Your data stays with you", { x: 14, y: 3, size: 22, weight: 800 });
-const head2 = label(S.text, "Specialists are paid on evidence", { x: 168, y: 3, size: 22, weight: 800 });
-const tag = label(S.text, "Hire one: the agent comes to you", { x: 0, y: 164, size: 22, align: "center", w: 320, weight: 800, color: K.ink700 });
+const COLX = [140, 185, 230];
+const ROOM = { x: 60, y: 40, w: 200, h: 100 }, GY = 140;
+
+/* ---- DOM ---- */
+const pOpens = Words(S.text, "what that opens up", { x: 10, y: 8, w: 300, size: 54, align: "center", at: A(0) + 0.9 });
+const pTags = KINDS.map((k) => pill(k.name, { size: 28 }));
+const pRules = pill("same room, same rules", { size: 36, bg: K.lemonL });
+const pStay = pill("your files stay where they are", { size: 36 });
+// end card
+const cardW = document.createElement("div");
+cardW.style.cssText = "position:absolute;left:0;top:0;width:1280px;height:720px";
+S.text.append(cardW);
+const wm = Words(cardW, "agent-bridge", { x: 10, y: 60, w: 300, size: 58, align: "center", font: "pixel", weight: 400, at: CARD + 0.7, gap: 0.2 });
+const tag = Words(cardW, "Bring the expert to your data.", { x: 10, y: 88, w: 300, size: 42, align: "center", weight: 700, at: CARD + 1.25, gap: 0.09, color: K.ink700 });
+const badgeRow = document.createElement("div");
+badgeRow.style.cssText = "position:absolute;left:640px;top:512px;transform:translate(-50%,-50%);display:flex;gap:22px;white-space:nowrap";
+const BADGES = ["NVIDIA Nemotron", "Nebius Token Factory", "MIT"].map((n, i) => {
+  const e = document.createElement("div"); e.textContent = n;
+  e.style.cssText = `font:800 27px Inter,system-ui,sans-serif;color:${K.ink};background:${[K.mintL, K.skyL, K.lemonL][i]};border:3px solid ${K.ink};padding:8px 18px;box-shadow:5px 5px 0 rgba(26,19,32,.22);opacity:0`;
+  badgeRow.append(e); return e;
+});
+cardW.append(badgeRow);
+
+/* ---- camera ---- */
+const cam = new Camera([
+  { t: 0, x: 160, y: 92, zoom: 1.12 }, { t: A(4) + 1.5, x: 160, y: 92, zoom: 1.12 },
+  { t: A(4) + 6.4, x: 160, y: 90, zoom: 0.215 }, { t: DUR, x: 160, y: 90, zoom: 0.21 },
+]);
+
+/* helper timeline for the three visitors */
+const T_IN = [A(1), A(2), A(3)], WALK = 1.5;
+function hPos(i, t) {
+  const u = seg(t, T_IN[i], T_IN[i] + WALK), x = lerp(335, COLX[i], ease.out(u));
+  return { x, walking: u > 0 && u < 1, u };
+}
+
+function heroRoom(t) {
+  const R = ROOM, pop = spring(seg(t, 0.0, 0.9));
+  c.save(); c.translate(160, GY); c.scale(0.8 + 0.2 * pop, 0.8 + 0.2 * pop); c.translate(-160, -GY);
+  glassRoom(c, R.x, R.y, R.w, R.h, 1);
+  for (let i = 0; i < 8; i++) px(c, R.x + 10 + i * 24, R.y + 3, 1, 5, "#FFFFFF");
+  px(c, R.x, GY - 12, R.w, 12, K.cream200);
+  // the same-room outline pulse
+  const pulse = seg(t, A(4) - 0.1, A(4) + 0.4) * (1 - seg(t, A(4) + 2.2, A(4) + 3.2));
+  if (pulse > 0) { c.globalAlpha = pulse * (0.6 + 0.4 * Math.sin(t * 8)); for (let i = 0; i < 4; i++) { px(c, R.x - 3, R.y - 3, R.w + 6, 2, K.lemon); px(c, R.x - 3, R.y + R.h + 1, R.w + 6, 2, K.lemon); px(c, R.x - 3, R.y - 3, 2, R.h + 6, K.lemon); px(c, R.x + R.w + 1, R.y - 3, 2, R.h + 6, K.lemon); } c.globalAlpha = 1; }
+  // shelf groups
+  KINDS.forEach((k, i) => {
+    const lit = seg(t, T_IN[i] + WALK - 0.2, T_IN[i] + WALK + 0.3);
+    for (let j = 0; j < 2; j++) {
+      const l2 = clamp((t - (T_IN[i] + WALK - 0.2 + j * 0.2)) * 4);
+      shelf(c, COLX[i] - 18, 48 + j * 15, 36, [k.col[j], k.col[1 - j], K.cream50], l2 > 0.2 ? 1 : 0, l2 > 0.2 ? l2 * (0.7 + 0.3 * Math.sin(t * 5 + i + j)) : 0);
+    }
+  });
+  c.restore();
+  // door (right wall) opens for each visitor
+  let dopen = 0;
+  for (let i = 0; i < 3; i++) { const h = hPos(i, t); if (h.u > 0 && h.u < 1) dopen = Math.max(dopen, clamp((330 - h.x) / 20) * clamp((h.x - (R.x + R.w - 14)) / 20 + 0.5)); }
+  box(c, R.x + R.w - 1, 100 + 40 * dopen, 5, 40 * (1 - dopen), K.skyL);
+  // desk, laptop, you
+  shadow(88, GY, 56);
+  box(c, 66, 124, 46, 5, K.wood); px(c, 68, 129, 2, 11, K.woodD); px(c, 106, 129, 2, 11, K.woodD);
+  const sc = laptop(c, 74, 100, 32, 20, K.cream50); px(c, sc.x + 2, sc.y + 3, 12, 1, K.ink100); px(c, sc.x + 2, sc.y + 6, 18, 1, K.ink100);
+  shadow(122 - 30, GY, 14);
+  person(c, 66, GY, { ...ME, facing: "r", pose: "idle" }, t * 1000);
+  // visitors, tags, document icons
+  KINDS.forEach((k, i) => {
+    const h = hPos(i, t); if (t < T_IN[i]) return;
+    shadow(h.x, GY, 14);
+    person(c, h.x, GY, { ...k.look, skin: "#E0AC82", hair: K.ink, facing: h.walking ? "l" : "r", pose: h.walking ? "walk" : "idle" }, t * 1000 + i * 300);
+    const iu = spring(seg(t, T_IN[i] + WALK - 0.1, T_IN[i] + WALK + 0.5));
+    if (iu > 0) { glow(c, COLX[i], 98, 22 * iu, k.glow, 0.5 * iu); k.doc(COLX[i], 100 - 3 * Math.sin(t * 3 + i) - 8 * (1 - iu), 1.15 * iu, t); }
+    burst(c, t, T_IN[i] + WALK - 0.15, COLX[i], 62, { n: 16, seed: 30 + i, colors: [k.col[0], k.col[1], K.cream50, K.lemon], life: 0.9, speed: 30, size: 2, gravity: 15 });
+  });
+}
+
+/* a smaller version of the room, for the neighbours */
+function miniRoom(cx, cy, seed, t, delay, dist) {
+  const r = rng(seed * 7 + 3), R = ROOM, ox = cx - 160, oy = cy - 90;
+  const lit = ease.inOut(seg(t, delay, delay + 0.7));
+  c.save(); c.translate(ox, oy);
+  px(c, R.x - 1, R.y - 1, R.w + 2, R.h + 2, K.ink);
+  px(c, R.x, R.y, R.w, R.h, lit < 0.5 ? mix("#2A2850", "#E0A25C", lit * 2) : mix("#E0A25C", "#FFF3C9", (lit - 0.5) * 2));
+  if (lit > 0) glow(c, 160, 90, 150, K.lemon, lit * (0.5 + 0.1 * Math.sin(t * 2 + seed)));
+  px(c, R.x, GY - 12, R.w, 12, mix("#383464", "#E8D9A0", lit));
+  const kind = Math.floor(r() * 3), k = KINDS[kind];
+  // shelves, three groups of two blocks
+  for (let i = 0; i < 3; i++) { const kk = KINDS[(kind + i) % 3]; for (let j = 0; j < 2; j++) px(c, COLX[i] - 18, 48 + j * 15, 36, 11, lit > 0.4 ? kk.col[j] : "#4B4778"); }
+  // desk + laptop + helper
+  px(c, 66, 124, 46, 5, "#8B6F47"); px(c, 74, 100, 32, 20, lit > 0.4 ? K.cream50 : "#5A5690");
+  px(c, 126 - 4, GY - 28, 9, 28, k.look.shirt); px(c, 126 - 3, GY - 36, 7, 8, "#E0AC82");
+  px(c, 62, GY - 28, 9, 28, K.mint); px(c, 63, GY - 36, 7, 8, "#E0AC82");
+  c.restore();
+  // a setup on its way in
+  if (seed % 3 === 0) {
+    const u = ((t * 0.28 + r()) % 1), x = lerp(cx + 420, cx + 110, ease.inOut(u));
+    glow(c, x, cy + 40, 22, K.lemon, 0.8 * Math.sin(u * Math.PI)); c.globalAlpha = Math.sin(u * Math.PI); px(c, x - 4, cy + 36, 8, 8, K.lemon); px(c, x - 2, cy + 38, 4, 4, K.cream50); c.globalAlpha = 1;
+  }
+}
+
+function bridgeGlyph(t) {
+  const u = out5(seg(t, CARD + 0.15, CARD + 1.0));
+  if (u <= 0) return;
+  const cx = 160, y0 = 48, span = 40;
+  c.save();
+  const pts = [];
+  // towers
+  const tw = (x) => { box(c, x - 2, y0 - 22, 5, 26 * u, K.ink700); px(c, x - 2, y0 - 22, 5, 2, K.lemon); };
+  tw(cx - span); tw(cx + span);
+  // deck
+  const dw = Math.round(2 * (span + 18) * u);
+  box(c, cx - span - 18, y0 + 3, dw, 4, K.ink); px(c, cx - span - 18, y0 + 4, dw, 2, K.mint);
+  // cables (parabolas) and hangers
+  for (let side = -1; side <= 1; side += 2) {
+    for (let i = 0; i <= 30; i++) { const k = i / 30; if (k > u) break; const x = cx + side * (span - span * k), y = y0 - 22 + 22 * (1 - k) * (1 - k) * 0 + (k * k) * 22 * 1.0; px(c, x, y0 - 20 + 20 * (k * k), 2, 2, K.ink); }
+  }
+  for (let i = -3; i <= 3; i++) { if (Math.abs(i) / 3 > u) continue; const x = cx + i * span / 3.2, y = y0 - 20 + 20 * Math.pow(1 - Math.abs(i) / 3.2, 2); px(c, x, y + 2, 1, y0 + 3 - y - 2, K.ink300); }
+  // lights on the deck, glowing in sequence
+  for (let i = 0; i < 9; i++) { const lu = seg(t, CARD + 0.7 + i * 0.07, CARD + 1.0 + i * 0.07); if (lu > 0) { c.globalAlpha = lu * (0.7 + 0.3 * Math.sin(t * 4 + i)); px(c, cx - span - 12 + i * 12, y0, 3, 2, K.lemon); } }
+  c.globalAlpha = 1;
+  c.restore();
+}
 
 window.seek = (t) => {
-  background(c);
-  folks.forEach((f, i) => {
-    const a = T(0.6) + i * T(0.7), u = ease.out(seg(t, a, a + T(0.7)));
-    c.globalAlpha = u;
-    const x = 12 - (1 - u) * 24, y = rows[i];
-    panel(c, x, y - 20, 128, 44, K.cream100);
-    person(c, x + 22, y + 18, { ...f.look, pose: "idle", facing: "f" }, t * 1000);
-    shelf(c, x + 92, y - 12, 30, [K.coral, K.mint, K.sky], 1, 0);
-    lock(c, x + 107, y + 8, false, 0, K.lemon);
-    c.globalAlpha = 1;
+  const p = cam.at(t);
+  bg(t, p);
+  cam.apply(c, t, () => {
+    // street lines under each row (when zoomed out)
+    const d = dusk(t);
+    if (p.zoom < 0.7) {
+      for (let gj = -2; gj <= 2; gj++) { c.globalAlpha = clamp(1 - (p.zoom - 0.25) / 0.4); px(c, -700, 90 + gj * 170 + 56, 1800, 10, mix("#EADBA5", "#2C2950", d)); px(c, -700, 90 + gj * 170 + 56, 1800, 1, "#1A1320"); }
+      c.globalAlpha = 1;
+      for (let gj = -2; gj <= 2; gj++) for (let gi = -2; gi <= 2; gi++) {
+        if (gi === 0 && gj === 0) continue;
+        const dist = Math.hypot(gi * 300, gj * 170), seed = (gi + 3) * 7 + (gj + 3) * 13;
+        const delay = A(4) + 3.3 + dist * 0.0028 + rng(seed)() * 0.9;
+        miniRoom(160 + gi * 300, 90 + gj * 170, seed, t, delay, dist);
+      }
+    }
+    heroRoom(t);
   });
-  helpers.forEach((h, i) => {
-    const a = T(2.6) + i * T(0.6), u = ease.out(seg(t, a, a + T(0.7)));
-    c.globalAlpha = u;
-    const x = 180 + (1 - u) * 30, y = rows[i];
-    panel(c, x, y - 20, 128, 44, K.cream100);
-    person(c, x + 20, y + 18, { ...h.look, pose: "idle", facing: "f" }, t * 1000);
-    c.globalAlpha = 1;
+  // end card wash
+  const wash = 0.92 * ease.inOut(seg(t, CARD - 0.2, CARD + 0.6));
+  if (wash > 0) { c.globalAlpha = wash; px(c, 0, 0, W, H, K.cream100); c.globalAlpha = 1; }
+  bridgeGlyph(t);
+  vignette(c, 0.18);
+
+  // labels
+  pOpens.update(t); pOpens.el.style.opacity = 1 - seg(t, A(1) - 0.3, A(1) + 0.1);
+  KINDS.forEach((k, i) => {
+    const q = cam.toScreen(t, COLX[i], 86);
+    put(pTags[i], q.x, q.y, seg(t, T_IN[i] + 0.6, T_IN[i] + 1.1) * (1 - seg(t, A(4) + 1.6, A(4) + 2.1)), 0.85 + 0.15 * spring(seg(t, T_IN[i] + 0.6, T_IN[i] + 1.2)));
   });
-  folks.forEach((f, i) => {
-    const y = rows[i] + 2;
-    const link = ease.inOut(seg(t, T(5.0) + i * T(0.5), T(5.8) + i * T(0.5)));
-    if (link > 0) px(c, 140, y, 40 * link, 2, K.ink);
-    const pay = seg(t, T(7.0) + i * T(0.5), T(8.2) + i * T(0.5));
-    if (pay > 0 && pay < 1) coin(c, lerp(142, 176, ease.inOut(pay)), y + 1 - Math.sin(pay * Math.PI) * 8);
-    if (pay >= 1) coin(c, 176, y + 1);
-  });
-  const outT = 1 - seg(t, T(10.8), T(11.6));
-  L.forEach((l, i) => { const u = seg(t, T(0.8) + i * T(0.7), T(1.4) + i * T(0.7)) * outT; setPos(l.name, 50, rows[i] - 18, u); setPos(l.note, 50, rows[i] - 3, u); });
-  R.forEach((r, i) => { const u = seg(t, T(2.8) + i * T(0.6), T(3.4) + i * T(0.6)) * outT; setPos(r.name, 222, rows[i] - 18, u); setPos(r.score, 222, rows[i] - 3, u); setPos(r.price, 284, rows[i] - 18, u); });
-  setPos(head1, 14, 3, seg(t, T(0.3), T(0.9)) * outT);
-  setPos(head2, 168, 3, seg(t, T(2.4), T(3.0)) * outT);
-  setPos(tag, 0, 164, seg(t, T(8.6), T(9.4)) * outT);
-  fade(c, seg(t, 0, T(0.4)));
-  const f = seg(t, T(11.2), T(12));
-  if (f > 0) { c.globalAlpha = f; px(c, 0, 0, W, H, K.cream100); c.globalAlpha = 1; }
+  put(pRules, 640, 54, seg(t, A(4) + 0.1, A(4) + 0.6) * (1 - seg(t, A(4) + 3.0, A(4) + 3.5)), 0.9 + 0.1 * spring(seg(t, A(4) + 0.1, A(4) + 0.8)));
+  put(pStay, 640, 640, seg(t, A(5) + 0.9, A(5) + 1.5) * (1 - seg(t, CARD - 0.4, CARD + 0.1)), 1);
+  cardW.style.display = t > CARD - 0.1 ? "block" : "none";
+  wm.update(t); tag.update(t);
+  BADGES.forEach((b, i) => { const u = spring(seg(t, CARD + 1.9 + i * 0.18, CARD + 2.4 + i * 0.18)); b.style.opacity = clamp(u * 2); b.style.transform = `translateY(${(1 - u) * 20}px) scale(${0.9 + 0.1 * u})`; });
 };
 window.ready = true;
 </script>

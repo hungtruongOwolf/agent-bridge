@@ -1,0 +1,238 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>p02 The one lever</title>
+<body>
+<script type="module">
+import { stage, label, fontFace, person, K, seg, ease, lerp, clamp, px, box, coin, lock, paper, folder, laptop, mask, siren, thumbDown, DUR, W, H, SCALE, fade, ME, AGENT, GUARD, arc } from "./lib.js";
+import { sentenceTimes, Camera, spring, burst, flow, Words, glow, vignette, bar, rng, out5, inOut5, smooth } from "./fx.js";
+fontFace();
+const st = document.createElement("style"); st.textContent = "i{color:#D96A62;font-style:normal}"; document.head.append(st);
+const VO = "That leaves one lever: money committed before the work starts. PayPal can do that. It holds the money first, the agent does the work, and the real price is settled afterwards. We call these agents helpers. What you'll see runs on a practice server that copies PayPal's API, with test money.";
+const s = sentenceTimes(VO, DUR);
+const d0 = s[0].b - s[0].a, d2 = s[2].b - s[2].a;
+const tp = s[0].a + 0.62 * d0;                 // lever pulled
+const tcoin = s[1].a - 0.3, tland = tcoin + 1.2;
+const tw0 = s[2].a + 0.3, tpaper = s[2].a + 0.56 * d2, tarr = tpaper + 0.9, ts = s[2].a + 0.7 * d2;
+const tsplit = ts + 0.75, tfly = ts + 1.0;
+const tBig = DUR - 3.3;
+const BUY = 100, VAULT = 180, LAP = 270, AUTH = 350;
+const cam = new Camera([
+  { t: 0, x: 62, y: 104, zoom: 1.7 }, { t: tp, x: 62, y: 104, zoom: 1.7 }, { t: tp + 0.9, x: 120, y: 100, zoom: 1.3 },
+  { t: s[2].a, x: 150, y: 100, zoom: 1.25 }, { t: s[2].a + 0.8, x: 235, y: 100, zoom: 1.25 },
+  { t: ts - 0.1, x: 235, y: 100, zoom: 1.25 }, { t: ts + 0.7, x: 225, y: 98, zoom: 0.92 },
+  { t: s[3].a, x: 225, y: 98, zoom: 0.92 }, { t: s[3].a + 0.8, x: 280, y: 100, zoom: 1.4 },
+  { t: s[3].b - 0.1, x: 280, y: 100, zoom: 1.4 }, { t: s[4].a + 0.8, x: 225, y: 100, zoom: 0.92 },
+]);
+const S = stage(), c = S.c;
+function tag(html, o = {}) {
+  const d = document.createElement("div"); d.innerHTML = html;
+  d.style.cssText = `position:absolute;left:0;top:0;white-space:nowrap;font:${o.weight || 800} ${o.size || 28}px/1.2 Inter,system-ui,sans-serif;color:${o.color || K.ink};opacity:0;will-change:transform,opacity;text-align:center;` +
+    (o.bg ? `background:${o.bg};border:3px solid ${K.ink};padding:${o.pad || "5px 14px"};box-shadow:5px 5px 0 rgba(26,19,32,.25);` : "text-shadow:2px 2px 0 rgba(255,253,245,.85);");
+  S.text.append(d); return d;
+}
+const put = (d, x, y, a = 1, s = 1, rot = 0) => { d.style.opacity = a; d.style.transform = `translate(${x}px,${y}px) translate(-50%,-50%) scale(${s}) rotate(${rot}deg)`; };
+const putW = (d, t, wx, wy, a = 1, s = 1, rot = 0) => { const p = cam.toScreen(t, wx, wy); put(d, p.x, p.y, a, s * p.s, rot); };
+const pop = (t, a, d = 0.5) => spring(seg(t, a, a + d), 8, 0.55);
+const vis = (t, a, d = 0.15) => clamp((t - a) / d);
+function bot(c, x, y, t, o = {}) {
+  const g = o.grey, body = g ? K.ink100 : (o.col || K.lilac), bl = Math.floor(t * 2.2) % 6 === 0, by = y - (o.bob ? Math.round(Math.abs(Math.sin(t * 7))) : 0);
+  box(c, x - 4, by - 3, 3, 3, K.ink700); box(c, x + 2, by - 3, 3, 3, K.ink700);
+  box(c, x - 5, by - 11, 11, 8, body); px(c, x - 3, by - 9, 7, 1, g ? K.ink300 : K.cream50);
+  const wv = o.work ? Math.round(Math.sin(t * 10)) : 0;
+  box(c, x - 8, by - 10 + wv, 2, 5, body); box(c, x + 7, by - 10 - wv, 2, 5, body);
+  box(c, x - 6, by - 20, 13, 9, body);
+  px(c, x - 4, by - 18, 9, 5, g ? K.ink300 : K.ink700);
+  px(c, x - 3, by - 17, 2, bl ? 1 : 3, g ? K.ink500 : K.mint); px(c, x + 2, by - 17, 2, bl ? 1 : 3, g ? K.ink500 : K.mint);
+  px(c, x, by - 24, 1, 4, K.ink); box(c, x - 1, by - 27, 3, 3, g ? K.ink300 : K.lemon);
+}
+function gear(c, x, y, r, ang, col = K.ink500) {
+  px(c, x - r - 1, y - r - 1, r * 2 + 3, r * 2 + 3, K.ink); px(c, x - r, y - r, r * 2 + 1, r * 2 + 1, col);
+  for (let i = 0; i < 8; i++) { const a = ang + i * Math.PI / 4, tx = x + Math.cos(a) * (r + 2), ty = y + Math.sin(a) * (r + 2); px(c, tx - 1.5, ty - 1.5, 3, 3, K.ink); px(c, tx - 1, ty - 1, 2, 2, col); }
+  px(c, x - 1, y - 1, 3, 3, K.cream50);
+}
+function sparkle(c, x, y, r, col = K.cream50) { px(c, x - r, y, r * 2 + 1, 1, col); px(c, x, y - r, 1, r * 2 + 1, col); px(c, x - 1, y - 1, 3, 3, col); }
+function room(c, x0, wall, floor, w = 332) {
+  px(c, x0 - 8, 0, w + 16, 128, wall);
+  for (let x = x0 - 8; x < x0 + w + 8; x += 24) px(c, x, 0, 12, 128, "rgba(255,255,255,.3)");
+  px(c, x0 - 8, 126, w + 16, 3, K.ink); px(c, x0 - 8, 129, w + 16, 51, floor);
+  for (let y = 138; y < 180; y += 12) px(c, x0 - 8, y, w + 16, 1, "rgba(26,19,32,.12)");
+}
+function motes(c, p, t, seed, f, n, size, a, col = K.cream50) {
+  const r = rng(seed); c.save(); c.translate(p.x * (1 - f), 0); c.globalAlpha = a;
+  for (let i = 0; i < n; i++) { const bx = r() * 1100 - 50, by = r() * 170; px(c, bx + Math.sin(t * 0.5 + i) * 4, (((by - t * (2 + f * 3)) % 180) + 180) % 180, size, size, col); }
+  c.restore(); c.globalAlpha = 1;
+}
+function speedLines(c, cam, t) {
+  const v = Math.abs(cam.at(t + 0.03).x - cam.at(t - 0.03).x) / 0.06, a = clamp((v - 80) / 400); if (a <= 0) return;
+  const r = rng(Math.floor(t * 40) + 7); c.globalAlpha = a * 0.8;
+  for (let i = 0; i < 24; i++) { const y = r() * H, x = r() * W, l = 30 + r() * 90; px(c, x, y, l, 1, i % 3 ? K.cream50 : K.lemon); }
+  c.globalAlpha = 1;
+}
+function bigCoin(c, x, y, k, mark = false, label = null) { c.save(); c.translate(x, y); c.scale(k, k); coin(c, 0, 0, mark); c.restore(); }
+
+const wLever = new Words(S.text, "The one lever: <i>money first</i>", { x: 0, y: 3, size: 58, w: 320, align: "center", at: s[0].a + 0.1, color: K.cream50, leave: tp + 0.9 });
+const wHelp = new Words(S.text, "We call them <i>helpers</i>", { x: 0, y: 3, size: 58, w: 320, align: "center", at: s[3].a + 0.05, leave: s[4].a + 0.2 });
+const tVault = tag("PayPal holds it", { size: 30, bg: K.lemonL });
+const tStat = tag("", { size: 32, bg: K.cream50 });
+const tC40 = tag("40¢", { size: 28 }), tC25 = tag("25¢", { size: 28 }), tC15 = tag("15¢", { size: 28 });
+const tBuyer = tag("Buyer", { size: 26 }), tAuth = tag("Author", { size: 26 }), tHelper = tag("Helper", { size: 28, bg: K.lilacL });
+const chips = ["1  Hold the money", "2  Do the work", "3  Settle the price"].map((x, i) => tag(x, { size: 30, bg: [K.lemonL, K.skyL, K.mintL][i] }));
+const tTest = tag("Practice server that copies PayPal's API. Test money.", { size: 26, bg: K.cream50, color: K.ink });
+
+function round(c, x, y, r, fill, line = K.ink) {
+  for (let dy = -r - 1; dy <= r + 1; dy++) { const h = Math.round(Math.sqrt(Math.max(0, (r + 1) * (r + 1) - dy * dy))); px(c, x - h, y + dy, h * 2 + 1, 1, line); }
+  for (let dy = -r; dy <= r; dy++) { const h = Math.round(Math.sqrt(Math.max(0, r * r - dy * dy))); px(c, x - h, y + dy, h * 2 + 1, 1, fill); }
+}
+function coinBig(c, x, y, r, spin = 0) {
+  const k = 0.35 + 0.65 * Math.abs(Math.cos(spin)); c.save(); c.translate(x, y); c.scale(k, 1);
+  round(c, 0, 0, r, K.lemon); round(c, 0, 0, r - 2, "#EBC15C", "#C08F26"); c.restore();
+}
+const coinTagAt = (el, t, x, y, a, k = 1) => putW(el, t, x, y + 1, a, k);
+
+function lever(t) {
+  const pull = spring(seg(t, tp, tp + 0.7), 7, 0.45);
+  const ang = lerp(-0.95, 0.95, pull) + (t < tp ? Math.sin(t * 3) * 0.03 : 0);
+  glow(c, 40 + Math.sin(ang) * 30, 112 - Math.cos(ang) * 30, 18 + Math.sin(t * 5) * 2, K.lemon, 0.5);
+  box(c, 26, 124, 28, 8, K.ink700); box(c, 33, 110, 14, 14, K.ink); px(c, 35, 112, 10, 10, K.ink500);
+  for (let k = 0; k < 30; k++) px(c, 39 + Math.sin(ang) * k, 116 - Math.cos(ang) * k, 3, 3, K.ink);
+  for (let k = 1; k < 29; k++) px(c, 40 + Math.sin(ang) * k, 117 - Math.cos(ang) * k, 1, 1, K.cream300);
+  round(c, 40 + Math.sin(ang) * 31, 116 - Math.cos(ang) * 31, 5, K.coral);
+  if (t < tp) { c.globalAlpha = 0.5 + 0.5 * Math.sin(t * 4); sparkle(c, 62, 90, 3, K.lemonL); c.globalAlpha = 1; }
+}
+function vault(c, t, openU) {
+  const x = VAULT - 30, y = 62, w = 60, h = 70;
+  px(c, x - 1, y - 1, w + 2, h + 2, K.ink); px(c, x, y, w, h, "#DCEEF0");
+  px(c, x + 3, y + 3, w - 6, 3, K.ink700);                              // roof slot
+  px(c, VAULT - 8, y, 16, 3, K.ink);
+  const held = seg(t, tland, tland + 0.4) * (1 - seg(t, ts, ts + 0.6));
+  if (held > 0) { glow(c, VAULT, 98, 46, K.lemon, 0.55 * held * (0.8 + 0.2 * Math.sin(t * 5))); }
+  return { x, y, w, h, held };
+}
+function vaultFront(c, t, V, openU) {
+  const dw = Math.round(V.w * (1 - openU));
+  if (dw > 0) {
+    c.globalAlpha = 0.45; px(c, V.x, V.y, dw, V.h, K.skyL); c.globalAlpha = 1;
+    px(c, V.x + 4, V.y + 8, 2, V.h - 22, "rgba(255,255,255,.7)"); px(c, V.x + 9, V.y + 8, 1, V.h - 22, "rgba(255,255,255,.5)");
+    px(c, V.x, V.y + V.h - 12, dw, 12, K.ink700);
+    if (dw > 20) {
+      const lk = t > ts ? spring(seg(t, ts, ts + 0.5), 10, 0.5) : 0, held = V.held;
+      lock(c, V.x + dw / 2, V.y + V.h - 10 - (1 - 0) * 0 - Math.sin(lk * 3) * 2, t > ts, 0, K.lemon);
+      if (held > 0 && t < ts) for (let k = 0; k < 3; k++) { const u = (t * 0.8 + k / 3) % 1; c.globalAlpha = (1 - u) * 0.8 * held; px(c, V.x + dw / 2 - 8 + k * 8, V.y + V.h - 22 - u * 10, 2, 2, K.lemonL); c.globalAlpha = 1; }
+    }
+  }
+  px(c, V.x - 3, V.y - 3, V.w + 6, 3, K.ink); px(c, V.x - 3, V.y + V.h, V.w + 6, 3, K.ink); px(c, V.x - 3, V.y - 3, 3, V.h + 6, K.ink); px(c, V.x + V.w, V.y - 3, 3, V.h + 6, K.ink);
+}
+
+function world(t) {
+  const lit = ease.inOut(seg(t, tp + 0.15, tp + 0.7));
+  room(c, -40, "#FFF8E7", "#E5C896", 640); px(c, -60, 129, 700, 200, "#E5C896"); px(c, -60, -120, 700, 120, "#FFF8E7");
+  // soft depth: a far row of shelves with tiny boxes
+  c.save(); c.globalAlpha = lit;
+  const person_ = (x, y, o) => person(c, x, y, o, t * 1000);
+  c.restore();
+  lever(t);
+  c.globalAlpha = lit;
+  // the table the laptop is on and the laptop
+  box(c, 232, 124, 80, 8, K.woodD); px(c, 232, 124, 80, 2, K.wood); px(c, 238, 132, 4, 12, K.woodD); px(c, 302, 132, 4, 12, K.woodD);
+  const sc = laptop(c, 240, 78, 64, 42, K.cream50);
+  const nTick = Math.floor(seg(t, tw0, tpaper) * 7);
+  gear(c, 254, 92, 4, t * 2.6, K.ink300); gear(c, 265, 86, 3, -t * 3.4 + 0.5, K.lilac);
+  for (let i = 0; i < 7; i++) px(c, 247 + i * 5, 108, 4, 4, i < nTick ? K.mint : K.ink100);
+  const working = t > tw0 && t < tpaper + 0.3;
+  bot(c, 289, 116, t, { col: K.lilac, work: working });
+  if (working) for (let i = 0; i < 3; i++) { const k = (t * 1.4 + i / 3) % 1; px(c, 276 + k * 8, 100 - k * 12, 2, 2, K.lemon); }
+  // vault
+  const openU = ease.out(seg(t, ts, ts + 0.7));
+  const V = vault(c, t, openU);
+  // coin 40: in the buyer's hand, flies over the vault, drops inside
+  let cp = null;
+  if (t >= tp + 0.3 && t < tcoin) cp = { x: BUY + 8, y: 114 + Math.sin(t * 3) };
+  else if (t >= tcoin && t < tcoin + 0.85) cp = arc([BUY + 8, 114], [VAULT, 52], ease.inOut(seg(t, tcoin, tcoin + 0.85)), 26);
+  else if (t >= tcoin + 0.85 && t < ts + 0.2) { const fu = seg(t, tcoin + 0.85, tland); cp = { x: VAULT, y: lerp(52, 100, ease.bounce(fu)) + (fu >= 1 ? Math.sin(t * 3) * 2 : 0) }; }
+  else if (t >= ts + 0.2 && t < tsplit) { const u = seg(t, ts + 0.2, ts + 0.6); cp = { x: VAULT, y: lerp(100, 88, ease.out(u)) }; }
+  if (cp) { coinBig(c, cp.x, cp.y, 9, t * 6 * (t < tcoin + 0.85 && t >= tcoin ? 1 : 0)); }
+  vaultFront(c, t, V, openU);
+  if (t > tland - 0.05 && t < tland + 0.8) burst(c, t, tland - 0.05, VAULT, 100, { n: 18, speed: 36, life: 0.7, colors: [K.lemon, K.cream50, K.lemonL], seed: 11, gravity: 10 });
+  // the buyer
+  const got = t > tarr;
+  person(c, BUY, 140, { shirt: K.sky, hat: "glasses", skin: "#C68642", facing: "r", pose: got ? "up" : "idle" }, t * 1000);
+  // result paper
+  const pu = seg(t, tpaper, tarr);
+  if (t >= tpaper - 0.4 && pu === 0) { const k = pop(t, tpaper - 0.4, 0.5); c.save(); c.translate(262, 100); c.scale(2.4 * k, 2.4 * k); paper(c, 0, 0, K.mintL); c.restore(); }
+  if (pu > 0 && pu < 1) { const p = arc([262, 100], [BUY + 10, 112], ease.inOut(pu), 46); c.save(); c.translate(p.x, p.y); c.scale(2.4 - 1.4 * pu, 2.4 - 1.4 * pu); paper(c, 0, 0, K.mintL); c.restore(); }
+  if (got) { paper(c, BUY + 10, 106, K.mintL); burst(c, t, tarr, BUY + 10, 106, { n: 12, speed: 24, life: 0.7, colors: [K.mint, K.cream50], seed: 12, gravity: 15 }); }
+  // the author
+  const paid = t > tfly + 0.85;
+  person(c, AUTH, 140, { ...ME, facing: "l", pose: paid ? "up" : "idle" }, t * 1000);
+  // the two coins after the split
+  const split = t > tsplit;
+  const c25 = split ? (t < tfly ? { x: VAULT + 6 * spring(seg(t, tsplit, tfly), 8, .5), y: 88 } : arc([VAULT + 6, 88], [AUTH, 104], ease.inOut(seg(t, tfly, tfly + 0.85)), 44)) : null;
+  const c15 = split ? (t < tfly ? { x: VAULT - 6 * spring(seg(t, tsplit, tfly), 8, .5), y: 88 } : arc([VAULT - 6, 88], [BUY, 104], ease.inOut(seg(t, tfly + 0.1, tfly + 0.95)), 34)) : null;
+  const c25r = paid ? { x: AUTH, y: 100 + Math.sin(t * 3) * 1.5 } : c25;
+  const c15r = t > tfly + 0.95 ? { x: BUY, y: 100 + Math.sin(t * 3 + 1) * 1.5 } : c15;
+  if (c25r) { coinBig(c, c25r.x, c25r.y, 7, t < tfly ? 0 : (t < tfly + 0.85 ? t * 8 : 0)); }
+  if (c15r) { coinBig(c, c15r.x, c15r.y, 6, t < tfly ? 0 : (t < tfly + 0.95 ? t * 8 : 0)); }
+  if (t > tsplit && t < tsplit + 0.8) burst(c, t, tsplit, VAULT, 88, { n: 14, speed: 30, life: 0.6, colors: [K.lemon, K.cream50], seed: 13, gravity: 0 });
+  burst(c, t, tfly + 0.85, AUTH, 100, { n: 26, speed: 48, life: 1.0, colors: [K.lemon, K.mint, K.cream50, K.coral], seed: 14, gravity: 30 });
+  burst(c, t, tfly + 0.95, BUY, 100, { n: 12, speed: 26, life: 0.8, colors: [K.sky, K.cream50, K.lemonL], seed: 15, gravity: 20 });
+  c.globalAlpha = 1;
+  return { cp, c25r, c15r, lit };
+}
+
+window.seek = (t) => {
+  const p = cam.at(t);
+  c.fillStyle = "#1A1320"; c.fillRect(0, 0, W, H);
+  let info;
+  cam.apply(c, t, () => { info = world(t); });
+  // darkness with a spotlight on the lever, fading when the lever is pulled
+  const dark = 0.9 * (1 - ease.inOut(seg(t, tp + 0.05, tp + 0.8)));
+  if (dark > 0) {
+    const sp = cam.toScreen(t, 55, 105), cx = sp.x / SCALE, cy = sp.y / SCALE;
+    const g = c.createRadialGradient(cx, cy, 14, cx, cy, 110 + 140 * (1 - dark / 0.9));
+    g.addColorStop(0, "rgba(26,19,32,0)"); g.addColorStop(1, `rgba(26,19,32,${dark})`);
+    c.fillStyle = g; c.fillRect(0, 0, W, H);
+    // light cone
+    c.globalAlpha = 0.16 * (dark / 0.9);
+    c.fillStyle = K.lemonL; c.beginPath(); c.moveTo(cx - 6, 0); c.lineTo(cx + 6, 0); c.lineTo(cx + 70, H); c.lineTo(cx - 70, H); c.closePath(); c.fill(); c.globalAlpha = 1;
+  }
+  vignette(c, 0.18);
+  fade(c, seg(t, 0, 0.3));
+  wLever.update(t); wHelp.update(t);
+  // labels that follow the world
+  const lit = info.lit;
+  const vu = pop(t, s[1].a, 0.5);
+  putW(tVault, t, VAULT, 46, clamp(vu * 2) * (1 - seg(t, tw0 - 0.3, tw0)), Math.max(0.01, vu));
+  const labelNum = (el, pos, txt, k = 1, a = 1) => { if (pos) coinTagAt(el, t, pos.x, pos.y, a, k); else put(el, -999, -999, 0); };
+  labelNum(tC40, info.cp, "40", 1, info.cp && t < ts + 0.7 ? 1 : 0);
+  labelNum(tC25, info.c25r, "25", 0.9);
+  labelNum(tC15, info.c15r, "15", 0.8);
+  const tu = pop(t, s[2].a + 0.3, 0.5);
+  const edge = (x) => { const q = cam.toScreen(t, x, 150).x; return clamp((q - 60) / 80) * clamp((1220 - q) / 80); };
+  putW(tBuyer, t, BUY, 150, vis(t, tcoin) * edge(BUY), 1);
+  putW(tAuth, t, AUTH, 150, vis(t, ts + 0.8) * edge(AUTH), 1);
+  const hu = pop(t, s[3].a + 0.2, 0.5);
+  putW(tHelper, t, 289, 62, clamp(hu * 2) * (1 - seg(t, s[4].a, s[4].a + 0.5)), Math.max(0.01, hu));
+  // status line (top, under the headline band), swaps as the story moves
+  const steps = [
+    [tland + 0.1, "Money held first", K.lemonL, tw0 - 0.1],
+    [tw0, "Work happens, money waits", K.skyL, tpaper + 0.3],
+    [ts + 0.1, "Price settled afterwards", K.mintL, s[3].a + 0.2],
+  ];
+  let any = false;
+  steps.forEach(([a, txt, bg, end]) => {
+    if (t >= a && t < end + 0.4) {
+      const u = pop(t, a, 0.5), out = seg(t, end, end + 0.35);
+      tStat.innerHTML = txt; tStat.style.background = bg; put(tStat, 640, 100, clamp(u * 2) * (1 - out), Math.max(0.01, u * (1 - 0.1 * out))); any = true;
+    }
+  });
+  if (!any) put(tStat, 640, 100, 0);
+  // recap chips
+  chips.forEach((el, i) => { const u = pop(t, s[4].a + 0.4 + i * 0.5, 0.5), out = seg(t, tBig - 0.2, tBig + 0.3); put(el, 640, 80 + i * 0 , 0, 1); const cx = 250 + i * 390 - (i === 2 ? 0 : 0); put(el, [330, 640, 950][i], 96, clamp(u * 2) * (1 - 0 * out), Math.max(0.01, u)); });
+  // honest tag: small and steady once coins or PayPal are on screen, then a larger slide-up in the last three seconds
+  const tagIn = vis(t, tcoin + 0.2, 0.4);
+  const bu = spring(seg(t, tBig, tBig + 0.8), 8, 0.55);
+  tTest.style.background = bu > 0.05 ? K.lemonL : K.cream50;
+  put(tTest, 640, 688 - 52 * bu, tagIn, 1 + 0.28 * bu);
+};
+window.ready = true;
+</script>

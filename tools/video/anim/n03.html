@@ -1,0 +1,205 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>n03 Pull mode</title>
+<body>
+<script type="module">
+import { stage, label, fontFace, person, K, seg, lerp, ease, px, box, DUR, W, H, clamp, paper, folder, lock, cloud, laptop, shelf, glassRoom, AGENT, ME } from "./lib.js";
+import { sentenceTimes, Camera, spring, burst, flow, Words, glow, vignette, rng, out5, smooth } from "./fx.js";
+fontFace();
+const S = stage(), c = S.c;
+const VO = "Agent-bridge flips this. The expert's setup comes to your machine. Its steps run there, the model call uses your own key, and it only sees what you open for it. We call it Pull mode.";
+const ss = sentenceTimes(VO, DUR), A = (i) => ss[i].a, B = (i) => ss[i].b;
+
+const put = (el, x, y, a = 1, sc = 1, rot = 0) => { el.style.left = x + "px"; el.style.top = y + "px"; el.style.opacity = a; el.style.transform = `translate(-50%,-50%) scale(${sc}) rotate(${rot}deg)`; };
+const pill = (html, o = {}) => { const e = label(S.text, html, Object.assign({ x: 0, y: 0, size: 28, weight: 800, bg: K.cream50, pad: 8, border: true, shadow: true }, o)); e.style.opacity = 0; return e; };
+const at = (x, y, s, fn) => { c.save(); c.translate(x, y); c.scale(s, s); fn(); c.restore(); };
+const shadow = (x, y, w) => { c.globalAlpha = 0.16; px(c, x - w / 2, y, w, 2, K.ink); px(c, x - w / 2 + 2, y + 2, w - 4, 1, K.ink); c.globalAlpha = 1; };
+function bg(t, p) {
+  const g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, "#FFF8E7"); g.addColorStop(1, "#F1E3B8");
+  c.fillStyle = g; c.fillRect(0, 0, W, H);
+  glow(c, 40 - p.x * 0.1, 30, 120, K.skyL, 0.5); glow(c, 290 - p.x * 0.1, 150, 110, K.lilacL, 0.55);
+  const r = rng(11);
+  for (let i = 0; i < 40; i++) {
+    const bx = r() * 420, by = r() * H, sp = 0.15 + r() * 0.5, sz = r() < 0.2 ? 2 : 1;
+    const x = (((bx - p.x * sp * 0.6 - t * (1 + r() * 2)) % 420) + 420) % 420 - 50;
+    c.globalAlpha = 0.5; px(c, x, by + Math.sin(t + i) * 2, sz, sz, K.cream300);
+  }
+  c.globalAlpha = 1;
+}
+function arrow(x, y, sx, col, len = 64) {
+  c.save(); c.translate(x, y); c.scale(sx, 1);
+  const h = len / 2;
+  for (let pass = 0; pass < 2; pass++) {
+    const o = pass === 0 ? 2 : 0, cc = pass === 0 ? K.ink : col;
+    px(c, -h - o, -4 - o, len - 6 + 2 * o, 8 + 2 * o, cc);
+    for (let d = -12; d <= 12; d++) px(c, h - 8 - o, d, 22 - Math.abs(d) + o * 2 - 8 + 0, 1, cc);
+  }
+  c.restore();
+}
+function scroll(x, y, t, s = 1) {
+  at(x, y, s, () => { box(c, -5, -3, 10, 6, K.lemonL); px(c, -3, -1, 6, 1, K.ink300); px(c, -3, 1, 4, 1, K.ink300); box(c, -8, -4, 4, 8, K.lemon); px(c, -7, -2, 2, 4, K.cream50); box(c, 4, -4, 4, 8, K.lemon); px(c, 5, -2, 2, 4, K.cream50); px(c, -1, -4, 2, 8, K.coral); });
+}
+function key(x, y, s = 1, rot = 0) {
+  c.save(); c.translate(x, y); c.rotate(rot); c.scale(s, s);
+  box(c, -9, -3, 6, 6, K.lemon); px(c, -7, -1, 2, 2, K.cream100);
+  box(c, -3, -1, 10, 2, K.lemon); px(c, 4, 1, 2, 3, K.ink); px(c, 6, 1, 1, 2, K.lemon);
+  c.restore();
+}
+
+/* labels */
+const pUp = pill("Upload", { size: 36 }), pPull = pill("Pull", { size: 36, color: K.mint });
+const pSetup = pill("the expert's setup", { size: 26 });
+const pSteps = pill("steps run here", { size: 28 });
+const pKey = pill("your own key", { size: 28 });
+const pCloud = pill("Nemotron on Nebius", { size: 26 });
+const pOpen = pill("opened for it", { size: 28 }), pSecret = pill("secret", { size: 28, color: K.coral });
+const PM = Words(S.text, "Pull mode", { x: 10, y: 54, w: 300, size: 78, align: "center", font: "pixel", weight: 400, at: A(3) + 0.45, gap: 0.28 });
+const PS = Words(S.text, "The setup comes to you.", { x: 10, y: 98, w: 300, size: 40, align: "center", weight: 700, at: A(3) + 1.15, gap: 0.12, color: K.ink700 });
+
+const cam = new Camera([
+  { t: 0, x: 160, y: 92, zoom: 1.0 }, { t: A(0) + 1.3, x: 160, y: 92, zoom: 1.0 },
+  { t: A(1) + 0.1, x: 200, y: 95, zoom: 1.2 }, { t: A(1) + 2.4, x: 135, y: 92, zoom: 1.4 },
+  { t: A(2) + 1.2, x: 135, y: 92, zoom: 1.4 }, { t: A(2) + 2.2, x: 172, y: 80, zoom: 1.0 },
+  { t: A(2) + 3.7, x: 172, y: 80, zoom: 1.0 }, { t: A(2) + 4.6, x: 105, y: 92, zoom: 1.45 },
+  { t: B(2) + 0.2, x: 105, y: 92, zoom: 1.45 }, { t: A(3) + 0.3, x: 150, y: 90, zoom: 1.05 }, { t: DUR, x: 155, y: 90, zoom: 1.0 },
+]);
+
+const GY = 141;
+const T_OPEN = [A(2) + 4.1, A(2) + 4.9];
+const CLOUD = [262, 46];
+
+window.seek = (t) => {
+  const p = cam.at(t);
+  bg(t, p);
+  cam.apply(c, t, () => {
+    // ground
+    px(c, -80, GY, 480, 60, K.cream300); px(c, -80, GY, 480, 1, K.ink);
+    for (let i = 0; i < 24; i++) px(c, -60 + i * 22 + (i % 2) * 6, GY + 8 + (i % 3) * 7, 9, 2, K.cream200);
+
+    // the cloud (old picture: a faceless agent; later: the model host)
+    const cp = ease.inOut(seg(t, A(1), A(1) + 0.8));
+    const cl = [lerp(255, CLOUD[0], cp), lerp(80, CLOUD[1], cp)];
+    const cs = lerp(1.15, 0.9, cp);
+    at(cl[0], cl[1] + Math.sin(t * 1.5) * 1.5, cs, () => cloud(c, 0, 0, 1, K.skyL, cp < 0.5, t));
+
+    // the room group
+    const rb = spring(seg(t, A(0) + 1.3, A(0) + 2.3)), rbA = rb > 0.02 ? 1 : 0;
+    if (rbA) { c.save(); c.translate(100, GY); c.scale(0.75 + 0.25 * rb, 0.75 + 0.25 * rb); c.translate(-100, -GY);
+    glassRoom(c, 18, 30, 164, 111, 1);
+    for (let i = 0; i < 6; i++) px(c, 30 + i * 27, 33, 1, 4, "#FFFFFF");
+    px(c, 18, 126, 164, 15, K.cream200);
+    // shelves
+    const op = T_OPEN.map((a) => seg(t, a, a + 0.5));
+    [0, 1, 2].forEach((i) => {
+      const cols = [[K.coral, K.mint, K.sky], [K.lemon, K.lilac, K.coral], [K.ink500, K.ink500]][i];
+      shelf(c, 108, 40 + i * 16, 64, cols, i < 2 && op[i] > 0.4 ? 1 : 0, i < 2 ? op[i] * (0.6 + 0.4 * Math.sin(t * 4 + i)) : 0);
+    });
+    // the secret cabinet
+    const shk = t > A(2) + 5.3 ? Math.round(Math.sin(t * 38)) * (Math.sin(t * 2) > 0.6 ? 1 : 0) : 0;
+    box(c, 132 + shk, 104, 40, 37, K.ink700); px(c, 135 + shk, 108, 34, 14, K.ink); px(c, 135 + shk, 125, 34, 12, K.ink);
+    px(c, 148 + shk, 113, 6, 3, K.ink300); px(c, 148 + shk, 129, 6, 3, K.ink300);
+    c.restore(); }
+    // the red ring (pulsing, dashed)
+    const ringA = seg(t, A(2) + 4.9, A(2) + 5.5) * (0.6 + 0.4 * Math.sin(t * 5));
+    if (ringA > 0) {
+      c.globalAlpha = ringA;
+      for (let i = 0; i < 44; i++) { const a = i / 44 * Math.PI * 2, rx = 27, ry = 25; if (i % 4 > 2) continue; px(c, 152 + Math.cos(a) * rx - 1, 122 + Math.sin(a) * ry - 1, 3, 3, K.coral); }
+      c.globalAlpha = 1;
+    }
+    // sealed door on the right wall
+    const ex = lerp(345, 118, ease.inOut(seg(t, A(1), A(2) + 0.2)));
+    const doorOpen = clamp((215 - ex) / 14) * clamp((ex - 172) / 14);
+    if (rbA) { box(c, 181, 100 + 41 * doorOpen, 5, 41 * (1 - doorOpen), K.skyL);
+    at(183, 114 - 28 * doorOpen, 1, () => lock(c, 0, 0, doorOpen > 0.1, 0, K.lemon)); }
+
+    // desk, laptop, person
+    shadow(70, GY, 80);
+    box(c, 38, 131, 66, 6, K.wood); px(c, 41, 137, 3, 4, K.woodD); px(c, 98, 137, 3, 4, K.woodD);
+    const sc = laptop(c, 50, 96, 46, 28, K.cream50);
+    px(c, sc.x + 3, sc.y + 3, 18, 2, K.ink100); px(c, sc.x + 3, sc.y + 8, 26, 2, K.ink100); px(c, sc.x + 3, sc.y + 13, 12, 2, K.ink100);
+    const upNow = T_OPEN.some((a) => t > a && t < a + 0.55);
+    shadow(30, GY, 14);
+    person(c, 30, GY, { ...ME, facing: "r", pose: upNow ? "up" : "idle" }, t * 1000);
+
+    // the old picture: an arrow flipping
+    const fl = seg(t, A(0) + 0.2, A(0) + 1.1), flipS = Math.cos(Math.PI * spring(fl, 7, 0.6));
+    const arrowA = 1 - seg(t, A(1) - 0.1, A(1) + 0.4);
+    if (arrowA > 0) {
+      const col = fl > 0.5 ? K.mint : K.coral;
+      c.globalAlpha = arrowA;
+      arrow(160, 82, flipS, col, 70);
+      c.globalAlpha = arrowA * (0.6 + 0.4 * (1 - Math.abs(flipS)));
+      const dir = fl > 0.5 ? -1 : 1, fa = clamp(Math.abs(flipS) * 2 - 0.4);
+      for (let i = 0; i < 7; i++) { const u = (t * 0.7 + i / 7) % 1, x = dir > 0 ? lerp(110, 215, u) : lerp(215, 110, u); c.globalAlpha = arrowA * fa * Math.sin(u * Math.PI); px(c, x, 96 + Math.sin(i * 2) * 3, 3, 3, i % 2 ? K.lemon : K.sky); }
+      c.globalAlpha = 1;
+    }
+
+    // the expert with a glowing scroll
+    const walking = t >= A(1) && t < A(2) + 0.2;
+    if (t >= A(1) - 0.1 && !(ex > 360)) {
+      shadow(ex, GY, 16);
+      if (walking) for (let i = 1; i < 6; i++) { c.globalAlpha = 0.35 / i; px(c, ex + i * 7, GY - 8 - (i % 2) * 3, 2, 2, K.lilac); }
+      c.globalAlpha = 1;
+      const sx0 = ex + (walking ? -12 : 12);
+      glow(c, sx0, GY - 15, 26, K.lemon, 0.7 + 0.2 * Math.sin(t * 6));
+      person(c, ex, GY, { ...AGENT, facing: walking ? "l" : "r", pose: walking ? "walk" : "idle" }, t * 1000);
+      scroll(sx0, GY - 15, t, 1.1);
+    }
+    // steps: ticks popping around the expert
+    for (let i = 0; i < 3; i++) {
+      const u = spring(seg(t, A(2) + 0.2 + i * 0.35, A(2) + 0.7 + i * 0.35));
+      if (u <= 0) continue;
+      const x = 56 + i * 15, y = 64, fo = 1 - seg(t, A(2) + 1.4, A(2) + 1.9); if (fo <= 0) continue;
+      at(x, y - 12 * (1 - u), u * fo, () => { box(c, -5, -5, 10, 10, K.mintL); for (let k = 0; k < 3; k++) { px(c, -3 + k, 0 + k, 1, 1, K.mint); } for (let k = 0; k < 4; k++) px(c, 0 + k, 2 - k, 1, 1, K.mint); });
+    }
+    // key flight, call out and answer back
+    const ku = seg(t, A(2) + 1.5, A(2) + 2.7);
+    if (ku > 0 && ku < 1) {
+      const e = ease.inOut(ku), x = lerp(34, CLOUD[0] - 22, e), y = lerp(112, CLOUD[1] + 8, e) - Math.sin(e * Math.PI) * 78;
+      for (let i = 1; i < 7; i++) { const e2 = ease.inOut(clamp(ku - i * 0.03)); c.globalAlpha = 0.5 - i * 0.07; px(c, lerp(34, CLOUD[0] - 22, e2), lerp(112, CLOUD[1] + 8, e2) - Math.sin(e2 * Math.PI) * 78, 2, 2, K.lemon); }
+      c.globalAlpha = 1; key(x, y, 1.3, (e - 0.5) * 0.9);
+    }
+    if (ku >= 1) {
+      key(CLOUD[0] - 24, CLOUD[1] + 14, 1.2, 0);
+      burst(c, t, A(2) + 2.7, CLOUD[0] - 22, CLOUD[1] + 8, { n: 12, seed: 6, colors: [K.lemon, K.cream50], life: 0.7, speed: 28 });
+      const la = seg(t, A(2) + 2.8, A(2) + 3.3) * (1 - seg(t, A(2) + 4.5, A(2) + 5.0));
+      c.globalAlpha = la;
+      flow(c, t, [184, 62], [CLOUD[0] - 28, CLOUD[1] + 4], { dots: 7, speed: 0.6, col: K.sky, size: 2, arcLift: 8 });
+      flow(c, t, [CLOUD[0] - 28, CLOUD[1] + 10], [184, 68], { dots: 7, speed: 0.6, col: K.mint, size: 2, arcLift: -8 });
+      c.globalAlpha = 1;
+    }
+
+    // glass sheen over the room
+    if (rb > 0.3) { c.globalAlpha = 0.06; px(c, 18, 30, 164, 111, "#FFFFFF"); c.globalAlpha = 0.5; for (let i = 0; i < 3; i++) px(c, 24 + i * 6, 36 + i * 3, 2, 30 - i * 6, "#FFFFFF"); c.globalAlpha = 1; }
+
+    // paper copies flowing from opened shelves to the expert (read only)
+    [0, 1].forEach((i) => {
+      const a = T_OPEN[i] + 0.4;
+      for (let k = 0; k < 2; k++) { const u = seg(t, a + k * 0.5, a + 0.8 + k * 0.5); if (u > 0 && u < 1) { const e = ease.inOut(u), x = lerp(124 + i * 10, 117, e), y = lerp(46 + i * 16, 118, e) - Math.sin(e * Math.PI) * 10; paper(c, x, y); } }
+      burst(c, t, T_OPEN[i], 140, 46 + i * 16, { n: 14, seed: 20 + i, colors: [K.lemon, K.cream50, K.mint], life: 0.8, speed: 30, gravity: 20 });
+    });
+
+  });
+
+  // cream wash for the title
+  const wash = 0.9 * ease.inOut(seg(t, A(3) - 0.1, A(3) + 0.5));
+  if (wash > 0) { c.globalAlpha = wash; px(c, 0, 0, W, H, K.cream100); c.globalAlpha = 1; }
+  // sparks above the wash
+  { const lx = A(3) + 0.45 + 0.3; [[111, 70, 0], [205, 70, 0.28], [158, 66, 0.75]].forEach(([x, y, d], i) => burst(c, t, lx + d, x, y, { n: i === 2 ? 30 : 18, seed: 70 + i, life: 1.2, speed: i === 2 ? 80 : 55, size: 3, gravity: 30 })); }
+  vignette(c, 0.18);
+
+  // labels
+  const fade = 1 - seg(t, A(3) - 0.1, A(3) + 0.3);
+  const ex = lerp(345, 118, ease.inOut(seg(t, A(1), A(2) + 0.2)));
+  const q0 = cam.toScreen(t, 160, 62); put(pUp, q0.x, q0.y, seg(t, 0.2, 0.7) * (1 - seg(t, A(0) + 0.5, A(0) + 0.9)), 1);
+  put(pPull, q0.x, q0.y, seg(t, A(0) + 0.9, A(0) + 1.3) * (1 - seg(t, A(1) - 0.1, A(1) + 0.3)), 0.8 + 0.2 * spring(seg(t, A(0) + 0.9, A(0) + 1.5)));
+  const qs = cam.toScreen(t, ex, GY - 42); qs.x = Math.min(qs.x, 1020); put(pSetup, qs.x, qs.y, seg(t, A(1) + 0.3, A(1) + 0.8) * (1 - seg(t, A(2) - 0.4, A(2) + 0.1)), 1);
+  const q1 = cam.toScreen(t, 118, 96); put(pSteps, q1.x, q1.y, seg(t, A(2) + 0.2, A(2) + 0.7) * (1 - seg(t, A(2) + 1.3, A(2) + 1.6)), 1);
+  const q2 = cam.toScreen(t, 112, 14); put(pKey, q2.x, q2.y, seg(t, A(2) + 1.6, A(2) + 2.0) * (1 - seg(t, A(2) + 4.0, A(2) + 4.4)) * fade, 1);
+  const q3 = cam.toScreen(t, CLOUD[0], CLOUD[1] + 26); put(pCloud, q3.x, q3.y, seg(t, A(2) + 2.4, A(2) + 2.9) * (1 - seg(t, A(2) + 4.3, A(2) + 4.7)) * fade, 1);
+  const q4 = cam.toScreen(t, 138, 95); put(pOpen, q4.x, q4.y, seg(t, A(2) + 4.5, A(2) + 5.0) * fade, 1);
+  const q5 = cam.toScreen(t, 152, 122); put(pSecret, q5.x, q5.y, seg(t, A(2) + 5.1, A(2) + 5.6) * fade, 1);
+  PM.update(t); PS.update(t);
+};
+window.ready = true;
+</script>

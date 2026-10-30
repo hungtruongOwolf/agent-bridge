@@ -1,0 +1,268 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>p06 Refund needs evidence</title>
+<body>
+<script type="module">
+import { stage, label, fontFace, person, K, seg, ease, lerp, clamp, px, box, coin, lock, paper, folder, laptop, mask, siren, thumbDown, DUR, W, H, SCALE, fade, ME, AGENT, GUARD, arc } from "./lib.js";
+import { sentenceTimes, Camera, spring, burst, flow, Words, glow, vignette, bar, rng, out5, inOut5, smooth } from "./fx.js";
+fontFace();
+const VO = "A full refund needs more than my word. Say a helper cheats and gets shut down mid-run. I can't just say so, because anyone could. So the money stays held until the certifier, our independent tester, has flagged that helper. If it has, I get everything back and the author earns nothing. If it hasn't, my claim is rejected and the author keeps the fee.";
+const s = sentenceTimes(VO, DUR);
+const CX = 290, CY = 150;            // the certifier
+const XL = 190, XR = 390;            // left (flagged) and right (not flagged) branches
+const POT = [336, 146], BUYER = [290, 285], AUTHOR = [492, 285];
+const tN1 = s[0].a + 1.2, tN2 = s[1].a + 0.3, tN3 = s[1].a + 1.9;
+const tBtn = s[2].a + 0.1, tPress = s[2].a + 0.95, tRef = tPress + 0.25;
+const tCert = s[3].a + 1.5, tScan0 = tCert + 0.9, tScan1 = s[3].b - 1.4, tBr = s[3].b - 1.0;
+const tG = s[4].a, tA = s[5].a;
+const cam = new Camera([
+  { t: 0, x: 178, y: 62, zoom: 0.97 }, { t: s[2].a - 0.1, x: 178, y: 62, zoom: 0.97 }, { t: s[2].a + 0.7, x: 270, y: 92, zoom: 1.12 },
+  { t: s[3].a + 0.2, x: 270, y: 92, zoom: 1.12 }, { t: s[3].a + 1.3, x: 268, y: 126, zoom: 1.2 },
+  { t: tScan1, x: 268, y: 126, zoom: 1.2 }, { t: tBr + 0.8, x: 290, y: 152, zoom: 1.0 },
+  { t: tG - 0.1, x: 290, y: 152, zoom: 1.0 }, { t: tG + 0.8, x: 200, y: 224, zoom: 1.12 },
+  { t: tA - 0.1, x: 200, y: 224, zoom: 1.12 }, { t: tA + 0.9, x: 395, y: 222, zoom: 1.12 },
+]);
+const S = stage(), c = S.c;
+function tag(html, o = {}) {
+  const d = document.createElement("div"); d.innerHTML = html;
+  d.style.cssText = `position:absolute;left:0;top:0;white-space:nowrap;font:${o.weight || 800} ${o.size || 28}px/1.2 Inter,system-ui,sans-serif;color:${o.color || K.ink};opacity:0;will-change:transform,opacity;text-align:center;` +
+    (o.bg ? `background:${o.bg};border:3px solid ${K.ink};padding:${o.pad || "5px 14px"};box-shadow:5px 5px 0 rgba(26,19,32,.25);` : "text-shadow:2px 2px 0 rgba(255,253,245,.85);");
+  S.text.append(d); return d;
+}
+const put = (d, x, y, a = 1, s = 1, rot = 0) => { d.style.opacity = a; d.style.transform = `translate(${x}px,${y}px) translate(-50%,-50%) scale(${s}) rotate(${rot}deg)`; };
+const putW = (d, t, wx, wy, a = 1, s = 1, rot = 0) => { const p = cam.toScreen(t, wx, wy); put(d, p.x, p.y, a, s * p.s, rot); };
+const pop = (t, a, d = 0.5) => spring(seg(t, a, a + d), 8, 0.55);
+const vis = (t, a, d = 0.15) => clamp((t - a) / d);
+function bot(c, x, y, t, o = {}) {
+  const g = o.grey, body = g ? K.ink100 : (o.col || K.lilac), bl = Math.floor(t * 2.2) % 6 === 0, by = y - (o.bob ? Math.round(Math.abs(Math.sin(t * 7))) : 0);
+  box(c, x - 4, by - 3, 3, 3, K.ink700); box(c, x + 2, by - 3, 3, 3, K.ink700);
+  box(c, x - 5, by - 11, 11, 8, body); px(c, x - 3, by - 9, 7, 1, g ? K.ink300 : K.cream50);
+  const wv = o.work ? Math.round(Math.sin(t * 10)) : 0;
+  box(c, x - 8, by - 10 + wv, 2, 5, body); box(c, x + 7, by - 10 - wv, 2, 5, body);
+  box(c, x - 6, by - 20, 13, 9, body);
+  px(c, x - 4, by - 18, 9, 5, g ? K.ink300 : K.ink700);
+  px(c, x - 3, by - 17, 2, bl ? 1 : 3, g ? K.ink500 : K.mint); px(c, x + 2, by - 17, 2, bl ? 1 : 3, g ? K.ink500 : K.mint);
+  px(c, x, by - 24, 1, 4, K.ink); box(c, x - 1, by - 27, 3, 3, g ? K.ink300 : K.lemon);
+}
+function gear(c, x, y, r, ang, col = K.ink500) {
+  px(c, x - r - 1, y - r - 1, r * 2 + 3, r * 2 + 3, K.ink); px(c, x - r, y - r, r * 2 + 1, r * 2 + 1, col);
+  for (let i = 0; i < 8; i++) { const a = ang + i * Math.PI / 4, tx = x + Math.cos(a) * (r + 2), ty = y + Math.sin(a) * (r + 2); px(c, tx - 1.5, ty - 1.5, 3, 3, K.ink); px(c, tx - 1, ty - 1, 2, 2, col); }
+  px(c, x - 1, y - 1, 3, 3, K.cream50);
+}
+function sparkle(c, x, y, r, col = K.cream50) { px(c, x - r, y, r * 2 + 1, 1, col); px(c, x, y - r, 1, r * 2 + 1, col); px(c, x - 1, y - 1, 3, 3, col); }
+function room(c, x0, wall, floor, w = 332) {
+  px(c, x0 - 8, 0, w + 16, 128, wall);
+  for (let x = x0 - 8; x < x0 + w + 8; x += 24) px(c, x, 0, 12, 128, "rgba(255,255,255,.3)");
+  px(c, x0 - 8, 126, w + 16, 3, K.ink); px(c, x0 - 8, 129, w + 16, 51, floor);
+  for (let y = 138; y < 180; y += 12) px(c, x0 - 8, y, w + 16, 1, "rgba(26,19,32,.12)");
+}
+function motes(c, p, t, seed, f, n, size, a, col = K.cream50) {
+  const r = rng(seed); c.save(); c.translate(p.x * (1 - f), 0); c.globalAlpha = a;
+  for (let i = 0; i < n; i++) { const bx = r() * 1100 - 50, by = r() * 170; px(c, bx + Math.sin(t * 0.5 + i) * 4, (((by - t * (2 + f * 3)) % 180) + 180) % 180, size, size, col); }
+  c.restore(); c.globalAlpha = 1;
+}
+function speedLines(c, cam, t) {
+  const v = Math.abs(cam.at(t + 0.03).x - cam.at(t - 0.03).x) / 0.06, a = clamp((v - 80) / 400); if (a <= 0) return;
+  const r = rng(Math.floor(t * 40) + 7); c.globalAlpha = a * 0.8;
+  for (let i = 0; i < 24; i++) { const y = r() * H, x = r() * W, l = 30 + r() * 90; px(c, x, y, l, 1, i % 3 ? K.cream50 : K.lemon); }
+  c.globalAlpha = 1;
+}
+function bigCoin(c, x, y, k, mark = false, label = null) { c.save(); c.translate(x, y); c.scale(k, k); coin(c, 0, 0, mark); c.restore(); }
+
+const dk = (html, o = {}) => { const d = tag(html, { color: K.cream50, ...o }); if (!o.bg) d.style.textShadow = "0 2px 0 rgba(0,0,0,.45)"; return d; };
+const wHead = new Words(S.text, "A full refund needs more than <i>my word</i>", { x: 0, y: 3, size: 48, w: 320, align: "center", at: s[0].a + 0.1, color: K.cream50, leave: s[1].a + 0.2 });
+const st = document.createElement("style"); st.textContent = "i{color:#F0B96A;font-style:normal}"; document.head.append(st);
+const t1 = dk("Hold", { size: 34 }), t2 = dk("Helper shut down<br>mid-run", { size: 28 }), t3 = dk("Money<br>stays held", { size: 28 });
+const tBtnT = dk("Cancel and refund", { size: 28, color: K.cream50 }), tWord = tag("my word", { size: 26, bg: K.lilacL });
+const tRefuse = tag("My word alone is not evidence.", { size: 32, bg: K.coralL });
+const tCertT = dk("Certifier<br><span style='font-weight:600;font-size:24px'>(independent tester)</span>", { size: 28 });
+const tHelp = dk("Helper", { size: 26 });
+const tFl = dk("Flagged", { size: 30, color: "#D2E7DA" }), tNf = dk("Not flagged", { size: 30, color: "#F6DE9E" });
+const tOutG = dk("Refund everything<br><span style='font-weight:600'>Author earns nothing</span>", { size: 26 });
+const tOutA = dk("Claim rejected<br><span style='font-weight:600'>Author keeps the fee</span>", { size: 26 });
+const tBuy = dk("Buyer", { size: 26 }), tAuth = dk("Author", { size: 26 });
+const tZero = tag("0", { size: 40, bg: K.coralL, color: "#7a2a24", pad: "0 14px" });
+const tFee = tag("small fee", { size: 26, bg: K.lemonL });
+
+function round(c, x, y, r, fill, line = K.ink) {
+  for (let dy = -r - 1; dy <= r + 1; dy++) { const h = Math.round(Math.sqrt(Math.max(0, (r + 1) * (r + 1) - dy * dy))); px(c, x - h, y + dy, h * 2 + 1, 1, line); }
+  for (let dy = -r; dy <= r; dy++) { const h = Math.round(Math.sqrt(Math.max(0, r * r - dy * dy))); px(c, x - h, y + dy, h * 2 + 1, 1, fill); }
+}
+const coinR = (c, x, y, r, spin = 0) => { const k = 0.35 + 0.65 * Math.abs(Math.cos(spin)); c.save(); c.translate(x, y); c.scale(k, 1); round(c, 0, 0, r, K.lemon); round(c, 0, 0, Math.max(1, r - 2), "#EBC15C", "#C08F26"); c.restore(); };
+
+/* a glowing node box */
+function node(c, cx, cy, w, h, col, u, bright = 1) {
+  if (u <= 0) return;
+  c.save(); c.translate(cx, cy); c.scale(u, u); c.globalAlpha = Math.min(1, u * 1.5) * bright;
+  glow(c, 0, 0, Math.max(w, h) * 0.85, col, 0.38);
+  px(c, -w / 2 - 2, -h / 2 - 2, w + 4, h + 4, col); px(c, -w / 2, -h / 2, w, h, "#2A2036"); px(c, -w / 2 + 1, -h / 2 + 1, w - 2, 1, "rgba(255,255,255,.18)");
+  c.restore(); c.globalAlpha = 1;
+}
+/* a line drawn out to u (0..1) along points, with a glow and flowing dots */
+function trace(c, t, pts, u, col, bright = 1, dots = true) {
+  if (u <= 0) return;
+  let total = 0; const segs = []; for (let i = 1; i < pts.length; i++) { const l = Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]); segs.push(l); total += l; }
+  const at = (d) => { let r = d; for (let i = 0; i < segs.length; i++) { if (r <= segs[i]) { const k = r / segs[i]; return [lerp(pts[i][0], pts[i + 1][0], k), lerp(pts[i][1], pts[i + 1][1], k)]; } r -= segs[i]; } return pts[pts.length - 1]; };
+  const L = total * clamp(u);
+  c.globalAlpha = 0.28 * bright; for (let d = 0; d <= L; d += 1) { const p = at(d); px(c, p[0] - 2, p[1] - 2, 5, 5, col); }
+  c.globalAlpha = bright; for (let d = 0; d <= L; d += 1) { const p = at(d); px(c, p[0] - 1, p[1] - 1, 2, 2, col); }
+  if (dots && u >= 1) for (let k = 0; k < Math.floor(total / 14); k++) { const d = ((t * 22 + k * 14) % total); const p = at(d); px(c, p[0] - 1, p[1] - 1, 3, 3, K.cream50); }
+  const e = at(L); px(c, e[0] - 2, e[1] - 2, 4, 4, K.cream50);
+  c.globalAlpha = 1;
+}
+const HAND = ["X.......", "XX......", "XXX.....", "XXXX....", "XXXXX...", "XXXXXX..", "XXXXXXX.", "XXXXX...", "XX.XX...", "X..XX...", "...XX..."];
+function hand(c, x, y, press) {
+  HAND.forEach((row, j) => { for (let i = 0; i < row.length; i++) if (row[i] === "X") px(c, x + i - 1, y + j - 1 + press, 3, 3, K.ink); });
+  HAND.forEach((row, j) => { for (let i = 0; i < row.length; i++) if (row[i] === "X") px(c, x + i, y + j + press, 1, 1, K.cream50); });
+}
+const buf = (u) => spring(u, 8, 0.55);
+
+function boardBack(c, p, t) {
+  c.fillStyle = "#1A1320"; c.fillRect(-300, -300, 1200, 800);
+  for (const [f, col] of [[0.7, "#2B2038"], [1.0, "#3D2E4A"]]) {
+    c.save(); c.translate(p.x * (1 - f), p.y * (1 - f));
+    for (let x = -100; x < 700; x += 12) for (let y = -60; y < 400; y += 12) px(c, x, y, 1, 1, col);
+    c.restore();
+  }
+}
+
+function world(t, p) {
+  boardBack(c, p, t);
+  motes(c, p, t, 5, 0.6, 30, 1, 0.5, "#5a4670");
+  const gOn = t >= tG - 0.1, aOn = t >= tA - 0.1;
+  const gBr = t < tA - 0.1 ? 1 : 0.35, aBr = t < tG ? 0.7 : 1;
+  // the chain: Hold -> shut down -> money stays held
+  const x1 = 66, x2 = 178, x3 = 290, y = 48;
+  node(c, x1, y, 88, 36, K.lemon, buf(seg(t, tN1, tN1 + 0.6)));
+  trace(c, t, [[x1 + 46, y], [x2 - 47, y]], seg(t, tN2 - 0.2, tN2 + 0.4), K.lemonL);
+  node(c, x2, y, 88, 36, K.coral, buf(seg(t, tN2, tN2 + 0.6)));
+  trace(c, t, [[x2 + 46, y], [x3 - 47, y]], seg(t, tN3 - 0.2, tN3 + 0.4), K.coralL);
+  node(c, x3, y, 88, 36, K.sky, buf(seg(t, tN3, tN3 + 0.6)));
+  if (t > tN2 + 0.2) { siren(c, x2 + 36, y - 22, Math.floor(t * 3) % 2 === 0); }
+  // padlock on the held money
+  if (t > tN3 + 0.4) lock(c, x3 + 52, y - 4, false, 0, K.lemon);
+  // the cancel button
+  const bu = buf(seg(t, tBtn, tBtn + 0.5)), bx = 290, by = 102;
+  const fadeBtn = 1 - 0.6 * seg(t, s[3].a + 0.3, s[3].a + 0.8);
+  if (bu > 0 && t < tCert + 1.2) {
+    const press = t > tPress && t < tPress + 0.2 ? 2 : 0, ref = seg(t, tRef, tRef + 0.8);
+    const sh = t > tRef && ref < 1 ? Math.sin(t * 70) * 2.5 * (1 - ref) : 0;
+    c.save(); c.globalAlpha = fadeBtn; c.translate(bx + sh, by + press); c.scale(bu, bu);
+    px(c, -62, -12 + 3 - press, 124, 26, "rgba(0,0,0,.4)"); box(c, -62, -13, 124, 26, K.coral, K.ink); px(c, -60, -11, 120, 2, "#EC8F88");
+    c.restore(); c.globalAlpha = 1;
+    // the hand
+    const hu = seg(t, tBtn + 0.3, tPress), hx = lerp(380, bx + 14, ease.inOut(hu)), hy = lerp(150, by + 4, ease.inOut(hu));
+    const hOut = seg(t, tRef + 0.9, tRef + 1.6);
+    if (t < tRef + 1.7) { c.globalAlpha = 1 - hOut; hand(c, hx + hOut * 40, hy + hOut * 30, press); c.globalAlpha = 1; }
+    if (t > tPress && t < tPress + 0.5) { c.globalAlpha = 1 - seg(t, tPress, tPress + 0.5); const r = 6 + 26 * ease.out(seg(t, tPress, tPress + 0.5)); for (let a = 0; a < 16; a++) px(c, bx + Math.cos(a * 0.3927) * r, by + Math.sin(a * 0.3927) * r * 0.6, 2, 2, K.cream50); c.globalAlpha = 1; }
+    // refused: cracked lock and a red X
+    if (t > tRef) {
+      const ku = buf(seg(t, tRef, tRef + 0.5));
+      c.save(); c.translate(bx - 48 + (t < tRef + 0.7 ? Math.sin(t * 70) * 1.2 : 0), by - 2); c.scale(2.0 * ku, 2.0 * ku); lock(c, 0, -4, false, 1, K.lemon); c.restore();
+      c.save(); c.translate(bx + 52, by - 1); c.scale(ku, ku); c.globalAlpha = Math.min(1, ku);
+      for (let i = -6; i <= 6; i++) { px(c, i - 1, i - 1, 3, 3, K.ink); px(c, i - 1, -i - 1, 3, 3, K.ink); }
+      for (let i = -5; i <= 5; i++) { px(c, i, i, 2, 2, K.coral); px(c, i, -i, 2, 2, K.coral); }
+      c.restore(); c.globalAlpha = 1;
+      burst(c, t, tRef, bx, by, { n: 20, speed: 40, life: 0.8, colors: [K.coral, K.lemon, K.cream50], seed: 21, gravity: 30 });
+    }
+  }
+  // the helper, the certifier, the held money
+  const cu = buf(seg(t, tCert, tCert + 0.6));
+  const helperAt = [212, 150];
+  const pu = buf(seg(t, s[3].a + 0.3, s[3].a + 0.9));
+  if (pu > 0) {
+    glow(c, POT[0], POT[1] - 6, 22, K.lemon, 0.35 * pu);
+    c.save(); c.translate(POT[0], POT[1]); c.scale(pu, pu);
+    box(c, -9, -16, 18, 18, "#CFE5E9"); px(c, -7, -14, 2, 12, "#fff");
+    const rem = t < tG + 1.5 ? 4 : (t < tA + 1.6 ? 4 : 4);
+    for (let i = 0; i < 4; i++) { if (t > tG + 1.2 + i * 0.22 && t < tA) continue; if (t > tA + 1.2 && i >= 1) continue; coinR(c, -4 + (i % 2) * 6, -4 - i * 3, 3); }
+    c.restore();
+  }
+  if (cu > 0) {
+    // helper
+    const flagged = t > tG + 0.4 && t < tA - 0.2;
+    bot(c, helperAt[0], helperAt[1], t, { col: K.lilac });
+    if (flagged) { px(c, helperAt[0] - 6, helperAt[1] - 18, 13, 3, K.ink); }
+    // certifier with a magnifier
+    const ox = (1 - cu) * 60;
+    person(c, CX + ox, CY, { shirt: K.sky, hat: "glasses", skin: "#E0AC82", facing: "l", pose: "idle" }, t * 1000);
+    const su = seg(t, tScan0, tScan1), sw = Math.sin(su * Math.PI);
+    const lx = su > 0 && su < 1 ? lerp(CX - 10, helperAt[0] + 2, smooth(sw)) : CX - 12, ly = su > 0 && su < 1 ? lerp(128, 100, smooth(sw)) : 128;
+    for (let k = 0; k < 8; k++) px(c, lerp(CX - 4, lx + 5, k / 8), lerp(CY - 14, ly + 6, k / 8), 2, 2, K.ink);
+    round(c, lx, ly, 8, "rgba(207,229,233,0.85)"); px(c, lx - 5, ly - 5, 3, 1, K.cream50); px(c, lx - 6, ly - 4, 1, 3, K.cream50);
+    if (su > 0.05 && su < 0.95) {
+      c.globalAlpha = 0.28; c.fillStyle = K.lemonL; c.beginPath(); c.moveTo(lx - 5, ly + 6); c.lineTo(lx + 5, ly + 6); c.lineTo(helperAt[0] + 12, helperAt[1] + 2); c.lineTo(helperAt[0] - 12, helperAt[1] + 2); c.closePath(); c.fill(); c.globalAlpha = 1;
+      const ky = helperAt[1] - 24 + ((t * 26) % 26); px(c, helperAt[0] - 11, ky, 23, 1, K.mint); px(c, helperAt[0] - 11, ky - 1, 23, 1, "rgba(92,169,122,.4)");
+      for (let k = 0; k < 4; k++) { const q = (t * 1.5 + k / 4) % 1; px(c, helperAt[0] - 8 + k * 5, helperAt[1] - 28 - q * 12, 2, 2, K.lemonL); }
+    }
+  }
+  // branches split from the certifier
+  const bu2 = buf(seg(t, tBr, tBr + 0.9));
+  const pathG = [[CX, CY + 8], [CX, 166], [XL, 166], [XL, 178]], pathN = [[CX, CY + 8], [CX, 166], [XR, 166], [XR, 178]];
+  trace(c, t, pathG, bu2, K.mint, gBr, t >= tG);
+  trace(c, t, pathN, bu2, K.lemon, t < tG ? 0.9 : (t < tA ? 0.35 : 1), t >= tA - 0.3);
+  const chipU = buf(seg(t, tBr + 0.5, tBr + 1.1));
+  node(c, XL, 188, 76, 22, K.mint, chipU, gBr);
+  node(c, XR, 188, 88, 22, K.lemon, chipU, t < tA - 0.2 ? (t < tG ? 0.9 : 0.4) : 1);
+  // little helpers by the chips: masked, or clean
+  if (chipU > 0) {
+    c.save(); c.translate(XL - 56, 200); c.scale(0.6 * chipU, 0.6 * chipU); c.globalAlpha = gBr; bot(c, 0, 0, t, { col: K.lilac }); px(c, -6, -18, 13, 3, K.ink); c.restore(); c.globalAlpha = 1;
+    c.save(); c.translate(XR + 62, 200); c.scale(0.6 * chipU, 0.6 * chipU); c.globalAlpha = t < tA - 0.2 ? 0.4 : 1; bot(c, 0, 0, t, { col: K.lilac }); c.restore(); c.globalAlpha = 1;
+  }
+  // outcomes
+  const gu = buf(seg(t, tG + 0.5, tG + 1.1)), au = buf(seg(t, tA + 0.5, tA + 1.1));
+  trace(c, t, [[XL, 199], [XL, 212]], seg(t, tG + 0.2, tG + 0.7), K.mint, gBr);
+  trace(c, t, [[XR, 199], [XR, 212]], seg(t, tA + 0.2, tA + 0.7), K.lemon, 1);
+  node(c, XL, 232, 124, 40, K.mint, gu, gBr);
+  node(c, XR, 232, 124, 40, K.lemon, au, 1);
+  // people
+  const bAct = t > tG + 1.3;
+  person(c, BUYER[0], BUYER[1], { shirt: K.sky, hat: "glasses", skin: "#C68642", facing: "r", pose: bAct && t < tA - 0.3 ? "up" : (t > tA + 2 ? "up" : "idle") }, t * 1000);
+  const authorShow = t > tG + 1.0;
+  if (authorShow) person(c, AUTHOR[0], AUTHOR[1], { ...ME, facing: "l", pose: t > tA + 2.4 ? "up" : "idle" }, t * 1000);
+  // coins flying back to the buyer (flagged)
+  for (let i = 0; i < 5; i++) {
+    const t0 = tG + 1.3 + i * 0.28, u = seg(t, t0, t0 + 0.85);
+    if (u > 0 && u < 1) { const q = arc(POT, [BUYER[0] + 2, BUYER[1] - 26], ease.inOut(u), 38 + i * 4); coinR(c, q.x, q.y, 3, t * 9); if (i < 5) { c.globalAlpha = 0.4; px(c, q.x - 3, q.y + 3, 1, 1, K.lemonL); c.globalAlpha = 1; } }
+    if (u >= 1 && t < tA + 0.2) { const k = (t - t0 - 0.85); if (k < 0.6) burst(c, t, t0 + 0.85, BUYER[0] + 2, BUYER[1] - 26, { n: 8, speed: 20, life: 0.5, colors: [K.lemon, K.cream50, K.mint], seed: 30 + i, gravity: 10 }); }
+  }
+  if (t > tG + 2.8 && t < tA) for (let i = 0; i < 3; i++) sparkle(c, BUYER[0] - 12 + i * 12 + Math.sin(t * 4 + i) * 2, BUYER[1] - 36 - Math.abs(Math.sin(t * 3 + i)) * 4, 1 + Math.round(Math.abs(Math.sin(t * 5 + i * 2)) * 2), K.cream50);
+  // not flagged: one small coin to the author, the rest back to the buyer
+  { const t0 = tA + 1.2, u = seg(t, t0, t0 + 1.0);
+    if (u > 0 && u < 1) { const q = arc(POT, [AUTHOR[0], AUTHOR[1] - 28], ease.inOut(u), 70); coinR(c, q.x, q.y, 3, t * 9); }
+    if (u >= 1) { coinR(c, AUTHOR[0] + 1, AUTHOR[1] - 30 + Math.sin(t * 3) * 1.2, 3); burst(c, t, t0 + 1.0, AUTHOR[0], AUTHOR[1] - 28, { n: 20, speed: 40, life: 0.9, colors: [K.lemon, K.cream50, K.mint, K.coral], seed: 41, gravity: 30 }); }
+    for (let i = 0; i < 3; i++) { const tb = tA + 1.5 + i * 0.3, ub = seg(t, tb, tb + 0.85); if (ub > 0 && ub < 1) { const q = arc(POT, [BUYER[0] + 2, BUYER[1] - 26], ease.inOut(ub), 40); coinR(c, q.x, q.y, 3, t * 9); } }
+  }
+  return { gu, au, chipU };
+}
+
+window.seek = (t) => {
+  const p = cam.at(t);
+  let info; cam.apply(c, t, () => { info = world(t, p); });
+  vignette(c, 0.35);
+  fade(c, seg(t, 0, 0.3));
+  wHead.update(t);
+  const at = (el, x, y, u, a = 1, k = 1) => putW(el, t, x, y, clamp(u * 2) * a, Math.max(0.01, u) * k);
+  const x1 = 66, x2 = 178, x3 = 290, y = 48;
+  at(t1, x1, y, buf(seg(t, tN1 + 0.1, tN1 + 0.6)));
+  at(t2, x2, y, buf(seg(t, tN2 + 0.1, tN2 + 0.6)));
+  at(t3, x3, y, buf(seg(t, tN3 + 0.1, tN3 + 0.6)));
+  const bu = buf(seg(t, tBtn, tBtn + 0.5)), press = t > tPress && t < tPress + 0.2 ? 2 : 0, ref = seg(t, tRef, tRef + 0.8);
+  const sh = t > tRef && ref < 1 ? Math.sin(t * 70) * 2.5 * (1 - ref) : 0;
+  const fadeBtn = (1 - 0.6 * seg(t, s[3].a + 0.3, s[3].a + 0.8)) * (1 - seg(t, tCert + 0.3, tCert + 0.8));
+  at(tBtnT, 302 + sh, 102 + press, bu, fadeBtn * (t > tRef ? 0.35 : 1));
+  at(tWord, 320, 80, buf(seg(t, tBtn + 0.4, tBtn + 0.9)), fadeBtn);
+  at(tRefuse, 290, 136, buf(seg(t, tRef + 0.3, tRef + 0.8)), 1 - seg(t, s[3].a + 0.2, s[3].a + 0.6));
+  at(tCertT, CX, 176 + 0, buf(seg(t, tCert + 0.3, tCert + 0.8)), 1 - seg(t, tBr - 0.3, tBr + 0.2));
+  at(tHelp, 212, 162, buf(seg(t, tCert + 0.3, tCert + 0.8)), 1 - seg(t, tBr - 0.3, tBr + 0.2));
+  at(tFl, XL, 188, info.chipU, t < tA - 0.2 ? 1 : 0.5);
+  at(tNf, XR, 188, info.chipU, t < tG ? 0.95 : (t < tA - 0.2 ? 0.45 : 1));
+  at(tOutG, XL, 232, info.gu, t < tA - 0.1 ? 1 : 0.5);
+  at(tOutA, XR, 232, info.au);
+  const bvis = buf(seg(t, tG + 0.9, tG + 1.4)) ;
+  at(tBuy, BUYER[0] + 28, BUYER[1] - 12, bvis);
+  at(tAuth, AUTHOR[0] - 30, AUTHOR[1] - 12, buf(seg(t, tG + 1.0, tG + 1.5)));
+  at(tZero, AUTHOR[0] - 8, AUTHOR[1] - 44, buf(seg(t, tG + 2.4, tG + 2.9)), 1 - seg(t, tA - 0.4, tA));
+};
+window.ready = true;
+</script>

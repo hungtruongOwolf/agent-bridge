@@ -1,93 +1,303 @@
 <!doctype html>
 <meta charset="utf-8">
-<title>p08 When an agent cheats</title>
+<title>p08 A market for agents</title>
 <body>
 <script type="module">
-import { stage, fontFace, K, seg, ease, DUR, clamp, lerp } from "./lib.js";
+import { stage, label, fontFace, person, K, seg, ease, lerp, clamp, px, box, coin, lock, paper, folder, laptop, mask, siren, thumbDown, DUR, W, H, SCALE, fade, ME, AGENT, GUARD, arc } from "./lib.js";
+import { sentenceTimes, Camera, spring, burst, flow, Words, glow, vignette, bar, rng, out5, inOut5, smooth } from "./fx.js";
 fontFace();
-const S = stage(), root = S.root;
-S.c.canvas.style.opacity = 0;                    // this scene is a diagram: no pixel world, just boxes and arrows
-document.body.style.background = "#FFF8E7";
-const T = (s) => (s / 13) * DUR;
-const NS = "http://www.w3.org/2000/svg";
-const svg = document.createElementNS(NS, "svg");
-svg.setAttribute("width", 1280); svg.setAttribute("height", 720);
-svg.style.cssText = "position:absolute;inset:0";
-root.append(svg);
-const els = {};
-function node(id, x, y, w, h, html, { fill = K.cream50, color = K.ink, big = false } = {}) {
-  const d = document.createElement("div");
-  d.innerHTML = html;
-  d.style.cssText = `position:absolute;left:${x}px;top:${y}px;width:${w}px;height:${h}px;box-sizing:border-box;border:4px solid ${K.ink};background:${fill};color:${color};box-shadow:6px 6px 0 rgba(26,19,32,.2);display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:10px 16px;font:700 ${big ? 26 : 22}px/1.3 Inter,system-ui,sans-serif;opacity:0`;
-  root.append(d);
-  els[id] = { d, x, y, w, h };
+const VO = "That's what a market for agents needs. A builder gets paid per job, even when the agent runs on someone else's machine. I set the ceiling, the price follows the work, a bad result costs a small fee, and a proven cheat costs nothing. Anyone with a good agent can sell it, and anyone can hire one without trusting a stranger. That's agent-bridge, on PayPal, with test money.";
+const s = sentenceTimes(VO, DUR);
+const a2 = s[2].a, aM = s[3].a, tE = DUR - 3.05;
+const tCeil = a2 + 0.2, tPrice = a2 + 1.5, tRel = tPrice + 1.5, tBad = a2 + 3.7, tCheat = a2 + 5.3;
+const cb = document.createElement("canvas"); cb.width = W; cb.height = H;
+const bc = cb.getContext("2d"); bc.imageSmoothingEnabled = false;
+const camB = new Camera([
+  { t: 0, x: 160, y: 92, zoom: 1.0 }, { t: a2 - 0.15, x: 160, y: 92, zoom: 1.0 }, { t: a2 + 0.7, x: 505, y: 62, zoom: 1.0 },
+  { t: tBad - 0.3, x: 505, y: 62, zoom: 1.0 }, { t: tBad + 0.6, x: 500, y: 88, zoom: 1.04 },
+  { t: tCheat - 0.3, x: 500, y: 88, zoom: 1.04 }, { t: tCheat + 0.6, x: 505, y: 92, zoom: 1.0 },
+]);
+const camM = new Camera([
+  { t: 0, x: 70, y: 80, zoom: 1.75 }, { t: aM - 0.2, x: 70, y: 80, zoom: 1.75 }, { t: aM + 2.0, x: 160, y: 96, zoom: 1.0 }, { t: DUR, x: 165, y: 96, zoom: 0.97 },
+]);
+const S = stage(), c = S.c;
+function tag(html, o = {}) {
+  const d = document.createElement("div"); d.innerHTML = html;
+  d.style.cssText = `position:absolute;left:0;top:0;white-space:nowrap;font:${o.weight || 800} ${o.size || 28}px/1.2 Inter,system-ui,sans-serif;color:${o.color || K.ink};opacity:0;will-change:transform,opacity;text-align:center;` +
+    (o.bg ? `background:${o.bg};border:3px solid ${K.ink};padding:${o.pad || "5px 14px"};box-shadow:5px 5px 0 rgba(26,19,32,.25);` : "text-shadow:2px 2px 0 rgba(255,253,245,.85);");
+  S.text.append(d); return d;
 }
-function arrow(id, x1, y1, x2, y2, col = K.ink, dash = false) {
-  const len = Math.hypot(x2 - x1, y2 - y1);
-  const g = document.createElementNS(NS, "g");
-  const l = document.createElementNS(NS, "line");
-  l.setAttribute("x1", x1); l.setAttribute("y1", y1); l.setAttribute("x2", x2); l.setAttribute("y2", y2);
-  l.setAttribute("stroke", col); l.setAttribute("stroke-width", 5); l.setAttribute("stroke-linecap", "round");
-  if (dash) l.setAttribute("stroke-dasharray", "12 10");
-  const a = Math.atan2(y2 - y1, x2 - x1), hx = x2, hy = y2;
-  const head = document.createElementNS(NS, "path");
-  head.setAttribute("d", `M${hx},${hy} L${hx - 18 * Math.cos(a - 0.45)},${hy - 18 * Math.sin(a - 0.45)} L${hx - 18 * Math.cos(a + 0.45)},${hy - 18 * Math.sin(a + 0.45)} Z`);
-  head.setAttribute("fill", col);
-  g.append(l, head); svg.append(g);
-  els[id] = { g, l, head, len, dash };
+const put = (d, x, y, a = 1, s = 1, rot = 0) => { d.style.opacity = a; d.style.transform = `translate(${x}px,${y}px) translate(-50%,-50%) scale(${s}) rotate(${rot}deg)`; };
+const putW = (d, t, wx, wy, a = 1, s = 1, rot = 0) => { const p = cam.toScreen(t, wx, wy); put(d, p.x, p.y, a, s * p.s, rot); };
+const pop = (t, a, d = 0.5) => spring(seg(t, a, a + d), 8, 0.55);
+const vis = (t, a, d = 0.15) => clamp((t - a) / d);
+function bot(c, x, y, t, o = {}) {
+  const g = o.grey, body = g ? K.ink100 : (o.col || K.lilac), bl = Math.floor(t * 2.2) % 6 === 0, by = y - (o.bob ? Math.round(Math.abs(Math.sin(t * 7))) : 0);
+  box(c, x - 4, by - 3, 3, 3, K.ink700); box(c, x + 2, by - 3, 3, 3, K.ink700);
+  box(c, x - 5, by - 11, 11, 8, body); px(c, x - 3, by - 9, 7, 1, g ? K.ink300 : K.cream50);
+  const wv = o.work ? Math.round(Math.sin(t * 10)) : 0;
+  box(c, x - 8, by - 10 + wv, 2, 5, body); box(c, x + 7, by - 10 - wv, 2, 5, body);
+  box(c, x - 6, by - 20, 13, 9, body);
+  px(c, x - 4, by - 18, 9, 5, g ? K.ink300 : K.ink700);
+  px(c, x - 3, by - 17, 2, bl ? 1 : 3, g ? K.ink500 : K.mint); px(c, x + 2, by - 17, 2, bl ? 1 : 3, g ? K.ink500 : K.mint);
+  px(c, x, by - 24, 1, 4, K.ink); box(c, x - 1, by - 27, 3, 3, g ? K.ink300 : K.lemon);
 }
-function txt(id, x, y, html, size, color, weight = 800, w = 1200) {
-  const d = document.createElement("div");
-  d.innerHTML = html;
-  d.style.cssText = `position:absolute;left:${x}px;top:${y}px;width:${w}px;font:${weight} ${size}px/1.3 Inter,system-ui,sans-serif;color:${color};opacity:0`;
-  root.append(d); els[id] = { d, x, y };
+function gear(c, x, y, r, ang, col = K.ink500) {
+  px(c, x - r - 1, y - r - 1, r * 2 + 3, r * 2 + 3, K.ink); px(c, x - r, y - r, r * 2 + 1, r * 2 + 1, col);
+  for (let i = 0; i < 8; i++) { const a = ang + i * Math.PI / 4, tx = x + Math.cos(a) * (r + 2), ty = y + Math.sin(a) * (r + 2); px(c, tx - 1.5, ty - 1.5, 3, 3, K.ink); px(c, tx - 1, ty - 1, 2, 2, col); }
+  px(c, x - 1, y - 1, 3, 3, K.cream50);
 }
-txt("title", 60, 36, "When an agent cheats", 36, K.ink, 800);
-node("A", 60, 130, 300, 110, "The answer arrives");
-node("B", 490, 130, 300, 110, "The run is stopped:<br><span style='font-weight:500;font-size:19px'>it tried to take a file</span>", { fill: K.coralL });
-node("C", 920, 130, 300, 110, "The money is held", { fill: K.lemonL });
-arrow("a1", 360, 185, 480, 185); arrow("a2", 790, 185, 910, 185);
-node("cancel", 90, 360, 330, 90, "Cancel the payment", { fill: K.cream100 });
-node("refuse", 90, 480, 330, 130, "Refused.<br><span style='font-weight:500;font-size:19px'>My word alone is not evidence.</span>", { fill: K.coralL, color: "#7a2a24" });
-arrow("a3", 1000, 242, 420, 345, K.ink, true);
-node("test", 620, 340, 360, 130, "Independent testers<br><span style='font-weight:500;font-size:19px'>already reproduced this exact cheating</span>", { fill: K.skyL });
-arrow("a4", 1070, 242, 800, 330, K.sky);
-node("refund", 520, 540, 330, 100, "Refunded to you", { fill: K.mintL, big: true });
-node("zero", 900, 540, 330, 100, "Author earns nothing", { fill: K.coralL, big: true });
-arrow("a5", 760, 472, 700, 528, K.mint); arrow("a6", 880, 472, 1020, 528, K.coral);
-txt("cap", 60, 664, "A claim holds the money. Evidence decides.", 28, K.ink700, 800);
+function sparkle(c, x, y, r, col = K.cream50) { px(c, x - r, y, r * 2 + 1, 1, col); px(c, x, y - r, 1, r * 2 + 1, col); px(c, x - 1, y - 1, 3, 3, col); }
+function room(c, x0, wall, floor, w = 332) {
+  px(c, x0 - 8, 0, w + 16, 128, wall);
+  for (let x = x0 - 8; x < x0 + w + 8; x += 24) px(c, x, 0, 12, 128, "rgba(255,255,255,.3)");
+  px(c, x0 - 8, 126, w + 16, 3, K.ink); px(c, x0 - 8, 129, w + 16, 51, floor);
+  for (let y = 138; y < 180; y += 12) px(c, x0 - 8, y, w + 16, 1, "rgba(26,19,32,.12)");
+}
+function motes(c, p, t, seed, f, n, size, a, col = K.cream50) {
+  const r = rng(seed); c.save(); c.translate(p.x * (1 - f), 0); c.globalAlpha = a;
+  for (let i = 0; i < n; i++) { const bx = r() * 1100 - 50, by = r() * 170; px(c, bx + Math.sin(t * 0.5 + i) * 4, (((by - t * (2 + f * 3)) % 180) + 180) % 180, size, size, col); }
+  c.restore(); c.globalAlpha = 1;
+}
+function speedLines(c, cam, t) {
+  const v = Math.abs(cam.at(t + 0.03).x - cam.at(t - 0.03).x) / 0.06, a = clamp((v - 80) / 400); if (a <= 0) return;
+  const r = rng(Math.floor(t * 40) + 7); c.globalAlpha = a * 0.8;
+  for (let i = 0; i < 24; i++) { const y = r() * H, x = r() * W, l = 30 + r() * 90; px(c, x, y, l, 1, i % 3 ? K.cream50 : K.lemon); }
+  c.globalAlpha = 1;
+}
+function bigCoin(c, x, y, k, mark = false, label = null) { c.save(); c.translate(x, y); c.scale(k, k); coin(c, 0, 0, mark); c.restore(); }
 
-// a small cursor that tries to press "Cancel"
-const cur = document.createElement("div");
-cur.style.cssText = "position:absolute;width:0;height:0;border-left:16px solid #1A1320;border-top:10px solid transparent;border-bottom:10px solid transparent;transform:rotate(-30deg);opacity:0";
-root.append(cur);
+const stl = document.createElement("style"); stl.textContent = "i{color:#D96A62;font-style:normal}"; document.head.append(stl);
+const kk = () => 1;
+// the cream board shrinks and dissolves as the camera pulls back to the market
+const panelK = (t) => 1 - 0.3 * ease.inOut(seg(t, aM - 0.1, aM + 1.1));
+const panelA = (t) => 1 - ease.inOut(seg(t, aM - 0.1, aM + 1.0));
+const putB = (d, t, wx, wy, a = 1, s_ = 1, rot = 0) => { const p = camB.toScreen(t, wx, wy), k = panelK(t); put(d, 640 + (p.x - 640) * k, 360 + (p.y - 360) * k, a * panelA(t), s_ * p.s * k, rot); };
+const putM = (d, t, wx, wy, a = 1, s_ = 1, rot = 0) => { const p = camM.toScreen(t, wx, wy); put(d, p.x, p.y, a, s_, rot); };
+const B = (u) => spring(u, 8, 0.55);
 
-const show = (e, u) => { e.d.style.opacity = u; e.d.style.transform = `translateY(${(1 - u) * 14}px)`; };
-const draw = (e, u) => { e.l.setAttribute("stroke-opacity", u > 0 ? 1 : 0); e.head.setAttribute("fill-opacity", u >= 1 ? 1 : 0); const len = e.len; if (!e.dash) { e.l.setAttribute("stroke-dasharray", `${len}`); e.l.setAttribute("stroke-dashoffset", len * (1 - u)); } else { e.l.setAttribute("stroke-opacity", u); } };
+const wTitle = new Words(S.text, "What a market for <i>agents</i> needs", { x: 0, y: 3, size: 54, w: 320, align: "center", at: s[0].a + 0.1, leave: s[1].a + 0.4 });
+const wMarket = new Words(S.text, "Anyone can <i>sell</i>. Anyone can <i>hire</i>.", { x: 0, y: 3, size: 50, w: 320, align: "center", at: aM + 0.6, leave: tE - 0.1 });
+const tPaid = tag("Paid per job", { size: 32, bg: K.lemonL });
+const tBuilder = tag("Builder", { size: 26 }), tMachine = tag("Someone else's machine", { size: 26, bg: K.skyL });
+const tCeilT = tag("I set the ceiling", { size: 28, bg: K.lemonL }), t40 = tag("40¢", { size: 36 });
+const t25 = tag("25¢", { size: 36, color: K.cream50 }); t25.style.textShadow = "2px 2px 0 rgba(26,19,32,.4)";
+const tFollow = tag("The price follows the work", { size: 28, bg: K.skyL }), t15 = tag("15¢ back to buyer", { size: 28, bg: K.mintL });
+const tBadT = tag("A bad result: small fee only", { size: 28, bg: K.coralL });
+const tCheatT = tag("Proven cheat: nothing", { size: 28, bg: K.coralL }), tZero = tag("0", { size: 56, bg: K.coralL, color: "#7a2a24", pad: "0 18px" });
+const stalls = [{ x: 45, p: "20¢", tr: 94, a: K.coral }, { x: 125, p: "25¢", tr: 88, a: K.sky }, { x: 205, p: "30¢", tr: 97, a: K.mint }, { x: 285, p: "15¢", tr: 81, a: K.lilac }];
+const chips = stalls.map((st) => tag(`${st.p}<br><span style="font-size:24px;font-weight:700">Trust ${st.tr}</span>`, { size: 28, bg: K.cream50, pad: "3px 10px" }));
+const tAuthor = tag("Author", { size: 26 }), tPaidOut = tag("Payout", { size: 28, bg: K.mintL });
+const tTest = tag("Practice server that copies PayPal's API. Test money.", { size: 26, bg: K.cream50 });
+
+/* end card */
+const card = document.createElement("div");
+card.style.cssText = "position:absolute;inset:0;background:#FFF8E7;opacity:0;will-change:transform";
+S.text.append(card);
+const dots = document.createElement("div"); dots.style.cssText = "position:absolute;inset:0;background-image:radial-gradient(#E8D9A0 2px,transparent 2px);background-size:32px 32px;opacity:.7"; card.append(dots);
+const wordmark = tag("agent-bridge", { size: 72, bg: K.lemonL, pad: "22px 40px" }); wordmark.style.fontFamily = '"Press Start 2P",monospace'; wordmark.style.fontWeight = 400; wordmark.style.lineHeight = 1.2;
+const tLine = tag("Money committed first, settled by what the run did.", { size: 40, weight: 800 });
+const badges = [["PayPal", K.cream50], ["NVIDIA Nemotron", K.lilacL], ["Nebius", K.skyL], ["MIT", K.mintL]].map(([txt, bg]) => tag(txt, { size: 32, bg }));
+const tTest2 = tag("Practice server. Test money.", { size: 32, bg: K.lemonL });
+const row = document.createElement("div"); row.style.cssText = "position:absolute;left:0;top:450px;width:1280px;display:flex;justify-content:center;gap:26px;transform:translateY(-50%)";
+badges.forEach((b) => { b.style.position = "relative"; row.append(b); });
+[wordmark, tLine, row, tTest2].forEach((d) => S.text.append(d));
+S.text.append(tTest);
+
+/* ---------- the board (an offscreen picture) ---------- */
+function ledger(g, p, t) {
+  g.fillStyle = "#FFF8E7"; g.fillRect(-400, -300, 1700, 800);
+  for (let x = -160; x < 1100; x += 16) px(g, x, -200, 1, 700, "#F4E9C7");
+  for (let y = -200; y < 500; y += 16) px(g, -160, y, 1300, 1, "#F4E9C7");
+  motes(g, p, t, 8, 0.7, 30, 1, 0.5, "#E8D9A0");
+}
+function round(c, x, y, r, fill, line = K.ink) {
+  for (let dy = -r - 1; dy <= r + 1; dy++) { const h = Math.round(Math.sqrt(Math.max(0, (r + 1) * (r + 1) - dy * dy))); px(c, x - h, y + dy, h * 2 + 1, 1, line); }
+  for (let dy = -r; dy <= r; dy++) { const h = Math.round(Math.sqrt(Math.max(0, r * r - dy * dy))); px(c, x - h, y + dy, h * 2 + 1, 1, fill); }
+}
+const coinR = (c, x, y, r, spin = 0) => { const k = 0.35 + 0.65 * Math.abs(Math.cos(spin)); c.save(); c.translate(x, y); c.scale(k, 1); round(c, 0, 0, r, K.lemon); round(c, 0, 0, Math.max(1, r - 2), "#EBC15C", "#C08F26"); c.restore(); };
+const JOBS = [s[1].a + 1.0, s[1].a + 2.3, s[1].a + 3.6];
+
+function boardWorld(g, t, p) {
+  ledger(g, p, t);
+  // intro: builder, agent, buyer pop in
+  const ip = (i) => B(seg(t, s[0].a + 0.5 + i * 0.35, s[0].a + 1.1 + i * 0.35));
+  // builder at left, remote machine at right
+  const bu = ip(0);
+  g.save(); g.translate(60, 140); g.scale(bu, bu); const reach = JOBS.some((j) => t > j + 0.9 && t < j + 1.5);
+  person(g, 0, 0, { ...ME, facing: "r", pose: reach ? "up" : "idle" }, t * 1000); g.restore();
+  // the far machine
+  const lu = ip(1);
+  g.save(); g.translate(250, 140); g.scale(lu, lu); g.translate(-250, -140);
+  box(g, 208, 132, 84, 8, K.woodD); px(g, 208, 132, 84, 2, K.wood); px(g, 214, 140, 4, 10, K.woodD); px(g, 282, 140, 4, 10, K.woodD);
+  const sc = laptop(g, 215, 82, 70, 46, K.cream50);
+  gear(g, 230, 96, 4, t * 2.4, K.ink300); gear(g, 241, 90, 3, -t * 3.2, K.lilac);
+  g.save(); g.translate(266, 124); g.scale(0.85, 0.85); bot(g, 0, 0, t, { col: K.lilac, work: t > s[1].a }); g.restore();
+  g.restore();
+  // the path between them, and the coins for each job
+  if (t > s[1].a + 0.3) flow(g, t, [96, 118], [206, 112], { col: K.sky, dots: 9, speed: 0.4, arcLift: 14 });
+  JOBS.forEach((j, i) => {
+    const u = seg(t, j, j + 1.0);
+    if (u > 0 && u < 1) { const q = arc([250, 98], [70, 108], ease.inOut(u), 46); glow(g, q.x, q.y, 8, K.lemon, 0.5); coinR(g, q.x, q.y, 4, t * 9); }
+    if (u >= 1) { coinR(g, 30 + i * 14, 108 - Math.abs(Math.sin(t * 3 + i)) * 2, 4); burst(g, t, j + 1.0, 70, 108, { n: 14, speed: 30, life: 0.7, colors: [K.lemon, K.cream50, K.mint], seed: 50 + i, gravity: 20 }); }
+  });
+  // the bars
+  const cu = ease.out(seg(t, tCeil, tCeil + 0.8));
+  const bx = 360, by = 40, bw = 240, bh = 22, U = 6;
+  if (cu > 0) {
+    px(g, bx - 2, by - 2, Math.round(bw * cu) + 4, bh + 4, K.ink); px(g, bx, by, Math.round(bw * cu), bh, K.cream300);
+    for (let x = bx + 6 * 5; x < bx + bw * cu; x += 6 * 5) px(g, x, by + bh - 4, 1, 4, K.ink300);
+    const fl = B(seg(t, tCeil + 0.5, tCeil + 1.1));
+    px(g, bx + bw, by - 12 * fl, 2, 12 * fl + bh + 12 * fl, K.coral); px(g, bx + bw + 2, by - 12 * fl, 10 * fl, 6 * fl, K.coral);
+  }
+  const fu = out5(seg(t, tPrice, tPrice + 1.3));
+  if (fu > 0) {
+    const w = Math.round(25 * U * fu);
+    px(g, bx, by, w, bh, K.mint); px(g, bx, by, w, 3, "#7BC096");
+    const sx = bx + ((t * 90) % (25 * U)); if (fu >= 1) px(g, sx, by, 5, bh, "rgba(255,255,255,.25)");
+  }
+  // the rest of the ceiling is let go as coins
+  const rest = seg(t, tRel, tRel + 0.4);
+  if (cu >= 1 && fu > 0) {
+    const x0 = bx + 25 * U, w = 15 * U;
+    if (fu >= 1) { g.globalAlpha = 0.9 * (1 - rest * 0.8); for (let i = 0; i < w; i += 6) px(g, x0 + i, by, 3, bh, "#F3E4BC"); g.globalAlpha = 1; }
+    // pop the coins
+    for (let i = 0; i < 5; i++) {
+      const t0 = tRel + i * 0.2, u = seg(t, t0, t0 + 0.9);
+      if (u > 0 && u < 1) { const q = arc([x0 + 8 + i * 17, by + 11], [638, 66], ease.inOut(u), 30 + i * 3); coinR(g, q.x, q.y, 3, t * 10); }
+      if (u >= 1) burst(g, t, t0 + 0.9, 638, 66, { n: 6, speed: 20, life: 0.5, colors: [K.lemon, K.cream50], seed: 60 + i, gravity: 10 });
+    }
+  }
+  // the buyer next to the bar
+  if (cu > 0.4) { const gotBack = t > tRel + 1.0; person(g, 640, 84, { shirt: K.sky, hat: "glasses", skin: "#C68642", facing: "l", pose: gotBack ? "up" : "idle" }, t * 1000); if (gotBack && t < tRel + 3.8) sparkle(g, 648 + Math.sin(t * 6) * 5, 52 - Math.abs(Math.sin(t * 5)) * 4, 2 + Math.round(Math.abs(Math.sin(t * 4)) * 2), K.lemon); }
+  // second bar: a small fee only
+  const b2 = ease.out(seg(t, tBad, tBad + 0.6)), y2 = 110, w2 = 160;
+  if (b2 > 0) {
+    px(g, bx - 2, y2 - 2, Math.round(w2 * b2) + 4, 18, K.ink); px(g, bx, y2, Math.round(w2 * b2), 14, K.cream300);
+    const f2 = out5(seg(t, tBad + 0.5, tBad + 1.2));
+    px(g, bx, y2, Math.round(18 * f2), 14, K.coral); px(g, bx, y2, Math.round(18 * f2), 2, "#EC8F88");
+  }
+  // a proven cheat: crossed out, and a red zero
+  const ch = seg(t, tCheat, tCheat + 0.5);
+  if (ch > 0) {
+    const k = B(ch);
+    g.save(); g.translate(590, 130 + (1 - Math.min(1, ch)) * -30); g.scale(1.7 * k, 1.7 * k); bot(g, 0, 0, t, { col: K.ink500 }); px(g, -6, -19, 13, 3, K.ink); px(g, -5, -3, 11, 2, K.ink); g.restore();
+    const xu = out5(seg(t, tCheat + 0.5, tCheat + 0.9));
+    g.save(); g.translate(590, 108); g.globalAlpha = 0.9;
+    for (let i = -14; i <= 14; i++) { if (Math.abs(i) > 14 * xu) continue; px(g, i - 1, i * 1.1 - 1, 3, 3, K.coral); px(g, i - 1, -i * 1.1 - 1, 3, 3, K.coral); }
+    g.restore(); g.globalAlpha = 1;
+    burst(g, t, tCheat + 0.5, 590, 108, { n: 18, speed: 40, life: 0.8, colors: [K.coral, K.coralL, K.ink300], seed: 70, gravity: 30 });
+  }
+}
+
+/* ---------- the market ---------- */
+function stall(c, st, t, i) {
+  const x = st.x, cho = chosen(i, t);
+  const hop = cho > 0 ? Math.abs(Math.sin(cho * Math.PI * 2)) * 3 * (1 - cho) : 0;
+  glow(c, x, 66, 40, K.lemon, 0.35 * Math.min(1, (cho > 0 ? 1 - cho : 0) * 2));
+  px(c, x - 31, 44, 2, 36, K.ink700); px(c, x + 29, 44, 2, 36, K.ink700);
+  bot(c, x, 78 - hop, t, { col: [K.lilac, K.sky, K.mint, K.peach][i], work: false });
+  box(c, x - 32, 74, 64, 8, K.woodD); px(c, x - 32, 74, 64, 2, K.wood);
+  for (let k = 0; k < 6; k++) { px(c, x - 34 + k * 11, 34, 11, 12, k % 2 ? K.cream50 : st.a); px(c, x - 34 + k * 11, 46, 11, 3, k % 2 ? K.cream50 : st.a); px(c, x - 34 + k * 11, 49, 5, 2, k % 2 ? K.cream50 : st.a); }
+  px(c, x - 35, 33, 70, 1, K.ink); px(c, x - 35, 33, 1, 18, K.ink); px(c, x + 34, 33, 1, 18, K.ink);
+}
+const BUYERS = [
+  { stall: 0, c: K.coral, hair: "#8A5A2B", pts: [[aM + 0.1, -30, 140], [aM + 1.2, 45, 112], [aM + 2.3, 45, 112], [aM + 3.7, -40, 150]], coin: aM + 1.6 },
+  { stall: 2, c: K.mint, hair: "#3B2A20", pts: [[aM + 0.7, 350, 150], [aM + 1.8, 205, 114], [aM + 2.8, 205, 114], [aM + 4.4, 350, 142]], coin: aM + 2.2 },
+  { stall: 1, c: K.lilac, hair: "#1A1320", pts: [[aM + 1.4, -30, 154], [aM + 2.7, 125, 118], [aM + 3.8, 125, 118], [aM + 5.4, 360, 160]], coin: aM + 3.1 },
+  { stall: 3, c: K.peach, hair: "#C9A66B", pts: [[aM + 2.1, 300, 195], [aM + 3.3, 285, 114], [aM + 4.4, 285, 114], [aM + 6.2, 400, 150]], coin: aM + 3.8 },
+];
+function chosen(i, t) { const b = BUYERS.find((q) => q.stall === i); const u = (t - b.coin - 0.7) / 1.0; return u > 0 && u < 1 ? u : 0; }
+function buyerPos(b, t) {
+  const P = b.pts; if (t <= P[0][0]) return null;
+  for (let i = 1; i < P.length; i++) if (t <= P[i][0]) { const u = (t - P[i - 1][0]) / (P[i][0] - P[i - 1][0]); const moving = !(P[i][1] === P[i - 1][1] && P[i][2] === P[i - 1][2]); return { x: lerp(P[i - 1][1], P[i][1], smooth(u)), y: lerp(P[i - 1][2], P[i][2], smooth(u)), moving, dir: P[i][1] - P[i - 1][1] }; }
+  return null;
+}
+function marketWorld(t, p) {
+  // sky and far stalls (slow layer)
+  c.fillStyle = "#CFE5E9"; c.fillRect(-300, -300, 1200, 400);
+  c.save(); c.translate(p.x * 0.4, p.y * 0.25);
+  for (let x = -120; x < 520; x += 50) { c.fillStyle = "#BAD4D8"; c.fillRect(x, 16, 36, 28); c.fillStyle = x % 100 ? "#E8B0AA" : "#A8CDB7"; c.fillRect(x - 3, 10, 42, 9); }
+  c.restore();
+  // pavement
+  px(c, -300, 84, 1200, 400, K.path);
+  for (let y = 90; y < 220; y += 14) for (let x = (y / 14) % 2 ? 0 : 10; x < 360; x += 20) px(c, x - 60, y, 19, 1, "rgba(26,19,32,.1)");
+  px(c, -300, 82, 1200, 2, K.ink);
+  stalls.forEach((st, i) => stall(c, st, t, i));
+  // coins from buyers to stalls
+  BUYERS.forEach((b) => {
+    const pos = buyerPos(b, t) || (t > b.pts[b.pts.length - 1][0] ? null : null);
+    const u = seg(t, b.coin, b.coin + 0.7), st = stalls[b.stall];
+    if (u > 0 && u < 1) { const q = arc([st.x + (b.pts[1][1] === st.x ? 6 : 6), 100], [st.x, 76], ease.inOut(u), 26); coinR(c, q.x, q.y, 3, t * 10); }
+    if (u >= 1) burst(c, t, b.coin + 0.7, st.x, 76, { n: 12, speed: 26, life: 0.6, colors: [K.lemon, K.cream50, K.mint], seed: 80 + b.stall, gravity: 10 });
+  });
+  // payouts to the author
+  const A = [300, 146];
+  [[aM + 3.4, stalls[0].x, 4.0], [aM + 4.4, stalls[2].x, 3.0]].forEach(([t0, sx], k) => {
+    const u = seg(t, t0, t0 + 1.0);
+    if (u > 0 && u < 1) { const q = arc([sx, 74], [A[0] - 4, A[1] - 30], ease.inOut(u), 56); glow(c, q.x, q.y, 9, K.lemon, 0.5); coinR(c, q.x, q.y, 3, t * 10); }
+    if (u >= 1 && t < t0 + 2.2) { burst(c, t, t0 + 1.0, A[0] - 4, A[1] - 30, { n: 22, speed: 44, life: 1.0, colors: [K.lemon, K.cream50, K.mint, K.coral, K.sky], seed: 90 + k, gravity: 25 }); }
+  });
+  const hopA = [aM + 4.4, aM + 5.4].some((q) => t > q && t < q + 0.5) ? -Math.abs(Math.sin((t) * 14)) * 3 : 0;
+  if (t > aM + 0.5) person(c, A[0], A[1] + hopA, { ...ME, facing: "l", pose: t > aM + 4.3 ? "up" : "idle" }, t * 1000);
+  if (t > aM + 4.4) for (let i = 0; i < 3; i++) sparkle(c, A[0] - 14 + i * 14 + Math.sin(t * 4 + i) * 2, A[1] - 38 - Math.abs(Math.sin(t * 3 + i)) * 4, 1 + Math.round(Math.abs(Math.sin(t * 5 + i * 2)) * 2), K.cream50);
+  // buyers
+  const draw = [];
+  BUYERS.forEach((b) => { const q = buyerPos(b, t); if (q) draw.push({ y: q.y, f: () => person(c, q.x, q.y, { shirt: b.c, hat: ["glasses", "cap", "visor", "headset"][BUYERS.indexOf(b)], skin: ["#F5CBA7", "#C68642", "#E0AC82", "#8D5524"][BUYERS.indexOf(b)], hair: b.hair, facing: q.moving ? (q.dir > 0 ? "r" : "l") : (stalls[b.stall].x > q.x ? "r" : "l") || "r", pose: q.moving ? "walk" : (t > b.coin - 0.2 && t < b.coin + 1.0 ? "up" : "idle") }, t * 1000) }); });
+  [[17, K.sky, 156, 0], [11, K.lemon, 166, 90], [14, K.coral, 172, 220]].forEach(([v, col, y, off], k) => { const x = ((t * v + off) % 420) - 50; draw.push({ y, f: () => person(c, k % 2 ? 370 - x : x, y, { shirt: col, hat: ["cap", "glasses", "visor"][k], skin: ["#E0AC82", "#F5CBA7", "#C68642"][k], facing: k % 2 ? "l" : "r", pose: "walk" }, t * 1000) }); });
+  draw.sort((a, b) => a.y - b.y).forEach((d) => d.f());
+}
+
 window.seek = (t) => {
-  show(els.title, seg(t, 0, T(0.5)));
-  show(els.A, ease.out(seg(t, T(0.4), T(1.1))));
-  draw(els.a1, seg(t, T(1.4), T(2.0)));
-  show(els.B, ease.out(seg(t, T(1.9), T(2.6))));
-  draw(els.a2, seg(t, T(3.0), T(3.5)));
-  show(els.C, ease.out(seg(t, T(3.4), T(4.1))));
-  // the buyer tries to cancel
-  draw(els.a3, seg(t, T(4.4), T(5.0)));
-  show(els.cancel, ease.out(seg(t, T(4.6), T(5.2))));
-  const cu = seg(t, T(5.2), T(6.0));
-  cur.style.opacity = cu > 0 && t < T(7.2) ? 1 : 0;
-  cur.style.left = lerp(300, 260, ease.inOut(cu)) + "px"; cur.style.top = lerp(520, 420, ease.inOut(cu)) + "px";
-  show(els.refuse, ease.back(seg(t, T(6.2), T(6.8))));
-  // the testers' evidence
-  draw(els.a4, seg(t, T(7.4), T(8.0)));
-  show(els.test, ease.out(seg(t, T(7.8), T(8.5))));
-  draw(els.a5, seg(t, T(9.0), T(9.5))); draw(els.a6, seg(t, T(9.2), T(9.7)));
-  show(els.refund, ease.back(seg(t, T(9.4), T(10.1))));
-  show(els.zero, ease.back(seg(t, T(9.6), T(10.3))));
-  show(els.cap, seg(t, T(10.8), T(11.6)));
-  // a dim over the refused branch once the evidence arrives
-  els.cancel.d.style.opacity = Math.min(seg(t, T(4.6), T(5.2)), 1 - 0.55 * seg(t, T(7.6), T(8.2)));
-  els.refuse.d.style.opacity = Math.min(seg(t, T(6.2), T(6.8)), 1 - 0.55 * seg(t, T(7.6), T(8.2)));
+  const pM = camM.at(t), pB = camB.at(t);
+  c.fillStyle = "#CFE5E9"; c.fillRect(0, 0, W, H);
+  if (t > aM - 0.6) camM.apply(c, t, () => marketWorld(t, pM));
+  bc.clearRect(0, 0, W, H);
+  if (panelA(t) > 0) {
+    camB.apply(bc, t, () => boardWorld(bc, t, pB));
+    c.save(); c.globalAlpha = panelA(t); c.translate(W / 2, H / 2); c.scale(panelK(t), panelK(t)); c.translate(-W / 2, -H / 2); c.drawImage(cb, 0, 0);
+    if (panelK(t) < 0.999) { c.strokeStyle = K.ink; c.lineWidth = 1; c.strokeRect(0.5, 0.5, W - 1, H - 1); }
+    c.restore();
+  }
+  vignette(c, 0.16);
+  fade(c, seg(t, 0, 0.3));
+  wTitle.update(t); wMarket.update(t);
+  const at = (put_, el, x, y, u, a = 1, k = 1) => put_(el, t, x, y, clamp(u * 2) * a, Math.max(0.01, u) * k);
+  // board tags
+  const mid = 1 - seg(t, s[1].b - 0.1, s[1].b + 0.3);
+  at(putB, tPaid, 160, 28, B(seg(t, s[1].a + 0.2, s[1].a + 0.7)), mid);
+  at(putB, tBuilder, 60, 158, B(seg(t, s[0].a + 1.0, s[0].a + 1.5)), mid);
+  at(putB, tMachine, 250, 160, B(seg(t, s[1].a + 0.4, s[1].a + 0.9)), mid);
+  at(putB, tCeilT, 408, 22, B(seg(t, tCeil + 0.3, tCeil + 0.8)));
+  at(putB, t40, 600, 26, B(seg(t, tCeil + 0.7, tCeil + 1.2)));
+  at(putB, t25, 435, 51, B(seg(t, tPrice + 0.9, tPrice + 1.4)), 1);
+  at(putB, tFollow, 470, 80, B(seg(t, tPrice + 0.2, tPrice + 0.7)));
+  at(putB, t15, 584, 80, B(seg(t, tRel + 0.3, tRel + 0.8)));
+  at(putB, tBadT, 420, 97, B(seg(t, tBad + 0.1, tBad + 0.6)));
+  at(putB, tCheatT, 588, 146, B(seg(t, tCheat + 0.7, tCheat + 1.2)));
+  at(putB, tZero, 548, 104, B(seg(t, tCheat + 0.8, tCheat + 1.3)));
+  // market tags
+  const fm = 1 - seg(t, tE - 0.15, tE + 0.15);
+  stalls.forEach((st, i) => {
+    const b = BUYERS.find((q) => q.stall === i), hl = chosen(i, t) > 0 ? 1 : 0;
+    at(putM, chips[i], st.x, 94, B(seg(t, aM + 0.8 + i * 0.15, aM + 1.3 + i * 0.15)), fm, 1 + 0.12 * hl);
+    chips[i].style.background = hl ? K.lemonL : K.cream50;
+  });
+  at(putM, tAuthor, 300, 160, B(seg(t, aM + 1.0, aM + 1.5)), fm);
+  at(putM, tPaidOut, 252, 126, B(seg(t, aM + 4.3, aM + 4.8)), fm * (1 - seg(t, aM + 5.4, aM + 5.7)));
+  // the honest tag: small and steady while coins or PayPal are on screen, replaced by the short one on the end card
+  const tagIn = vis(t, s[1].a + 0.3, 0.4) * (1 - seg(t, tE, tE + 0.3));
+  put(tTest, 640, 688, tagIn, 1);
+  // end card
+  const eu = spring(seg(t, tE, tE + 0.9), 7, 0.65);
+  card.style.opacity = clamp((t - tE) / 0.2) * 0.97; card.style.transform = `translateY(${(1 - eu) * 720}px)`;
+  const wu = B(seg(t, tE + 0.35, tE + 1.0));
+  put(wordmark, 640, 215 - (1 - wu) * 30, clamp(wu * 2), Math.max(0.01, wu));
+  const lu = B(seg(t, tE + 0.75, tE + 1.3));
+  put(tLine, 640, 338, clamp(lu * 2), Math.max(0.01, lu));
+  badges.forEach((el, i) => { const u = B(seg(t, tE + 1.1 + i * 0.14, tE + 1.6 + i * 0.14)); el.style.opacity = clamp(u * 2); el.style.transform = `scale(${Math.max(0.01, u)})`; });
+  const gu = B(seg(t, tE + 0.5, tE + 1.0));
+  put(tTest2, 640, 565, clamp(gu * 2), Math.max(0.01, gu));
 };
 window.ready = true;
 </script>

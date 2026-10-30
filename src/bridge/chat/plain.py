@@ -75,7 +75,7 @@ def how_made(steps: list[dict], vault_texts: dict[str, str] | None = None) -> li
             out.append(f"Sent {n} of your files to {to} to write the answer." if n else f"Asked {to} to write or check something; none of your files went with it."
                        if "sent_records" in e else "Asked the thinking service to write or check something.")
             if hid:
-                out.append(f"Before that, {hid} email address{'es' if hid != 1 else ''}, phone number{'s' if hid != 1 else ''} or account number{'s' if hid != 1 else ''} were swapped for placeholders, so that service never read them; they were put back in the answer on your machine.")
+                out.append(f"Before that, {hid} private detail{'s' if hid != 1 else ''} (an email address, phone number or account number) {'were' if hid != 1 else 'was'} swapped for a placeholder, so that service never read {'them' if hid != 1 else 'it'}. {'They were' if hid != 1 else 'It was'} put back in the answer on your machine.")
         elif ev == "web_search":
             out.append(f"Looked something up on the public web (“{e.get('query', '')}”). Your files were not part of that search.")
         elif ev == "cell_run":

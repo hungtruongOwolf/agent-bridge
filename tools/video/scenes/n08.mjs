@@ -1,29 +1,28 @@
-/* n08: Build your own. The step graph, a step dragged, a practice run on chosen shelves with the graph lighting up along the real path, then Publish. */
+/* n08 (version 2): sell a setup. The step graph, a step dragged, the plain-words checks, then Publish with the plan cards and the price preview. About 18 seconds. */
 import { sleep } from "../recorder.mjs";
+
+const soft = async (f) => { try { await f(); } catch (e) { console.error("skipped:", e.message); } };
 
 export default async function (rec) {
   await rec.goto("/helpers/client-pulse");
-  await sleep(1500);
+  await sleep(1300);
   await rec.start("n08");
-  await sleep(900);
-  const node = await rec.find("#graph .node", "Think");                               // drag a step to a new place
-  const p = await rec.center(node);
-  await rec.glide(p.x, p.y, 700);
-  await rec.page.mouse.down();
-  await rec.glide(p.x + 70, p.y - 50, 600);
-  await rec.page.mouse.up();
-  await sleep(900);
-  rec.mark("practise");
-  await rec.click("#ptab-try", null, { after: 900 });                                 // Practise
-  await rec.click("#panelbody textarea", null, { after: 300 });
-  await rec.type("Where does each client stand?", { delay: 38 });
-  await rec.clickEl(await rec.findIn("#panelbody label", "Work", "input"), { after: 500 });   // the shelves it may open
-  rec.mark("run");
-  await rec.click("#panelbody .btn", "Run it", { after: 300 });
-  await rec.waitFor(() => document.querySelector("#panelbody .tryout .report, #panelbody .tryout .okline, #panelbody .tryout .report") !== null || (document.querySelector(".tryout") && document.querySelector(".tryout").textContent.length > 40 && !/Running/.test(document.querySelector(".tryout").textContent)), { timeout: 120000 });
-  await sleep(3200);                                                                  // the graph pulses along the path it took
+  await sleep(500);
+  const graph = await rec.find("#graph");
+  await rec.cam(graph, 1.25, { ms: 1300 });
+  await soft(async () => { await rec.click("button", "Tidy up", { after: 900 }); });                  // the steps arrange themselves
+  await rec.page.screenshot({ path: "../../video-out/shot-n08-graph.png" });
+  await soft(async () => { const chk = await rec.findText("never be connected to the web", { part: true, within: "main, body" }); await rec.ring(chk, "The checker enforces it"); await rec.cam(chk, 1.45, { ms: 900, dx: -60 }); });
+  await sleep(2300);
+  await rec.unring();
+  await rec.camReset(600);
   rec.mark("publish");
-  await rec.click("#ptab-publish", null, { after: 1600 });                            // Publish: price and tests
-  await sleep(1800);
+  await rec.click("#ptab-publish", null, { after: 1000 });
+  await soft(async () => { await rec.click(".plancard", "By how hard", { after: 900 }); });
+  await soft(async () => { const card = await rec.find(".plancard", "By how hard"); await rec.ring(card, "Set a price"); await rec.cam(card, 1.35, { ms: 900, dy: -40 }); });
+  await sleep(2200);
+  await rec.page.screenshot({ path: "../../video-out/shot-n08-publish.png" });
+  await rec.unring();
+  await rec.camReset(500);
   await rec.stop();
 }

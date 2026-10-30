@@ -39,6 +39,48 @@ const CURSOR = `(() => {
   if (document.readyState !== "loading") mk(); else document.addEventListener("DOMContentLoaded", mk);
 })();`;
 
+
+/* Camera and pointers drawn inside the page itself, so the browser renders everything crisp at the zoomed size.
+   __cam(qx, qy, s, ms, qx2, qy2): zoom to scale s keeping the page point that is now at screen (qx, qy) at screen (qx2, qy2) (default: where it is).
+   __ring(x, y, w, h, label): a pulsing ring (and an optional label) around a box given in screen coordinates; it is part of the page, so it moves with it. */
+const CAM = `(() => {
+  if (window.__cam) return;
+  const st = { s: 1, tx: 0, ty: 0 };
+  let raf = 0;
+  const apply = () => { const root = document.documentElement; root.style.transformOrigin = "0 0"; root.style.transform = st.s === 1 && !st.tx && !st.ty ? "" : "translate(" + st.tx + "px," + st.ty + "px) scale(" + st.s + ")"; };
+  window.__cam = (qx, qy, s, ms, qx2, qy2) => new Promise((done) => {
+    cancelAnimationFrame(raf);
+    const sx = scrollX, sy = scrollY;
+    const px = (qx + sx - st.tx) / st.s, py = (qy + sy - st.ty) / st.s;       // the page point under (qx, qy)
+    const to = { s, tx: (qx2 ?? qx) + sx - s * px, ty: (qy2 ?? qy) + sy - s * py };
+    if (s === 1) { to.tx = 0; to.ty = 0; }
+    const from = { ...st }, t0 = performance.now();
+    const step = (now) => {
+      const u = Math.min(1, (now - t0) / ms), e = u < 0.5 ? 16 * u ** 5 : 1 - Math.pow(-2 * u + 2, 5) / 2;
+      st.s = from.s + (to.s - from.s) * e; st.tx = from.tx + (to.tx - from.tx) * e; st.ty = from.ty + (to.ty - from.ty) * e;
+      apply();
+      if (u < 1) raf = requestAnimationFrame(step); else done();
+    };
+    raf = requestAnimationFrame(step);
+  });
+  window.__ring = (x, y, w, h, label) => {
+    const sx = scrollX, sy = scrollY, k = st.s;
+    const px = (x + sx - st.tx) / k, py = (y + sy - st.ty) / k, pw = w / k, ph = h / k;
+    const r = document.createElement("div");
+    r.className = "__ring";
+    r.style.cssText = "position:absolute;left:" + (px - 8) + "px;top:" + (py - 8) + "px;width:" + (pw + 16) + "px;height:" + (ph + 16) + "px;border:4px solid #DCAB3C;border-radius:14px;box-shadow:0 0 0 6px rgba(220,171,60,.25),0 0 28px rgba(220,171,60,.65);z-index:2147483640;pointer-events:none;animation:__pulse 1.1s ease-in-out infinite";
+    if (label) {
+      const b = document.createElement("div");
+      b.textContent = label;
+      b.style.cssText = "position:absolute;left:0;top:-46px;white-space:nowrap;background:#1A1320;color:#FFF8E7;font:700 20px/1 Inter,system-ui,sans-serif;padding:9px 14px;border-radius:10px;box-shadow:4px 4px 0 rgba(26,19,32,.3)";
+      r.append(b);
+    }
+    document.body.append(r);
+    if (!document.getElementById("__pulsecss")) { const c = document.createElement("style"); c.id = "__pulsecss"; c.textContent = "@keyframes __pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.035);opacity:.85}}"; document.head.append(c); }
+  };
+  window.__unring = () => document.querySelectorAll(".__ring").forEach((e) => e.remove());
+})();`;
+
 export class Recorder {
   static async open({ base, width = 1600, height = 900, scale = 1.2 }) {
     const r = new Recorder();
@@ -54,6 +96,7 @@ export class Recorder {
   async prepare(page) {
     await page.setViewport({ width: this.size.width, height: this.size.height, deviceScaleFactor: this.size.scale });
     await page.evaluateOnNewDocument(CURSOR);
+    await page.evaluateOnNewDocument(CAM);
     page.on("pageerror", (e) => console.error("page error:", e.message));
     page.on("dialog", (d) => d.dismiss());
   }
@@ -67,6 +110,7 @@ export class Recorder {
     await p.bringToFront();
     await p.waitForSelector("body");
     await p.evaluate(CURSOR);
+    await p.evaluate(CAM);
     await p.evaluate(() => document.fonts.ready);
     return p;
   }
@@ -166,6 +210,33 @@ export class Recorder {
     return el;
   }
 
+  /** The smallest visible element whose own text matches (exactly, or contains with `part`): for chips, labels and numbers. */
+  async findText(text, { part = false, within = "body" } = {}) {
+    const h = await this.page.evaluateHandle((text, part, within) => {
+      const root = document.querySelector(within) || document.body;
+      const vis = (e) => { const r = e.getBoundingClientRect(); const cs = getComputedStyle(e); return r.width > 2 && r.height > 2 && cs.visibility !== "hidden" && cs.display !== "none"; };
+      let best = null;
+      for (const e of root.querySelectorAll("*")) {
+        const t = (e.textContent || "").replace(/\s+/g, " ").trim();
+        if (!(part ? t.includes(text) : t === text) || !vis(e)) continue;
+        if (!best || e.getBoundingClientRect().width * e.getBoundingClientRect().height < best.getBoundingClientRect().width * best.getBoundingClientRect().height) best = e;
+      }
+      return best;
+    }, text, part, within);
+    const el = h.asElement();
+    if (!el) throw new Error(`text not found: ${text}`);
+    return el;
+  }
+
+  /** The address of an existing chat by (part of) its title, read from the console's own state, so a scene can start right inside it. */
+  async chatPath(title) {
+    return this.page.evaluate(async (title) => {
+      const r = await (await fetch("/api/state")).json();
+      const t = (r.threads || []).find((x) => (x.title || "").toLowerCase().includes(title.toLowerCase()));
+      return t ? "/chats/" + t.id : null;
+    }, title);
+  }
+
   async center(el) {
     // scroll only when the thing is not already in view, and do it smoothly so it reads as a person scrolling
     const inView = await el.evaluate((e) => { const r = e.getBoundingClientRect(); return r.top > 70 && r.bottom < innerHeight - 24 && r.left > 0 && r.right < innerWidth; });
@@ -213,6 +284,21 @@ export class Recorder {
     await this.page.mouse.down(); await sleep(70); await this.page.mouse.up();
     await sleep(after);
   }
+
+  /** Move the camera: zoom to `scale` around an element (or a {x, y} screen point), landing it at the screen centre (or `keep` it where it is). */
+  async cam(target, scale = 1.6, { ms = 1000, keep = false, dx = 0, dy = 0 } = {}) {
+    let q;
+    if (target && target.boundingBox) { const b = await target.boundingBox(); q = { x: b.x + b.width / 2, y: b.y + b.height / 2 }; } else q = target || { x: this.size.width / 2, y: this.size.height / 2 };
+    const to = keep ? q : { x: this.size.width / 2 + dx, y: this.size.height / 2 + dy };
+    await this.page.evaluate((a, b, s, ms, c, d) => window.__cam(a, b, s, ms, c, d), q.x, q.y, scale, ms * PACE, to.x, to.y);
+  }
+  async camReset(ms = 900) { await this.page.evaluate((ms) => window.__cam(0, 0, 1, ms), ms * PACE); }
+  /** A glowing ring (with an optional label) around an element, until unring(). */
+  async ring(el, label = "") {
+    const b = await el.boundingBox();
+    await this.page.evaluate((x, y, w, h, l) => window.__ring(x, y, w, h, l), b.x, b.y, b.width, b.height, label);
+  }
+  async unring() { await this.page.evaluate(() => window.__unring()); }
 
   async type(text, { delay = 55 } = {}) { await this.page.keyboard.type(text, { delay }); }
 

@@ -34,6 +34,11 @@ const CALL = {
     { when: (l) => /KILLED/.test(l), text: "Run killed. Nothing delivered.", color: K.lemonL, top: 360 },
     { when: (l) => /journal/.test(l), text: "Every step is in a tamper-evident log.", color: K.skyL, top: 470 }
   ],
+  n07: [
+    { when: (l) => /incident.*sandbox-probe/.test(l), text: "Its hidden code tried to phone home", color: K.coralL, top: 250 },
+    { when: (l) => /OFF_LENS_QUERY/.test(l), text: "Another reached for a bait note", color: K.lemonL, top: 360 },
+    { when: (l) => /canary value in output/.test(l), text: "Stopped. Nothing delivered.", color: K.skyL, top: 470 }
+  ],
   p09: [
     { at: 0.18, text: "Safe to repeat: a lost reply never charges twice", color: K.skyL, top: 200 },
     { at: 0.45, text: "One lock decides: accept and stop cannot both win", color: K.lemonL, top: 310 },

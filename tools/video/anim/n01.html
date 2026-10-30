@@ -1,52 +1,258 @@
 <!doctype html>
 <meta charset="utf-8">
-<title>n01 The trade nobody should make</title>
+<title>n01 The gap</title>
 <body>
 <script type="module">
-import { stage, label, setPos, fontFace, background, panel, laptop, folder, paper, lock, cloud, siren, thumbDown, K, seg, ease, arc, lerp, px, box, DUR, W, H, fade } from "./lib.js";
+import { stage, label, fontFace, person, K, seg, lerp, ease, px, box, DUR, W, H, clamp, paper, folder, lock, cloud, laptop, thumbDown, AGENT, ME } from "./lib.js";
+import { sentenceTimes, Camera, spring, burst, Words, glow, vignette, rng, out5, smooth } from "./fx.js";
 fontFace();
 const S = stage(), c = S.c;
-const T = (s) => (s / 14) * DUR;                       // times below are written for a 14 second scene
-const files = [[0, folder, K.lemon], [1, paper], [2, folder, K.coral], [3, paper], [4, folder, K.sky], [5, paper]];
-const spot = (i) => [26 + (i % 3) * 16, 39 + Math.floor(i / 3) * 14];   // where each file sits on the laptop screen (half-world units)
-const CLOUD = [116, 40];
-const lab1 = label(S.text, "Your files", { x: 30, y: 36, size: 28, weight: 800 });
-const lab2 = label(S.text, "Someone else's agent", { x: 188, y: 16, size: 28, weight: 800 });
-const kept = label(S.text, "", { x: 196, y: 126, size: 24, weight: 800, color: K.coral });
-const title = label(S.text, "agent-bridge", { x: 0, y: 68, size: 60, font: "pixel", align: "center", w: 320, weight: 400 });
-const sub = label(S.text, "Rent a stronger agent. Keep your data.", { x: 0, y: 96, size: 28, align: "center", w: 320, weight: 700, color: K.ink700 });
+const VO = "The most useful things an AI agent could do are the things we can't let it see. Your medical records. Your company's accounts. Your private code. So today you pick. Upload everything to someone else's cloud and hope. Or keep it safe, and do without the help. Either way, the work that matters most is the work the best agents never touch.";
+const ss = sentenceTimes(VO, DUR), A = (i) => ss[i].a, B = (i) => ss[i].b;
+
+/* ---- helpers ---- */
+const put = (el, x, y, a = 1, sc = 1, rot = 0) => { el.style.left = x + "px"; el.style.top = y + "px"; el.style.opacity = a; el.style.transform = `translate(-50%,-50%) scale(${sc}) rotate(${rot}deg)`; };
+const pill = (html, o = {}) => { const e = label(S.text, html, Object.assign({ x: 0, y: 0, size: 28, weight: 800, bg: K.cream50, pad: 8, border: true, shadow: true }, o)); e.style.opacity = 0; return e; };
+const at = (x, y, s, fn) => { c.save(); c.translate(x, y); c.scale(s, s); fn(); c.restore(); };
+const shadow = (x, y, w) => { c.globalAlpha = 0.16; px(c, x - w / 2, y, w, 2, K.ink); px(c, x - w / 2 + 2, y + 2, w - 4, 1, K.ink); c.globalAlpha = 1; };
+function along(poly, u) {
+  const L = []; let tot = 0;
+  for (let i = 1; i < poly.length; i++) { const d = Math.hypot(poly[i][0] - poly[i - 1][0], poly[i][1] - poly[i - 1][1]); L.push(d); tot += d; }
+  let d = u * tot;
+  for (let i = 0; i < L.length; i++) { if (d <= L[i] || i === L.length - 1) { const k = clamp(d / L[i]); return [lerp(poly[i][0], poly[i + 1][0], k), lerp(poly[i][1], poly[i + 1][1], k)]; } d -= L[i]; }
+}
+function drawPath(poly, u, col) {
+  if (u <= 0) return;
+  for (let pass = 0; pass < 2; pass++) for (let s = 0; s < 240; s++) { const k = s / 240; if (k > u) break; if (s % 6 > 3) continue; const p = along(poly, k); if (pass === 0) px(c, p[0] - 2, p[1] - 2, 5, 5, K.ink); else px(c, p[0] - 1, p[1] - 1, 3, 3, col); }
+}
+function starShape(x, y, n, col) {
+  for (let d = -n; d <= n; d++) { const w = Math.round(n * Math.pow(1 - Math.abs(d) / n, 2.2)); px(c, x - w, y + d, 2 * w + 1, 1, col); px(c, x + d, y - w, 1, 2 * w + 1, col); }
+}
+function star(x, y, n, t, a = 1) {
+  if (a <= 0) return;
+  const pul = 1 + 0.08 * Math.sin(t * 4);
+  glow(c, x, y, n * 4.2 * pul, K.lemon, 0.55 * a);
+  c.globalAlpha = a;
+  starShape(x, y, Math.round(n * pul) + 1, K.ink);
+  starShape(x, y, Math.round(n * pul), K.lemon);
+  starShape(x, y, Math.round(n * 0.45), K.cream50);
+  c.globalAlpha = 1;
+}
+function bg(t, p) {
+  const g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, "#FFF8E7"); g.addColorStop(1, "#F1E3B8");
+  c.fillStyle = g; c.fillRect(0, 0, W, H);
+  glow(c, 40 - p.x * 0.1, 30, 120, K.skyL, 0.5); glow(c, 290 - p.x * 0.1, 150, 110, K.lilacL, 0.55);
+  const r = rng(11);
+  for (let i = 0; i < 40; i++) {
+    const bx = r() * 420, by = r() * H, sp = 0.15 + r() * 0.5, sz = r() < 0.2 ? 2 : 1;
+    const x = (((bx - p.x * sp * 0.6 - t * (1 + r() * 2)) % 420) + 420) % 420 - 50;
+    c.globalAlpha = 0.5; px(c, x, by + Math.sin(t + i) * 2, sz, sz, K.cream300);
+  }
+  c.globalAlpha = 1;
+}
+
+/* ---- cast of DOM labels ---- */
+const FN = [{ n: "Medical records", col: K.coral }, { n: "Company accounts", col: K.lemon }, { n: "Private code", col: K.mint }];
+const fPill = FN.map((f) => pill(f.n, { size: 28 }));
+const pUpload = pill("Upload", { size: 34 }), pSafe = pill("Keep it safe", { size: 34 });
+const pHope = pill("hope?", { size: 34, color: K.coral });
+const pNoHelp = pill("Safe. No help.", { size: 32 });
+const pBest = pill("best agents", { size: 26 }), pMost = pill("most useful work", { size: 26 });
+const W1 = Words(S.text, "the work that matters most", { x: 10, y: 8, w: 300, size: 54, align: "center", at: A(7) + 1.0 });
+const W2 = Words(S.text, "never touched", { x: 10, y: 28, w: 300, size: 68, align: "center", at: A(7) + 2.6, color: K.coral });
+
+/* ---- camera ---- */
+const cam = new Camera([
+  { t: 0, x: 160, y: 108, zoom: 1.5 }, { t: A(1) - 0.3, x: 160, y: 108, zoom: 1.5 }, { t: A(1) + 0.9, x: 160, y: 98, zoom: 1.15 },
+  { t: A(4) - 0.2, x: 160, y: 98, zoom: 1.15 }, { t: A(4) + 1.2, x: 165, y: 95, zoom: 1.0 },
+  { t: A(5) - 0.1, x: 165, y: 95, zoom: 1.0 }, { t: A(5) + 1.2, x: 200, y: 60, zoom: 1.4 },
+  { t: A(6) - 0.3, x: 200, y: 60, zoom: 1.4 }, { t: A(6) + 1.1, x: 80, y: 95, zoom: 1.8 },
+  { t: A(7), x: 80, y: 95, zoom: 1.8 }, { t: A(7) + 1.8, x: 160, y: 90, zoom: 1.0 }, { t: DUR, x: 160, y: 90, zoom: 1.0 },
+]);
+
+const POLY_A = [[112, 92], [135, 92], [158, 74], [230, 74]];
+const POLY_B = [[112, 108], [135, 108], [160, 148], [214, 148]];
+
+function oldScene(t, p) {
+  const lxU = ease.inOut(seg(t, A(4), A(4) + 1.1));
+  const lx = lerp(160, 75, lxU), ly = lerp(100, 78, lxU);
+  const folderRise = seg(t, A(1) - 0.3, A(1) + 0.6);
+  const starY = lerp(ly - 38, 40, ease.inOut(seg(t, A(1) - 0.3, A(1) + 0.9))) + lxU * 6;
+  // desk + person
+  shadow(lx, ly + 62, 100);
+  box(c, lx - 46, ly + 54, 92, 7, K.wood); px(c, lx - 44, ly + 61, 3, 6, K.woodD); px(c, lx + 41, ly + 61, 3, 6, K.woodD);
+  const sc = laptop(c, lx - 35, ly, 70, 46, K.cream50);
+  // screen contents
+  px(c, sc.x + 3, sc.y + 3, 22, 2, K.ink100); px(c, sc.x + 3, sc.y + 8, 30, 2, K.ink100); px(c, sc.x + 3, sc.y + 13, 18, 2, K.ink100);
+  px(c, sc.x + sc.w - 16, sc.y + sc.h - 12, 10, 8, K.skyL);
+  if (t > A(6)) {  // sealed
+    const u = spring(seg(t, A(6) + 0.3, A(6) + 0.9));
+    c.globalAlpha = 0.85 * clamp(u * 2); px(c, sc.x, sc.y, sc.w, sc.h, K.ink700); c.globalAlpha = 1;
+    at(lx, ly + 15, 3 * u, () => lock(c, 0, -3, false, 0, K.lemon));
+    burst(c, t, A(6) + 0.35, lx, ly + 20, { n: 14, seed: 4, colors: [K.lemon, K.cream50], life: 0.7, speed: 40 });
+  }
+  person(c, lx - 56, ly + 62, { ...ME, facing: "r", pose: "idle" }, t * 1000);
+  // star
+  const starA = t < A(6) ? 1 : 1 - seg(t, A(6), A(6) + 1.3) * 0.95;
+  const sEnter = spring(seg(t, 0.2, 1.1));
+  star(lx, starY + Math.sin(t * 2) * 1.8, Math.round(12 - 4 * folderRise - 2 * lxU) * sEnter + 1, t, starA);
+  if (t > A(6)) for (let i = 0; i < 6; i++) { const u = seg(t, A(6) + i * 0.12, A(6) + 1.4 + i * 0.12); c.globalAlpha = (1 - u) * (u > 0 ? 1 : 0); px(c, lx - 12 + i * 5, starY + u * 50, 2, 2, K.lemon); c.globalAlpha = 1; }
+
+  // folders popping out
+  const lap = [lx, ly + 22];
+  FN.forEach((f, i) => {
+    const t0 = A(1 + i), u = spring(seg(t, t0, t0 + 0.75), 8, 0.5), out = ease.inOut(seg(t, A(4), A(4) + 0.55));
+    if (t < t0 || out >= 1) return;
+    const tx = 90 + 70 * i, ty = 68;
+    const k = u * (1 - out), x = lerp(lap[0], tx, k), y = lerp(lap[1], ty, k) - Math.sin(clamp(u) * Math.PI) * 14 * (1 - out);
+    const sc2 = 3.0 * Math.max(0.01, k);
+    glow(c, x, y, 26, f.col, 0.45 * k);
+    at(x, y, sc2, () => folder(c, 0, 0, f.col));
+    const lu = spring(seg(t, t0 + 0.35, t0 + 0.9), 10, 0.5) * (1 - out);
+    at(x + 9, y + 8, 1.5 * lu, () => lock(c, 0, -4, false, 0, K.lemon));
+    const q = cam.toScreen(t, tx, 88);
+    put(fPill[i], q.x, q.y, clamp((t - t0 - 0.2) * 4) * (1 - out), 0.8 + 0.2 * lu);
+  });
+  if (t < A(1)) fPill.forEach((e) => (e.style.opacity = 0));
+  return { lx, ly };
+}
+
+function forkScene(t, p, L) {
+  const pu = seg(t, A(4) + 0.5, A(4) + 1.7), aActive = t >= A(5) && t < A(6), fadeAll = 1 - seg(t, A(6) - 0.3, A(6) + 0.2);
+  if (t >= A(6) + 0.3) { [pUpload, pSafe, pHope].forEach((e) => (e.style.opacity = 0)); return; }
+  c.globalAlpha = fadeAll;
+  drawPath(POLY_A, out5(pu), K.coral);
+  c.globalAlpha = fadeAll * (aActive ? 0.4 : 1);
+  drawPath(POLY_B, out5(pu), K.mint);
+  c.globalAlpha = fadeAll;
+  // the safe (bottom path)
+  const su = spring(seg(t, A(4) + 1.1, A(4) + 1.8));
+  c.globalAlpha = fadeAll * (aActive ? 0.45 : 1);
+  at(230, 160, su, () => { box(c, -13, -28, 26, 28, K.mintL); px(c, -9, -24, 18, 20, K.mint); box(c, -4, -18, 8, 8, K.cream50); at(0, -13, 0.6, () => lock(c, 0, -4, false, 0, K.lemon)); });
+  c.globalAlpha = fadeAll;
+  // the cloud with the arm
+  const cu = spring(seg(t, A(5) - 0.4, A(5) + 0.4));
+  if (cu > 0) {
+    c.globalAlpha = fadeAll;
+    const cy = 38 + Math.sin(t * 1.6) * 1.5;
+    at(240, cy, 1.1 * cu, () => cloud(c, 0, 0, 1, K.skyL, true, t));
+    const arm = 18 * spring(seg(t, A(5) + 0.2, A(5) + 1.0), 7, 0.5);
+    if (arm > 0) {
+      const ax = 236, ay0 = cy + 20;
+      box(c, ax - 2, ay0, 5, arm, K.skyL);
+      box(c, ax - 4, ay0 + arm, 9, 6, "#E0AC82");
+      const o = 0.5 + 0.5 * Math.sin(t * 5);
+      px(c, ax - 4, ay0 + arm + 6, 2, 2 + o * 2, K.ink); px(c, ax - 1, ay0 + arm + 6, 2, 2 + o * 2, K.ink); px(c, ax + 2, ay0 + arm + 6, 2, 2 + o * 2, K.ink);
+    }
+  }
+  // data packets with padlocks
+  if (aActive || t >= A(5)) {
+    const t0 = A(5) + 0.9, N = 6, sp = 0.3;
+    for (let i = 0; i < N; i++) {
+      const raw = (t - t0) * sp + i / N; if (t < t0) continue;
+      const k = Math.floor(raw), u = raw - k;
+      const f = FN[i % 3], pos = along(POLY_A, u), a = fadeAll * clamp(u * 8) * clamp((1 - u) * 8);
+      const bx = along(POLY_A, 0.52), bt = t0 + (k + 0.52 - i / N) / sp;
+      burst(c, t, bt, bx[0], bx[1] - 8, { n: 9, seed: k * 13 + i, colors: [K.lemon, K.coral, K.cream50], life: 0.6, speed: 26, size: 2 });
+      c.globalAlpha = a;
+      at(pos[0], pos[1], 0.9, () => { folder(c, 0, 0, f.col); });
+      at(pos[0], pos[1] - 9, 0.8, () => lock(c, 0, 0, u > 0.5, clamp((u - 0.42) / 0.1), K.lemon));
+      c.globalAlpha = 1;
+    }
+  }
+  // labels
+  const q1 = cam.toScreen(t, 170, 50), q2 = cam.toScreen(t, 175, 163), q3 = cam.toScreen(t, 275, 88);
+  put(pUpload, q1.x, q1.y, seg(t, A(4) + 1.0, A(4) + 1.5) * fadeAll, 0.8 + 0.2 * spring(seg(t, A(4) + 1.0, A(4) + 1.6)));
+  put(pSafe, q2.x, q2.y, seg(t, A(4) + 1.3, A(4) + 1.8) * fadeAll * (aActive ? 0 : 1), 1);
+  const hp = seg(t, A(5) + 1.4, A(5) + 1.9);
+  put(pHope, q3.x, q3.y, hp * fadeAll, (1 + 0.12 * Math.sin(t * 6)) * (0.7 + 0.3 * hp));
+}
+
+function sealedScene(t) {
+  const u = seg(t, A(6) - 0.2, A(6) + 0.5);
+  if (u <= 0) { pNoHelp.style.opacity = 0; return; }
+  // wall with a window
+  const wx = 128;
+  c.globalAlpha = u;
+  box(c, wx, 52, 7, 90, K.cream300); px(c, wx, 52, 7, 90, K.cream300);
+  box(c, wx + 1, 70, 5, 40, K.skyL); px(c, wx + 2, 72, 1, 12, "#FFFFFF");
+  px(c, wx + 3, 70, 1, 40, K.ink);
+  c.globalAlpha = 1;
+  const hx = 152 + Math.sin(t * 1.4) * 2.5;
+  shadow(hx, 142, 20);
+  person(c, hx, 140, { ...AGENT, facing: "l", pose: "idle", mood: "bad" }, t * 1000);
+  const tu = spring(seg(t, A(6) + 0.9, A(6) + 1.5));
+  c.globalAlpha = 0.65; at(hx, 100 - 4 * Math.sin(t * 3), 1.1 * tu, () => thumbDown(c, 0, 0)); c.globalAlpha = 1;
+  const q = cam.toScreen(t, 80, 52);
+  put(pNoHelp, q.x, q.y, seg(t, A(6) + 1.3, A(6) + 1.8), 1);
+}
+
+function endScene(t) {
+  const u = t - A(7) - 0.3; if (u < 0) { [pBest, pMost].forEach((e) => (e.style.opacity = 0)); return; }
+  // ground: two platforms, a gap
+  const gx0 = 140, gx1 = 200, gy = 150;
+  const rise = ease.out(seg(t, A(7) + 0.3, A(7) + 1.4));
+  c.globalAlpha = rise;
+  px(c, 0, gy, W, 30, "#2A2040");
+  box(c, -4, gy, gx0 + 4, 40, K.cream300); box(c, gx1, gy, W - gx1 + 4, 40, K.cream300);
+  for (let i = 0; i < 8; i++) { px(c, 6 + i * 17, gy + 10 + (i % 2) * 8, 10, 2, K.cream200); px(c, gx1 + 8 + i * 15, gy + 10 + (i % 2) * 8, 9, 2, K.cream200); }
+  // falling dust in the chasm
+  const r = rng(5);
+  for (let i = 0; i < 14; i++) { const x = gx0 + 3 + r() * (gx1 - gx0 - 6), y = gy + ((t * (10 + r() * 14) + r() * 30) % 30); c.globalAlpha = 0.5 * rise; px(c, x, y, 1, 2, K.lilacL); }
+  c.globalAlpha = 1;
+  // row of capable agents
+  const looks = [{ shirt: K.sky, hat: "headset" }, { shirt: K.coral, hat: "glasses" }, { shirt: K.mint, hat: "hard" }, { shirt: K.lilac, hat: "wizard" }, { shirt: K.lemon, hat: "visor" }];
+  looks.forEach((lk, i) => {
+    const ua = spring(seg(t, A(7) + 0.5 + i * 0.12, A(7) + 1.2 + i * 0.12));
+    let x = 14 + i * 28, walk = "idle", face = "r";
+    if (i === 4) { const w = Math.sin(t * 1.3); x = 14 + 4 * 28 + 8 * Math.max(0, w); walk = w > 0.05 && Math.cos(t * 1.3) > 0 ? "walk" : "idle"; face = Math.cos(t * 1.3) > 0 ? "r" : "l"; }
+    if (ua <= 0) return;
+    const y = gy - (1 - ua) * 30;
+    shadow(x, gy, 16);
+    at(x, y, 1.5, () => person(c, 0, 0, { ...lk, skin: "#E0AC82", hair: K.ink, facing: face, pose: i === 4 ? walk : "idle" }, t * 1000 + i * 200));
+    if (i < 4) at(x, y - 44 - Math.sin(t * 2 + i) * 1.3, 1.2, () => starShape(0, 0, 3, K.lemon));
+  });
+  // reaching mark: bump at the edge
+  const bump = Math.max(0, Math.sin(t * 1.3 + 0.9)) ** 8;
+  if (bump > 0.05) { c.globalAlpha = bump; px(c, gx0 - 9, gy - 29, 2, 7, K.coral); px(c, gx0 - 9, gy - 20, 2, 2, K.coral); c.globalAlpha = 1; }
+  // the vault of valuable work
+  const vu = spring(seg(t, A(7) + 0.8, A(7) + 1.8)), vx = 262, vy = gy;
+  const gl = 0.55 + 0.25 * Math.sin(t * 3);
+  glow(c, vx, vy - 30, 90 * vu, K.lemon, gl * vu); for (let i = 0; i < 3; i++) glow(c, vx, vy - 50 - i * 25, 40, K.lemon, 0.18 * vu);
+  at(vx, vy, vu * 1.5, () => {
+    box(c, -22, -40, 44, 40, K.lemonL); px(c, -18, -36, 36, 32, K.lemon); box(c, -6, -26, 12, 12, K.cream50);
+    px(c, -2, -22, 4, 4, K.ink); px(c, -1, -18, 2, 5, K.ink);
+    for (let i = 0; i < 3; i++) px(c, -14 + i * 12, -37, 6, 2, K.cream50);
+  });
+  const r2 = rng(9);
+  for (let i = 0; i < 12; i++) { const ph = (t * 0.7 + r2()) % 1, ox = (r2() - 0.5) * 60; c.globalAlpha = Math.sin(ph * Math.PI) * vu; px(c, vx + ox, vy - 20 - ph * 50, 2, 2, K.lemon); c.globalAlpha = 1; }
+  // the broken reach: a dotted arc that never lands
+  const ru = seg(t, A(7) + 3.0, A(7) + 4.2);
+  if (ru > 0) {
+    for (let k = 0; k < 14; k++) { if (k / 14 > ru) break; const q = k / 14, x = lerp(134, 232, q), y = lerp(112, 112, q) - Math.sin(q * Math.PI) * 34; c.globalAlpha = 0.9; px(c, x, y, 3, 3, K.ink); px(c, x, y, 2, 2, K.lemon); }
+    c.globalAlpha = 1;
+    const xu = spring(seg(t, A(7) + 4.0, A(7) + 4.5));
+    at(173, 98, xu * 1.6, () => { for (let i = -4; i <= 4; i++) { px(c, i - 1, i - 1, 3, 3, K.ink); px(c, i - 1, -i - 1, 3, 3, K.ink); } for (let i = -4; i <= 4; i++) { px(c, i, i, 1, 1, K.coral); px(c, i, -i, 1, 1, K.coral); px(c, i + 1, i, 1, 1, K.coral); px(c, i + 1, -i, 1, 1, K.coral); } });
+  }
+  // labels
+  const qb = cam.toScreen(t, 72, 168), qm = cam.toScreen(t, 262, 168);
+  put(pBest, qb.x, qb.y, seg(t, A(7) + 1.1, A(7) + 1.6), 1);
+  put(pMost, qm.x, qm.y, seg(t, A(7) + 1.6, A(7) + 2.1), 1);
+}
 
 window.seek = (t) => {
-  background(c);
-  c.save(); c.scale(2, 2);                              // sprites are drawn at double size, still crisp
-  laptop(c, 14, 30, 56, 38, K.cream50);
-  files.forEach(([i, fn, col]) => {
-    const leave = T(2.6) + i * T(0.55);
-    if (t < leave) { const [x, y] = spot(i); fn(c, x, y, col); }
-  });
-  let landed = 0;
-  files.forEach(([i]) => { if (t > T(2.6) + i * T(0.55) + T(1.1)) landed++; });
-  const bump = landed ? Math.max(0, 1 - ((t - (T(2.6) + (landed - 1) * T(0.55) + T(1.1))) / 0.25)) : 0;
-  cloud(c, CLOUD[0], CLOUD[1] - bump * 2, 1.15 + bump * 0.06, K.skyL, true, t);
-  const lockIn = seg(t, T(0.8), T(1.5)), crack = seg(t, T(2.2), T(2.9)), drop = ease.in(seg(t, T(3.0), T(4.0)));
-  if (lockIn > 0 && drop < 1) lock(c, 42, 38 + drop * 40, false, crack, K.lemon);
-  files.forEach(([i, fn, col]) => {
-    const a = T(2.6) + i * T(0.55), u = seg(t, a, a + T(1.1));
-    if (u > 0 && u < 1) { const p = arc(spot(i), CLOUD, ease.inOut(u), 26); fn(c, p.x, p.y, col); }
-  });
-  if (landed === 6 && t > T(7)) siren(c, CLOUD[0], 22, Math.floor(t * 4) % 2 === 0);
-  if (t > T(6.8)) thumbDown(c, 42, 44);
-  c.restore();
-  const f = seg(t, T(10.2), T(11.2));
-  const cl = (v) => v * (1 - f);
-  kept.textContent = landed ? `kept: ${landed} of 6` : "";
-  setPos(lab1, 30, 36, cl(ease.out(seg(t, 0, T(0.6)))));
-  setPos(lab2, 188, 16, cl(ease.out(seg(t, T(0.4), T(1)))));
-  setPos(kept, 196, 126, cl(landed ? 1 : 0));
-  if (f > 0) { c.globalAlpha = f; px(c, 0, 0, W, H, K.cream100); c.globalAlpha = 1; }
-  setPos(title, 0, 68, f, `translateY(${(1 - f) * 12}px)`);
-  setPos(sub, 0, 96, seg(t, T(11.2), T(12.2)));
-  fade(c, seg(t, 0, T(0.5)));
+  const p = cam.at(t);
+  bg(t, p);
+  const shake = t > A(6) + 0.3 && t < A(6) + 0.6 ? 1.4 : 0;
+  cam.apply(c, t, () => {
+    if (t < A(7) + 0.3) { const L = oldScene(t, p); forkScene(t, p, L); sealedScene(t); } else { [pUpload, pSafe, pHope, pNoHelp].forEach((e) => (e.style.opacity = 0)); fPill.forEach((e) => (e.style.opacity = 0)); }
+    endScene(t);
+  }, shake);
+  // whoosh wash between the sealed laptop and the wide shot
+  const wa = Math.max(0, 1 - Math.abs(t - (A(7) + 0.3)) / 0.35);
+  if (wa > 0) { c.globalAlpha = wa; px(c, 0, 0, W, H, K.cream100); c.globalAlpha = 1; }
+  vignette(c, 0.2);
+  W1.update(t); W2.update(t);
 };
 window.ready = true;
 </script>
