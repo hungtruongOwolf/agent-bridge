@@ -1,0 +1,48 @@
+<!doctype html><meta charset="utf-8"><title>d2-money-flow</title><style>
+@font-face{font-family:"Press Start 2P";src:url("/src/bridge/web/static/fonts/press-start-2p-latin-400.woff2") format("woff2")}
+@font-face{font-family:"Inter";font-weight:100 900;src:url("/src/bridge/web/static/fonts/inter-latin-var.woff2") format("woff2")}
+:root{--cream50:#FFFDF5;--cream100:#FFF8E7;--cream200:#F4E9C7;--ink:#1A1320;--ink700:#3D2E4A;--ink500:#6B5878;--ink300:#A899B5;
+--coral:#D96A62;--coralL:#F3D3CD;--mint:#5CA97A;--mintL:#D2E7DA;--sky:#4F9FAF;--skyL:#CFE5E9;--lemon:#DCAB3C;--lemonL:#F3E4BC;--lilac:#9482D3;--lilacL:#E0DAF2;--blue:#0B6BCB}
+*{box-sizing:border-box}
+body{margin:0;width:1280px;height:853px;overflow:hidden;font-family:Inter,system-ui,sans-serif;color:var(--ink);background:linear-gradient(#FFF8E7,#F1E3B8);position:relative}
+h1{margin:0;font-size:44px;font-weight:900;letter-spacing:-.02em;line-height:1.1}
+.pix{font-family:"Press Start 2P",monospace;font-weight:400}
+.top{padding:34px 48px 0}
+.kicker{font-family:"Press Start 2P",monospace;font-size:14px;color:var(--ink500);margin-bottom:12px}
+.box{border:3px solid var(--ink);background:var(--cream50);box-shadow:6px 6px 0 rgba(26,19,32,.2);border-radius:4px}
+.chip{display:inline-block;border:3px solid var(--ink);background:var(--lemon);font-weight:800;padding:6px 12px;font-size:20px;box-shadow:4px 4px 0 rgba(26,19,32,.2)}
+.foot{position:absolute;left:48px;right:48px;bottom:24px;font-size:18px;font-weight:600;color:var(--ink700)}
+.mark{position:absolute;right:48px;bottom:22px;font-family:"Press Start 2P",monospace;font-size:14px;color:var(--ink)}
+.arrow{font-size:40px;font-weight:900;color:var(--ink);align-self:center}
+.coin{width:84px;height:84px;border-radius:50%;border:3px solid var(--ink);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:26px;background:var(--lemon);box-shadow:4px 4px 0 rgba(26,19,32,.2)}
+.coin.g{background:var(--mint);color:#fff}.coin.s{width:64px;height:64px;font-size:20px}
+.small{font-size:17px;color:var(--ink700);line-height:1.35}
+.step{position:absolute;display:flex;flex-direction:column;gap:8px;padding:16px 18px}
+.step b{font-size:21px;line-height:1.2}
+.n{font-family:"Press Start 2P",monospace;font-size:13px;color:var(--ink500)}
+.api{font-family:ui-monospace,Consolas,monospace;font-size:14px;background:var(--cream200);padding:3px 7px;border:2px solid var(--ink);display:inline-block;margin-top:2px}
+</style><body>
+<div class="top"><div class="kicker">HOW A JOB IS PAID</div><h1>Hold first. Do the work. Settle by what the run did.</h1></div>
+<div class="step box" style="left:40px;top:180px;width:224px;height:250px;background:var(--lemonL)"><div class="n">1</div><b>Buyer approves a hold</b><div class="small">The ceiling: the most this helper can charge. Nothing is taken yet.</div><span class="api">Orders v2 · AUTHORIZE</span></div>
+<div class="arrow" style="position:absolute;left:268px;top:285px">→</div>
+<div class="step box" style="left:304px;top:180px;width:224px;height:250px;background:var(--lilacL)"><div class="n">2</div><b>Helper works on the buyer's machine</b><div class="small">Fails or crashes? The hold is released and the buyer pays nothing.</div><span class="api">void</span></div>
+<div class="arrow" style="position:absolute;left:532px;top:285px">→</div>
+<div class="step box" style="left:568px;top:180px;width:224px;height:250px;background:var(--skyL)"><div class="n">3</div><b>Price comes from recorded facts</b><div class="small">2 thinking steps, 3 files read = a Standard run. Never from what the helper says.</div></div>
+<div class="arrow" style="position:absolute;left:796px;top:285px">→</div>
+<div class="step box" style="left:832px;top:180px;width:224px;height:250px;background:var(--mintL)"><div class="n">4</div><b>Capture part, release the rest</b><div class="small">25¢ captured. 15¢ goes back to the buyer.</div><span class="api">capture · final_capture=false</span></div>
+<div class="arrow" style="position:absolute;left:1060px;top:285px">→</div>
+<div class="step box" style="left:1096px;top:180px;width:150px;height:250px"><div class="n">5</div><b>Buyer decides</b><div class="small">Accept → author paid out.</div><span class="api">Payouts</span></div>
+
+<div class="box" style="position:absolute;left:40px;top:490px;width:1200px;height:230px;padding:22px 26px">
+  <div class="pix" style="font-size:14px;margin-bottom:16px">ONE 40¢ HOLD, IN THE DEMO</div>
+  <div style="display:flex;border:3px solid var(--ink);height:64px;font-weight:900;font-size:24px">
+    <div style="width:62.5%;background:var(--mint);display:flex;align-items:center;justify-content:center;color:#fff">25¢ charged (Standard run)</div>
+    <div style="width:37.5%;background:var(--lemonL);display:flex;align-items:center;justify-content:center;border-left:3px solid var(--ink)">15¢ released</div>
+  </div>
+  <div style="display:flex;gap:30px;margin-top:18px" class="small">
+    <div><b>10¢ light · 25¢ standard · 40¢ deep.</b> The author picks the plan; the buyer sees the ceiling before starting.</div>
+    <div><b>Partial capture</b> is what lets the price be set after the work.</div>
+  </div>
+</div>
+<div class="foot">Test money, on a practice server that copies PayPal's API.</div><div class="mark">AGORA</div>
+<script>window.ready=true</script>

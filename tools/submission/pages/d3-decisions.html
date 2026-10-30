@@ -1,0 +1,40 @@
+<!doctype html><meta charset="utf-8"><title>d3-decisions</title><style>
+@font-face{font-family:"Press Start 2P";src:url("/src/bridge/web/static/fonts/press-start-2p-latin-400.woff2") format("woff2")}
+@font-face{font-family:"Inter";font-weight:100 900;src:url("/src/bridge/web/static/fonts/inter-latin-var.woff2") format("woff2")}
+:root{--cream50:#FFFDF5;--cream100:#FFF8E7;--cream200:#F4E9C7;--ink:#1A1320;--ink700:#3D2E4A;--ink500:#6B5878;--ink300:#A899B5;
+--coral:#D96A62;--coralL:#F3D3CD;--mint:#5CA97A;--mintL:#D2E7DA;--sky:#4F9FAF;--skyL:#CFE5E9;--lemon:#DCAB3C;--lemonL:#F3E4BC;--lilac:#9482D3;--lilacL:#E0DAF2;--blue:#0B6BCB}
+*{box-sizing:border-box}
+body{margin:0;width:1280px;height:853px;overflow:hidden;font-family:Inter,system-ui,sans-serif;color:var(--ink);background:linear-gradient(#FFF8E7,#F1E3B8);position:relative}
+h1{margin:0;font-size:44px;font-weight:900;letter-spacing:-.02em;line-height:1.1}
+.pix{font-family:"Press Start 2P",monospace;font-weight:400}
+.top{padding:34px 48px 0}
+.kicker{font-family:"Press Start 2P",monospace;font-size:14px;color:var(--ink500);margin-bottom:12px}
+.box{border:3px solid var(--ink);background:var(--cream50);box-shadow:6px 6px 0 rgba(26,19,32,.2);border-radius:4px}
+.chip{display:inline-block;border:3px solid var(--ink);background:var(--lemon);font-weight:800;padding:6px 12px;font-size:20px;box-shadow:4px 4px 0 rgba(26,19,32,.2)}
+.foot{position:absolute;left:48px;right:48px;bottom:24px;font-size:18px;font-weight:600;color:var(--ink700)}
+.mark{position:absolute;right:48px;bottom:22px;font-family:"Press Start 2P",monospace;font-size:14px;color:var(--ink)}
+.arrow{font-size:40px;font-weight:900;color:var(--ink);align-self:center}
+.coin{width:84px;height:84px;border-radius:50%;border:3px solid var(--ink);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:26px;background:var(--lemon);box-shadow:4px 4px 0 rgba(26,19,32,.2)}
+.coin.g{background:var(--mint);color:#fff}.coin.s{width:64px;height:64px;font-size:20px}
+.small{font-size:17px;color:var(--ink700);line-height:1.35}
+.step{position:absolute;display:flex;flex-direction:column;gap:8px;padding:16px 18px}
+.step b{font-size:21px;line-height:1.2}
+.n{font-family:"Press Start 2P",monospace;font-size:13px;color:var(--ink500)}
+.api{font-family:ui-monospace,Consolas,monospace;font-size:14px;background:var(--cream200);padding:3px 7px;border:2px solid var(--ink);display:inline-block;margin-top:2px}
+</style><body>
+<div class="top"><div class="kicker">WHO DECIDES WHAT</div><h1>The buyer's word moves a little money.<br>Only evidence moves all of it.</h1></div>
+<div class="box" style="position:absolute;left:40px;top:300px;width:230px;height:120px;padding:16px;text-align:center;background:var(--skyL)"><b style="font-size:22px">Result ready</b><div class="small">the hold is still in place</div></div>
+<div style="position:absolute;left:270px;top:346px;font-size:36px;font-weight:900">→</div>
+
+<div class="box" style="position:absolute;left:330px;top:200px;width:360px;height:110px;padding:14px;background:var(--mintL)"><b style="font-size:21px">Buyer accepts</b><div class="small">The author is paid out through PayPal.</div></div>
+<div class="box" style="position:absolute;left:330px;top:330px;width:360px;height:110px;padding:14px;background:var(--lemonL)"><b style="font-size:21px">"Not helpful"</b><div class="small">Only a small fee is kept; the rest comes back. Most of it, never all of it.</div></div>
+<div class="box" style="position:absolute;left:330px;top:460px;width:360px;height:130px;padding:14px;background:var(--coralL)"><b style="font-size:21px">Run stopped mid-way (cheat suspected)</b><div class="small">The money stays held. The buyer's word alone cannot cancel it.</div></div>
+
+<div style="position:absolute;left:700px;top:496px;font-size:36px;font-weight:900">→</div>
+<div class="box" style="position:absolute;left:750px;top:460px;width:230px;height:130px;padding:14px;text-align:center;background:var(--lilacL)"><b style="font-size:21px">Independent certifier</b><div class="small">has it flagged that helper?</div></div>
+<div class="box" style="position:absolute;left:1030px;top:410px;width:220px;height:100px;padding:12px;background:var(--mintL)"><b>Flagged</b><div class="small">Full refund. The author earns nothing.</div></div>
+<div class="box" style="position:absolute;left:1030px;top:540px;width:220px;height:100px;padding:12px;background:var(--lemonL)"><b>Not flagged</b><div class="small">Claim rejected. The author keeps the fee.</div></div>
+
+<div class="box" style="position:absolute;left:40px;top:460px;width:250px;height:130px;padding:14px;background:#EEE"><b style="font-size:20px">Crash or outage</b><div class="small">Hold released. Nobody is charged.</div></div>
+<div class="foot">Money follows evidence: an honest result is paid, a proven cheat is refunded, an outage costs nothing.</div><div class="mark">AGORA</div>
+<script>window.ready=true</script>
