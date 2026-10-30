@@ -1,0 +1,44 @@
+<!doctype html><meta charset="utf-8"><title>nd3-pull-mode</title><style>
+@font-face{font-family:"Press Start 2P";src:url("/src/bridge/web/static/fonts/press-start-2p-latin-400.woff2") format("woff2")}
+@font-face{font-family:"Inter";font-weight:100 900;src:url("/src/bridge/web/static/fonts/inter-latin-var.woff2") format("woff2")}
+:root{--cream50:#FFFDF5;--cream100:#FFF8E7;--cream200:#F4E9C7;--ink:#1A1320;--ink700:#3D2E4A;--ink500:#6B5878;--ink300:#A899B5;
+--coral:#D96A62;--coralL:#F3D3CD;--mint:#5CA97A;--mintL:#D2E7DA;--sky:#4F9FAF;--skyL:#CFE5E9;--lemon:#DCAB3C;--lemonL:#F3E4BC;--lilac:#9482D3;--lilacL:#E0DAF2;--blue:#0B6BCB}
+*{box-sizing:border-box}
+body{margin:0;width:1280px;height:853px;overflow:hidden;font-family:Inter,system-ui,sans-serif;color:var(--ink);background:linear-gradient(#FFF8E7,#F1E3B8);position:relative}
+h1{margin:0;font-size:44px;font-weight:900;letter-spacing:-.02em;line-height:1.1}
+.pix{font-family:"Press Start 2P",monospace;font-weight:400}
+.top{padding:34px 48px 0}
+.kicker{font-family:"Press Start 2P",monospace;font-size:14px;color:var(--ink500);margin-bottom:12px}
+.box{border:3px solid var(--ink);background:var(--cream50);box-shadow:6px 6px 0 rgba(26,19,32,.2);border-radius:4px}
+.chip{display:inline-block;border:3px solid var(--ink);background:var(--lemon);font-weight:800;padding:6px 12px;font-size:20px;box-shadow:4px 4px 0 rgba(26,19,32,.2)}
+.foot{position:absolute;left:48px;right:48px;bottom:24px;font-size:18px;font-weight:600;color:var(--ink700)}
+.mark{position:absolute;right:48px;bottom:22px;font-family:"Press Start 2P",monospace;font-size:14px;color:var(--ink)}
+.arrow{font-size:40px;font-weight:900;color:var(--ink);align-self:center}
+.coin{width:84px;height:84px;border-radius:50%;border:3px solid var(--ink);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:26px;background:var(--lemon);box-shadow:4px 4px 0 rgba(26,19,32,.2)}
+.coin.g{background:var(--mint);color:#fff}.coin.s{width:64px;height:64px;font-size:20px}
+.small{font-size:17px;color:var(--ink700);line-height:1.35}
+.step{position:absolute;display:flex;flex-direction:column;gap:8px;padding:16px 18px}
+.step b{font-size:21px;line-height:1.2}
+.n{font-family:"Press Start 2P",monospace;font-size:13px;color:var(--ink500)}
+.api{font-family:ui-monospace,Consolas,monospace;font-size:14px;background:var(--cream200);padding:3px 7px;border:2px solid var(--ink);display:inline-block;margin-top:2px}
+</style><body>
+<div class="top"><div class="kicker">PULL MODE</div><h1>The expert's setup comes to <span style="color:#7A4BD6">your</span> machine</h1></div>
+<div class="box" style="position:absolute;left:48px;top:170px;width:1184px;height:500px;padding:0;background:var(--cream100)">
+  <div class="pix" style="position:absolute;left:24px;top:18px;font-size:14px">YOUR MACHINE</div>
+  <div class="box" style="position:absolute;left:30px;top:70px;width:250px;height:330px;padding:16px;background:var(--cream50)"><b>My memory</b><div class="small">about 140 notes, on shelves</div>
+    <div class="box" style="margin-top:12px;padding:8px;background:var(--mintL)">☑ Work › Accounts</div>
+    <div class="box" style="margin-top:8px;padding:8px;background:var(--mintL)">☑ Projects</div>
+    <div class="box" style="margin-top:8px;padding:8px;background:#EEE">☐ Money <span style="float:right;border:2px solid var(--coral);padding:0 4px;font-size:13px">5 secret</span></div>
+    <div class="small" style="margin-top:12px">You tick the shelves. Secret notes never leave.</div></div>
+  <div class="arrow" style="position:absolute;left:290px;top:210px">→</div>
+  <div class="box" style="position:absolute;left:340px;top:70px;width:250px;height:330px;padding:16px;background:var(--lilacL)"><b>Memory broker</b><div class="small">The only way a helper reads notes. Hands over just the ticked shelves, counts every read, plants decoys.</div>
+    <div style="font-size:50px;text-align:center;margin-top:20px">🛡</div></div>
+  <div class="arrow" style="position:absolute;left:600px;top:210px">→</div>
+  <div class="box" style="position:absolute;left:650px;top:70px;width:260px;height:330px;padding:16px;background:var(--skyL)"><b>Sealed room</b><div class="small">The expert's steps run here. No network. Result goes through a guard that bounds what can leave.</div>
+    <div style="font-size:50px;text-align:center;margin-top:20px">🧙</div></div>
+  <div class="arrow" style="position:absolute;left:918px;top:210px">→</div>
+  <div class="box" style="position:absolute;left:968px;top:70px;width:190px;height:330px;padding:14px;background:var(--lemonL)"><b>Nemotron on Nebius Token Factory</b><div class="small">With your own key. Emails, phones and account numbers become placeholders first, restored after.</div></div>
+  <div class="small" style="position:absolute;left:30px;bottom:30px;right:30px"><b>After every answer</b> you see which files were sent to the model, how much text, and what was swapped for a placeholder.</div>
+</div>
+<div class="mark">AGENT-BRIDGE</div>
+<script>window.ready=true</script>

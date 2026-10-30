@@ -7,3 +7,13 @@ g03-paypal-page
 g04-receipts
 g05-paypal-api
 g06-plans
+nd1-problem
+nd2-same-model
+nd3-pull-mode
+nd4-trust
+ng02-shelves
+ng03-what-went
+ng04-placeholders
+ng05-ranking
+ng06-market
+ng07-studio

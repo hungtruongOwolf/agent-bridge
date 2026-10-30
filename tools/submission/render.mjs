@@ -14,7 +14,8 @@ page.on("requestfailed", (r) => console.error("request failed:", r.url()));
 await page.setViewport({ width: 1280, height: 853, deviceScaleFactor: 1.5 });
 for (const f of readdirSync(join(HERE, "pages")).filter((n) => n.endsWith(".html"))) {
   const name = f.replace(".html", "");
-  const dir = join(out, name.startsWith("d") ? "story" : "gallery");
+  const nebius = name.startsWith("nd") || name.startsWith("ng");
+  const dir = join(nebius ? join(out, "../nebius") : out, name.startsWith("d") || name.startsWith("nd") ? "story" : "gallery");
   mkdirSync(dir, { recursive: true });
   await page.goto(`http://127.0.0.1:${port}/tools/submission/pages/${f}`, { waitUntil: "networkidle0" });
   await page.evaluate(() => document.fonts.ready);
