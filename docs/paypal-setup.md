@@ -6,7 +6,7 @@ There are three ways to run the money, from safest to most real. All of them are
 |---|---|---|
 | Demo coins | `bridge serve` | Fake provider that keeps numbers in a file. |
 | Practice PayPal | `bridge serve --payments paypal-mock` | A local server that behaves like the PayPal sandbox, with its own approval page and dashboard. It runs the **real PayPal client code**. It is an emulator written from PayPal's public docs, not PayPal. |
-| PayPal sandbox | `bridge serve --payments paypal` | PayPal's own sandbox. Needs the credentials below. **Checked on the live sandbox on 2026-10-30:** `bridge paypal-check` got a token and created an AUTHORIZE order. The full flow (buyer approval, partial capture, void, payout) is `python tools/sandbox_flow.py`; its result goes in the section below. |
+| PayPal sandbox | `bridge serve --payments paypal` | PayPal's own sandbox. Needs the credentials below. **Checked on the live sandbox on 2026-10-30:** `bridge paypal-check` got a token and created an AUTHORIZE order. The full flow (buyer approval, partial capture, void, payout) was also run there with `python tools/sandbox_flow.py`; see the run log below. |
 
 Say which one you used in the video. Do not call the practice server "PayPal".
 
@@ -74,4 +74,4 @@ account and approve. The console continues by itself once PayPal sends you back.
 ## Sandbox run log
 
 - 2026-10-30: `bridge paypal-check` OK (token + one uncharged AUTHORIZE order created on PayPal's sandbox).
-- 2026-10-30: `python tools/sandbox_flow.py` started; waiting for the buyer's approval on the sandbox page. (Replace this line with the result.)
+- 2026-10-30, `tools/sandbox_flow.py` ran the whole flow on PayPal's own sandbox with the real client: Orders v2 AUTHORIZE hold of 0.40 USD (order 72976802Y2886202H, approved by the sandbox buyer on PayPal's page), partial capture of 0.25 (capture 8KM340019E533435E, COMPLETED, `final_capture` false), void of the rest (authorization 938379318G574340P, VOIDED), and a Payouts payment of 0.23 to the author (batch 2BAZVTRQ8LG34, item SUCCESS). Checked afterwards by reading each object back from the sandbox API. Test money.

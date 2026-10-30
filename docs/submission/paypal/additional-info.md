@@ -3,11 +3,11 @@
 Nothing here is entered for you. Fields marked CONFIRM are about you or your choices; only you can say them.
 Every claim below was checked against the repo on 2026-10-30 (git history, README, `docs/paypal-setup.md`, `pytest tests/payments`: 80 passed).
 
-## The one thing to decide first: the PayPal sandbox
+## The PayPal sandbox: done (2026-10-30), use Text A
 
 The rules ask for the PayPal developer platform **using the free sandbox**. What is true today: the PayPal client
 (`src/bridge/payments/paypal.py`) is written for the sandbox and is selectable (`bridge serve --payments paypal`), but it has only been
-run against our local practice server, never against PayPal's own sandbox. The video says so. Before the deadline (11-11 for us), run:
+run against our local practice server, never against PayPal's own sandbox. The video says so. (Historical note, now resolved.) Before the deadline (11-11 for us), run:
 
 ```
 bridge paypal-check
@@ -48,7 +48,7 @@ Do not mix them: the form is signed with a statement that the information is tru
 >
 > **AI tools:** NVIDIA Nemotron (`nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B`) on Nebius Token Factory runs the helpers' thinking steps, and the same model scores every helper in the certifier whose flag decides whether a full refund is allowed. The price of a run is worked out from what the engine recorded (files read, model calls), never from what the helper says. Code: `src/bridge/engine/nebius.py`.
 >
-> For repeatable recording the demo video uses a local practice server that copies PayPal's API (same client code, `--payments paypal-mock`); the sandbox mode is the same code pointed at PayPal's own sandbox. All money is test money.
+> **Run on the sandbox:** on 2026-10-30 `tools/sandbox_flow.py` ran the whole flow on PayPal's own sandbox with the same client: a 0.40 USD hold approved by a sandbox buyer on PayPal's page (order 72976802Y2886202H), a partial capture of 0.25 (capture 8KM340019E533435E, COMPLETED), a void of the remaining hold (authorization 938379318G574340P, VOIDED) and a Payouts payment of 0.23 to the author (batch 2BAZVTRQ8LG34, item SUCCESS), each read back from the sandbox API afterwards. The refund path and the in-app approval redirect have only been exercised on the practice server. For repeatable recording the demo video and the hosted demo use the practice server (same client code, `--payments paypal-mock`). All money is test money.
 
 **Text B** (use if the live sandbox check has not passed; this is the true state today):
 
@@ -72,11 +72,11 @@ Do not mix them: the form is signed with a statement that the information is tru
 
 ## Overall experience rating (1 to 10)
 
-Pick **7** if the live sandbox check passes, **6** if you could not get it working. Do not pick 9 or 10: they would not match the feedback you give.
+Pick **7** (the live sandbox flow worked). Do not pick 9 or 10: they would not match the feedback you give.
 
 ## Rating: please share why
 
-> The API design maps well to what we needed: an authorization is a natural "ceiling", and partial capture plus void let the real price be set after the work. The documentation of intent AUTHORIZE with a buyer approval step, partial capture and Payouts was enough to build a full client and a practice server from. What cost us time: an authorization needs the buyer's approval first, so we had to model "waiting for approval" as its own state and carry the buyer from the app to PayPal's page and back; and authorization honor periods and the rules for capturing less than the full amount are spread over several pages. [If the live sandbox check passed, add: "Getting a token and a first uncharged order from the sandbox took N minutes." If it did not, add the real error text you saw, in your own words; this is the most useful feedback you can give them.] We would like a single page that shows the lifecycle of an authorization (approve, authorize, partial capture, void, expiry) with the exact status values at each step.
+> The API design maps well to what we needed: an authorization is a natural "ceiling", and partial capture plus void let the real price be set after the work. The documentation of intent AUTHORIZE with a buyer approval step, partial capture and Payouts was enough to build a full client and a practice server from. What cost us time: an authorization needs the buyer's approval first, so we had to model "waiting for approval" as its own state and carry the buyer from the app to PayPal's page and back; and authorization honor periods and the rules for capturing less than the full amount are spread over several pages. We ran the whole flow on the sandbox: token, a 0.40 hold approved on PayPal's page, a partial capture, a void and a payout all worked at the first real attempt, and reading each object back from the API made it easy to check the result. [Add anything that annoyed you while creating the sandbox app or accounts, in your own words.] We would like a single page that shows the lifecycle of an authorization (approve, authorize, partial capture, void, expiry) with the exact status values at each step.
 
 (Edit the bracket to your real experience. The paragraph above only claims what we did: read the docs, built the client and practice server, ran 80 tests. It does not claim sandbox runtime problems we did not observe.)
 

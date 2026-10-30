@@ -5,7 +5,7 @@ Written 2026-10-30. Tick items off as they are done.
 
 ## A. Must do (the rules or the judging depend on it)
 
-- [ ] **A1. Run the PayPal sandbox for real.** The rules require the free sandbox; today the client is only verified against our practice server.
+- [x] **A1. DONE 2026-10-30: the whole flow ran on the real sandbox (see docs/paypal-setup.md run log). Still to do: rotate the secret that was pasted earlier.** (original note:) The rules require the free sandbox; today the client is only verified against our practice server.
   Owner: put `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_AUTHOR_EMAIL` in `.env` (steps in `docs/paypal-setup.md`), run `bridge paypal-check`,
   and send the error text if it fails (never paste the secret). Rotate the secret that was pasted earlier. Then one approved hold, capture, void and payout
   against the sandbox. Afterwards: change the "Text B" answer in `additional-info.md` to "Text A" and the README/Devpost wording from "not run on the live sandbox".
