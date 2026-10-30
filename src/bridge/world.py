@@ -26,6 +26,7 @@ DEMO_PACKS = {
     "exfil-kit": Listing(price_usd=0.10, unit="task", speciality="sales-analysis"),
     "context-brief": Listing(price_usd=0.80, unit="task", speciality="sales-analysis"),
     "action-finder": Listing(price_usd=0.30, unit="task", speciality="meeting-notes"),
+    "deal-finder": Listing(price_usd=0.40, unit="task", speciality="shopping", plan="complexity", light_cents=10, standard_cents=25, deep_cents=40),
     "data-thief": Listing(price_usd=0.05, unit="task", speciality="sales-analysis"),
 }
 

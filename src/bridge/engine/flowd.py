@@ -22,6 +22,7 @@ from ..memory.broker import MemoryBroker, Verdict
 from ..pack.workflow import Step, Workflow
 from .journal import Journal
 from .mask import Masker
+from .tavily import SearchError
 from .limits import MAX_TASK_CHARS, clean_history
 
 
@@ -141,7 +142,7 @@ class Engine:
                 # which of YOUR records this step actually received, and what the broker refused meanwhile
                 commit["records"] = [r["id"] for r in out if isinstance(r, dict) and r.get("id") in self.broker.manifest]
                 commit["blocked"] = [ev.kind for ev in self.broker.events[events_before:]]
-                if step.tool == "web_search":
+                if step.tool in ("web_search", "product_search"):
                     commit["results"] = len(out)
             j.append("step_committed", commit)
             sid = step.next
@@ -204,7 +205,7 @@ class Engine:
         name = step.tool or ""
         if name not in step.tools:
             raise _StepError(f"tool {name!r} not granted to step {step.id!r}")
-        if name == "web_search":
+        if name in ("web_search", "product_search"):
             return self._web(step, inputs)
         query = (step.prompt or "").replace("{task}", self.task)
         if name == "memory_search":
@@ -234,12 +235,23 @@ class Engine:
                 self.violations.append({"kind": "WEB_QUERY_LEAK", "detail": "query repeats text from a staged record"})
                 self.journal.append("incident", {"step": step.id, "evidence": "web-query-leak"})
                 raise _StepError("web query blocked: it repeats text from your records")
+        products = step.tool == "product_search"  # Channel3 products instead of Tavily pages; the same public-step rules apply
         try:
-            results = self.web.search(query)
+            if products:
+                if not hasattr(self.web, "product_search"):
+                    raise _StepError("no product source is configured")
+                results = self.web.product_search(query)
+            else:
+                results = self.web.search(query)
+        except _StepError:
+            raise
         except Exception as e:  # the search service failed: infrastructure, not the pack
             self.journal.append("model_error", {"step": step.id, "type": type(e).__name__})
+            if products and isinstance(e, SearchError):
+                raise _InfraError(f"product search failed: {e}") from e  # a plain sentence, written never to hold the key
             raise _InfraError(f"web search failed: {type(e).__name__}") from e
-        self.journal.append("web_search", {"step": step.id, "query": query, "results": len(results)})
+        extra = {"source": results[0].get("source", "")} if products and results and isinstance(results[0], dict) else {}
+        self.journal.append("web_search", {"step": step.id, "query": query, "results": len(results), **extra})
         return results
 
     def _deliver(self, step: Step, inputs: dict[str, Any]) -> RunResult:

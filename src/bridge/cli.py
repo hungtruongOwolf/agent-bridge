@@ -14,6 +14,7 @@ import yaml
 from .engine.flowd import Engine, ModelReply, Outcome
 from .engine.journal import Journal
 from .engine.nebius import NebiusModel, load_api_key
+from .engine.channel3 import RecordedProducts, WebTools, product_source
 from .engine.tavily import TavilySearch, load_tavily_key
 from .guard.result_guard import ResultGuard
 from .memory.broker import Lens, MemoryBroker
@@ -68,7 +69,7 @@ def run(args) -> int:
 
     journal = Journal(Path(args.journal)) if args.journal else Journal()
     engine = Engine(wf, model=model, broker=broker, guard=guard, journal=journal, cell=DockerCell(),
-                    web=TavilySearch(load_tavily_key(args.env)) if "web_search" in (pack / "workflow.yaml").read_text(encoding="utf-8") else None,
+                    web=WebTools(TavilySearch(load_tavily_key(args.env)) if "web_search" in (pack / "workflow.yaml").read_text(encoding="utf-8") else None, product_source(args.env)),
                     checks={"result_matches_schema": _check_schema(manifest["result_schema"])})
     result = engine.run()
 
@@ -93,7 +94,7 @@ def seed_cmd(args) -> int:
     world = open_world(args.state)
     model = NebiusModel(load_api_key(args.env))
     seed_world(world, Path(args.packs), model, model.model, cell=DockerCell() if docker_available() else None,
-               web=TavilySearch(load_tavily_key(args.env)))
+               web=WebTools(TavilySearch(load_tavily_key(args.env)), RecordedProducts()))  # testing uses recorded product data: repeatable, spends no searches
     print(f"\nmarketplace ready in {args.state}/")
     for r in world.market.ranked():
         print(f"  {r.get('rank', '-'):>2}  {r['status']:<11} {r['id']:<17} score={r['score']}  stars={r['stars']}")
@@ -147,8 +148,9 @@ def demo_data_cmd(args) -> int:
 
 def _model_and_tools(args, pack: Path):
     model = NebiusModel(load_api_key(args.env))
-    uses_web = "web_search" in (pack / "workflow.yaml").read_text(encoding="utf-8")
-    return model, DockerCell(), (TavilySearch(load_tavily_key(args.env)) if uses_web else None)
+    wf = (pack / "workflow.yaml").read_text(encoding="utf-8")
+    uses_web = "web_search" in wf or "product_search" in wf
+    return model, DockerCell(), (WebTools(TavilySearch(load_tavily_key(args.env)) if "web_search" in wf else None, RecordedProducts()) if uses_web else None)
 
 
 def improve_cmd(args) -> int:

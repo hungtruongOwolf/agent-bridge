@@ -39,3 +39,10 @@ class LazySearch:
         if self._client is None:
             self._client = self._factory()
         return self._client.search(query)
+
+    def product_search(self, query):
+        """Channel3 products when CHANNEL3_API_KEY is set, otherwise the labelled recorded catalog (built on first use)."""
+        if getattr(self, "_products", None) is None:
+            from ...engine.channel3 import product_source
+            self._products = product_source()
+        return self._products.search(query)

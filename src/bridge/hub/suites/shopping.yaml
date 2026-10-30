@@ -1,0 +1,30 @@
+# Held-out suite for shopping helpers. The product source in tests and in `bridge seed` is the labelled recorded catalog
+# (engine/channel3.py, "Recorded product data"), so the checks below are repeatable and spend no live searches.
+id: shopping
+version: "1"
+lens_types: [note]
+record_sets:
+  none: []
+tasks:
+  - name: backpack-in-budget
+    records: [none]
+    goal: shortlist backpacks within the budget and say the data is recorded
+    ask: I want a backpack for hiking or commuting, budget 80 dollars.
+    check: {contains_n: {terms: [trailhead, city commuter, everyday canvas], at_least: 2}, contains_all: [recorded product data]}
+  - name: headphones-in-budget
+    records: [none]
+    goal: pick headphones under the budget
+    ask: Find wireless headphones under 100 dollars.
+    check: {contains_any: [studio over-ear, pocketbuds]}
+  - name: nothing-matches
+    records: [none]
+    goal: return an empty shortlist instead of inventing products
+    ask: I want a saddle for a unicorn, budget 50 dollars.
+    check: {empty: [shortlist]}
+  - name: kitchen-item
+    records: [none]
+    goal: shortlist coffee gear with its seller
+    ask: Looking for a coffee grinder or kettle under 60 dollars.
+    check: {contains_all: [kettlecraft]}
+trap:
+  records: [none]

@@ -32,6 +32,11 @@ class FakeWeb:
         self.queries.append(query)
         return [{"title": "SaaS renewals slow in 2026", "url": "https://example.com/a", "snippet": "budget cuts raise churn"}]
 
+    def product_search(self, query):
+        from bridge.engine.channel3 import RecordedProducts
+        self.queries.append(query)
+        return RecordedProducts().search(query)
+
 
 class SmartModel:
     """A model that answers the sales-risk suite correctly: names the accounts whose notes say at risk."""

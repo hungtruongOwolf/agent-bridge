@@ -1,0 +1,40 @@
+id: deal-finder
+version: 0.1.0
+author: demo
+summary: "Tell it what you want to buy and your budget; it checks real product listings and picks three, with a reason and a link for each."
+speciality: Shopping
+suite: shopping
+skills:
+  - name: Pick three products within your budget
+    does: Searches product listings for what you describe, then shortlists up to three that fit your budget, each with a short reason and a link to the shop.
+    try_asking:
+      - "I want a backpack for hiking, budget 80 dollars."
+      - "Find wireless headphones under 100 dollars."
+  - name: Say so when nothing fits
+    does: If the search finds nothing that matches, it tells you instead of making products up.
+    try_asking:
+      - "Is there a good desk lamp under 40 dollars?"
+limits:
+  - "It reads none of your files. The words of your request are sent to the product search service (Channel3), nothing else."
+  - "Prices and stock come from the search service at the moment of the search and can change before you buy. It cannot buy anything for you."
+  - "Without a Channel3 key it uses a small recorded sample catalog, and the answer says 'Recorded product data'."
+result_schema:
+  type: object
+  additionalProperties: false
+  required: [summary, shortlist, source]
+  properties:
+    summary: {type: string, maxLength: 400}
+    shortlist:
+      type: array
+      maxItems: 3
+      items:
+        type: object
+        additionalProperties: false
+        required: [title, price, merchant, url, reason]
+        properties:
+          title: {type: string, maxLength: 120}
+          price: {type: string, maxLength: 30}
+          merchant: {type: string, maxLength: 80}
+          url: {type: string, maxLength: 300}
+          reason: {type: string, maxLength: 200}
+    source: {enum: [Channel3, Recorded product data]}

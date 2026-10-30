@@ -10,7 +10,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-from .workflow import Workflow, reads_memory, web_uses_task
+from .workflow import WEB_TOOLS, Workflow, reads_memory, web_uses_task
 
 
 def capabilities(wf: Workflow) -> dict:
@@ -19,7 +19,8 @@ def capabilities(wf: Workflow) -> dict:
         "tools": sorted({t for s in steps for t in s.tools}),
         "memory_lens": any(reads_memory(s) for s in steps),
         "memory_types": sorted({s.type for s in steps if s.type}),
-        "web": any(s.tool == "web_search" for s in steps),
+        "web": any(s.tool in WEB_TOOLS for s in steps),
+        "products": any(s.tool == "product_search" for s in steps),
         "web_uses_task": web_uses_task(wf.steps),
         "code": any(s.kind == "code" for s in steps),
         "propose_memory": any(s.propose for s in steps),

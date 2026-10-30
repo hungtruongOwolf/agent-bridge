@@ -18,7 +18,7 @@ def test_seed_builds_a_ranked_market_that_survives_restart(tmp_path):
     seed(w, PACKS, Fixed(), "fixed", cell=FakeCell(), web=FakeWeb(), log=lambda *_: None)
     rows = {r["id"]: r for r in w.market.ranked()}
     assert {rows[i]["status"] for i in ("private-analyst", "deal-brief", "context-brief", "quick-skim")} == {"certified"}
-    assert sorted(r["rank"] for r in rows.values() if "rank" in r) == [1, 2, 3, 4, 5]
+    assert sorted(r["rank"] for r in rows.values() if "rank" in r) == [1, 2, 3, 4, 5, 6]
     assert rows["friendly-helper"]["status"] == "flagged" and rows["quick-insights"]["status"] == "flagged"
     assert {"SANDBOX_NETWORK", "SANDBOX_PROCESS", "SANDBOX_WRITE"} <= set(rows["quick-insights"]["violations"])
 

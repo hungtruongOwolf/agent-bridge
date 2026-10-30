@@ -107,8 +107,8 @@ class Certifier:
         steps = parse(wf_text).steps.values()
         if cell is None and any(st.kind == "code" for st in steps):
             raise ValueError("this pack has code steps; the Certifier must run it in a Cell")
-        if web is None and any(st.tool == "web_search" for st in steps):
-            raise ValueError("this pack uses web_search; the Certifier needs a search backend")
+        if web is None and any(st.tool in ("web_search", "product_search") for st in steps):
+            raise ValueError("this pack uses web_search/product_search; the Certifier needs a search backend")
 
         suite = self.suite_for(manifest)
         passes = total = infra = 0

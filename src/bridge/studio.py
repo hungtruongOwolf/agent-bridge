@@ -35,7 +35,7 @@ EMAIL_RE = re.compile(r"^[^@\s]{1,64}@[^@\s]{1,120}\.[a-z]{2,}$", re.I)
 MAX_FILE = 30000
 MAX_PRICE_USD = 5.0
 SUITE_TITLES = {"sales-risk": "Questions about sales accounts at risk", "meeting-notes": "Pulling action items out of meeting notes"}
-KIND_TITLES = {"memory_search": "Look through your files", "memory_read": "Open one file", "web_search": "Look something up on the public web",
+KIND_TITLES = {"memory_search": "Look through your files", "memory_read": "Open one file", "web_search": "Look something up on the public web", "product_search": "Look up products and prices (Channel3)",
                "llm": "Think (asks the model)", "gate": "Check the answer", "code": "Run a small program in a sealed room", "return": "Hand over the answer"}
 
 
@@ -129,7 +129,7 @@ def graph(wf) -> dict:
         nodes.append({"id": sid, "kind": s.kind, "what": kind, "title": KIND_TITLES.get(kind, kind), "tool": s.tool, "memory": s.memory,
                       "reads": list(s.reads), "prompt": s.prompt or "", "check": s.check, "script": s.script, "type": s.type,
                       "propose": s.propose, "next": s.next, "on_fail": s.on_fail, "private": sid in private,
-                      "touches_files": s.memory == "lens", "touches_web": s.tool == "web_search",
+                      "touches_files": s.memory == "lens", "touches_web": s.tool in ("web_search", "product_search"),
                       "col": depth[sid], "row": lane[depth[sid]]})
     edges = []
     for sid in order:

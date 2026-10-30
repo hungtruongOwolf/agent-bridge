@@ -18,6 +18,7 @@ KINDS = ("llm", "tool", "code", "gate", "return")
 #   history  earlier turns of the conversation; they contain answers about your files, so it counts as private
 RESERVED_READS = ("task", "history")
 MEMORY_TOOLS = ("memory_search", "memory_read")  # the only doors to the user's records
+WEB_TOOLS = ("web_search", "product_search")  # public network: Tavily pages, Channel3 products. Public steps only.
 
 SCHEMA = {
     "type": "object",
@@ -193,12 +194,12 @@ def _scope_problems(steps: dict[str, Step]) -> list[str]:
                 changed = True
     problems = []
     for s in steps.values():
-        if s.kind == "tool" and s.tool == "web_search":
+        if s.kind == "tool" and s.tool in WEB_TOOLS:
             if reads_memory(s):
-                problems.append(f"step {s.id!r}: a web_search step is public and cannot read the memory lens")
+                problems.append(f"step {s.id!r}: a {s.tool} step is public and cannot read the memory lens")
             for r in s.reads:
                 if r in private:
-                    problems.append(f"step {s.id!r}: a web_search step cannot read {r!r}, which holds private data")
+                    problems.append(f"step {s.id!r}: a {s.tool} step cannot read {r!r}, which holds private data")
     return problems
 
 
@@ -212,7 +213,7 @@ def web_uses_task(steps: dict[str, Step]) -> bool:
             if sid not in typed and any(r in typed for r in s.reads):
                 typed.add(sid)
                 changed = True
-    return any(s.kind == "tool" and s.tool == "web_search" and ("{task}" in (s.prompt or "") or any(r in typed for r in s.reads))
+    return any(s.kind == "tool" and s.tool in WEB_TOOLS and ("{task}" in (s.prompt or "") or any(r in typed for r in s.reads))
                for s in steps.values())
 
 

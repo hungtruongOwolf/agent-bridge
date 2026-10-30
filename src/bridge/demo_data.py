@@ -23,6 +23,7 @@ import time
 from pathlib import Path
 
 from .engine.nebius import NebiusModel, load_api_key
+from .engine.channel3 import RecordedProducts, WebTools
 from .engine.tavily import TavilySearch, load_tavily_key
 from .sandbox.cell import DockerCell, docker_available
 from .world import DEMO_PACKS, open_world, seed as seed_world
@@ -88,7 +89,7 @@ def build(state: Path, packs: Path, vault: Path, env: Path, *, source: Path | No
     state.mkdir(parents=True, exist_ok=True)
     model = NebiusModel(load_api_key(env))
     cell = DockerCell() if docker_available() else None
-    web = TavilySearch(load_tavily_key(env))
+    web = WebTools(TavilySearch(load_tavily_key(env)), RecordedProducts())
     if source and (Path(source) / "registry.json").exists() and not (state / "registry.json").exists():
         for name in CARRY:  # the packs were already tested once: reuse their results instead of testing them again
             src = Path(source) / name
