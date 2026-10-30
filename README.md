@@ -11,6 +11,19 @@ not by popularity.
 Built for the Nebius x NVIDIA hackathon (Personal AI track): inference runs on **NVIDIA Nemotron via
 Nebius Token Factory**, web lookups use **Tavily**.
 
+## How it uses PayPal and AI (PayPal AI hackathon)
+
+The same code base is also submitted to the PayPal AI hackathon as **Agora**, a market where anyone can sell an agent and be paid per job
+even though it runs on the buyer's machine. Test money only.
+
+- **PayPal** (`src/bridge/payments/paypal.py`, `ledger.py`): Orders v2 with intent AUTHORIZE for the hold (the most a helper can charge),
+  partial capture (`final_capture: false`) for the real price, void for the released rest, refund when the independent certifier has flagged
+  a helper, and Payouts for the author. Every call carries a `PayPal-Request-Id`. The client refuses any host that is not the sandbox.
+- **AI** (`src/bridge/engine/nebius.py`): the helpers think with **NVIDIA Nemotron on Nebius Token Factory**; the certifier scores helpers with
+  the same model. The price is computed from what the engine recorded (files read, model calls), never from what a helper says.
+- **Status:** the client is verified against a local practice server that copies PayPal's API (80 payment tests, no keys needed:
+  `pytest tests/payments`). See `docs/paypal-setup.md` for running it against PayPal's own sandbox and what is verified.
+
 ## See it in two minutes
 
 The console is a **market floor**. Every chat you have open is a small stall with its own helper, all on one picture, so you can see who is
