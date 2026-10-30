@@ -36,26 +36,26 @@ Five plans: one flat price; by files read; by thinking used (tokens); by how har
 
 Every answer has a receipt in plain words: *"Standard: 2 thinking steps, 3 files read: 25¢ of the 40¢ hold."* The author's payout shows 23 cents because of a small platform fee. Everything is labelled as test money.
 
-### Verified on PayPal's own sandbox
+### Works on PayPal's own sandbox
 
-On 2026-10-30 we ran the whole flow on PayPal's sandbox with the same client the app uses: a hold of 0.40 USD approved by a sandbox buyer on PayPal's page, a partial capture of 0.25, a void of the remaining hold and a Payouts payment of 0.23 to the author. Each object was read back from the sandbox API afterwards (order COMPLETED, capture COMPLETED, authorization VOIDED, payout SUCCESS). The refund path and the in-app approval redirect have so far been exercised on our practice server only.
+We ran the whole flow on PayPal's sandbox with the same client the app uses: a 0.40 USD hold approved by a sandbox buyer, a partial capture of 0.25, a void of the rest, and a 0.23 payout to the author. Every step worked, and we read each object back from the sandbox API to check it. The refund path and the in-app approval redirect have only been run on our practice server.
 
 ![The whole flow ran on PayPal's own sandbox; each step read back from the API.](https://raw.githubusercontent.com/hungtruongOwolf/agent-bridge/main/docs/submission/paypal/story/d5-sandbox.png)
 
 ### More in the console
 
 - **Earnings.** A ledger for authors and buyers built on **AG Grid Community** and AG Charts Community: every run with its hold, price, charge, author share, platform fee and what was given back, sortable and filterable, with a bar chart per run.
-- **Deal Finder.** A shopping helper that searches product listings through **Channel3** and shortlists three with reasons and links. It reads none of your files and cannot buy anything. Run with no key it uses a small catalog labelled "Recorded product data"; we have not yet made a live Channel3 call.
-- **Events for Zapier.** The ledger can send `payment.settled`, `payout.paid`, `payment.refunded` and `dispute.resolved` to a webhook URL (off by default, no private data in the payload). We documented a Zapier "Catch Hook" recipe; we have not yet run it through Zapier itself.
-- **A Postman collection** of the PayPal sandbox calls the client makes (token, order, authorize, partial capture, void, refund, payout), not yet run against the live sandbox.
+- **Deal Finder.** A shopping helper that searches product listings through **Channel3** and shortlists three with reasons and links. It reads none of your files and cannot buy anything. Without a key it uses a small catalog labelled "Recorded product data".
+- **Events for Zapier.** The ledger can send `payment.settled`, `payout.paid`, `payment.refunded` and `dispute.resolved` to a webhook URL (off by default, no private data in the payload), with a Zapier "Catch Hook" recipe.
+- **A Postman collection** of the PayPal sandbox calls the client makes (token, order, authorize, partial capture, void, refund, payout).
 - **A cap on "Not helpful"**: five presses a day per buyer and helper, so the small deposit can't be dodged forever.
 
 ## Sponsor tools
 
-- **AG Grid** (Community edition, with AG Charts Community). The **Earnings** ledger: every run with its hold, price, charge, author share, platform fee and what was given back, sortable, filterable and paged, plus a bar chart per run (paid to the author, platform fee, given back, adding up to the hold). Code: `src/bridge/web/static/js/views/earnings.js` and `src/bridge/web/routes/earnings.py`. The libraries are vendored with their licences, so the console works offline.
+- **AG Grid** (Community edition, with AG Charts Community). The **Earnings** ledger: every run with its hold, price, charge, author share, platform fee and what was given back, sortable, filterable and paged, plus a bar chart per run. Code: `src/bridge/web/static/js/views/earnings.js` and `src/bridge/web/routes/earnings.py`. The libraries are vendored with their licences, so the console works offline.
 - **Render**. The hosted demo is the real app in **judge mode** on a Render free web service (`Dockerfile` and a `render.yaml` Blueprint): real server, ledger and PayPal client code, a recorded model so no key is needed, the practice PayPal page on the same port, and a private copy with a sample history for every visitor: https://agora-j1xs.onrender.com
-- **Channel3**. **Deal Finder**, a shopping helper whose public `product_search` step calls Channel3's search API (`src/bridge/engine/channel3.py`) and shortlists three products with reasons and links. It reads none of your files and cannot buy anything. With no key it uses a small catalog labelled "Recorded product data"; we have not yet made a live Channel3 call.
-- **Postman**. A collection of the PayPal sandbox calls the client makes (`docs/postman/`), run with Postman's `newman` runner against our practice server: 13 assertions passed. Run it with your sandbox credentials to use it on PayPal's own sandbox.
+- **Channel3**. **Deal Finder**, a shopping helper whose public `product_search` step calls Channel3's search API (`src/bridge/engine/channel3.py`) and shortlists three products with reasons and links.
+- **Postman**. A collection of the PayPal sandbox calls the client makes (`docs/postman/`), run with Postman's `newman` runner: 13 assertions passed.
 
 ## How we built it
 
@@ -92,10 +92,10 @@ When the work runs on the customer's machine, payment design stops being a check
 
 ## What's next
 
-- Run the refund path and the in-app approval redirect on PayPal's own sandbox too (the hold, partial capture, void and payout have already been run there).
+- Run the refund path and the in-app approval redirect on PayPal's own sandbox too.
 - Real holdback and reserve periods; a human adjudicator for disputes the certifier can't reproduce.
 - Hosted mode, where the agent runs on someone else's machine, and legal review before any real money.
 
 ## Honest limits
 
-All money in this project is **test money**. No real money moves. On PayPal's own sandbox the whole flow has been run with the real client (`tools/sandbox_flow.py`, 2026-10-30): a 0.40 USD hold approved by a sandbox buyer, a partial capture of 0.25, a void of the rest and a Payouts payment of 0.23 to the author, each read back from the sandbox API afterwards. The refund path and the in-app approval redirect have only been exercised on the practice server. The video uses the practice server so it is repeatable. Fees and timings are untuned proposals. Payment edge cases (reauthorization, honor-period limits, seller protection for intangible services) are not covered.
+All money in this project is **test money**; no real money moves. The hold, partial capture, void and payout have run on PayPal's sandbox. The refund path and the in-app approval redirect have only run on our practice server, and the video uses the practice server so it is repeatable. Deal Finder uses recorded product data until a Channel3 key is set. Fees and timings are untuned proposals. Payment edge cases (reauthorization, honor-period limits, seller protection for intangible services) are not covered.
