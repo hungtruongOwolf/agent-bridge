@@ -98,7 +98,7 @@ When the work runs on the customer's machine, payment design stops being a check
 
 ## Honest limits
 
-All money in this project is **test money**. No real money moves. The PayPal client has not yet been run against the live sandbox; the video uses the practice server. Fees and timings are untuned proposals. Payment edge cases (reauthorization, honor-period limits, seller protection for intangible services) are not covered.
+All money in this project is **test money**. No real money moves. On PayPal's own sandbox we have checked the credentials and created a real AUTHORIZE order (`bridge paypal-check`, 2026-10-30); [AFTER THE FULL RUN: the whole flow (approval, partial capture, void, payout) has also been run there with `tools/sandbox_flow.py`]. The video uses the practice server so it is repeatable. Fees and timings are untuned proposals. Payment edge cases (reauthorization, honor-period limits, seller protection for intangible services) are not covered.
 
 **Demo video:** [YOUTUBE LINK]
 ---

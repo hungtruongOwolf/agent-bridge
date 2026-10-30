@@ -6,7 +6,7 @@ There are three ways to run the money, from safest to most real. All of them are
 |---|---|---|
 | Demo coins | `bridge serve` | Fake provider that keeps numbers in a file. |
 | Practice PayPal | `bridge serve --payments paypal-mock` | A local server that behaves like the PayPal sandbox, with its own approval page and dashboard. It runs the **real PayPal client code**. It is an emulator written from PayPal's public docs, not PayPal. |
-| PayPal sandbox | `bridge serve --payments paypal` | PayPal's own sandbox. Needs the credentials below. **Not yet verified against the live sandbox.** |
+| PayPal sandbox | `bridge serve --payments paypal` | PayPal's own sandbox. Needs the credentials below. **Checked on the live sandbox on 2026-10-30:** `bridge paypal-check` got a token and created an AUTHORIZE order. The full flow (buyer approval, partial capture, void, payout) is `python tools/sandbox_flow.py`; its result goes in the section below. |
 
 Say which one you used in the video. Do not call the practice server "PayPal".
 
@@ -70,3 +70,8 @@ account and approve. The console continues by itself once PayPal sends you back.
 | "the hold is not approved yet" | The approval page was not completed. Open it again from the chat, approve, then press **I approved, continue**. |
 | "PayPal refused: ..." on payouts | Payouts not enabled for the sandbox business account, or the recipient email is not a sandbox account. |
 | The chat stays on "Waiting for you to approve" after approving | The approval tab was opened from a different address (not 127.0.0.1:8787). Press **I approved, continue**. |
+
+## Sandbox run log
+
+- 2026-10-30: `bridge paypal-check` OK (token + one uncharged AUTHORIZE order created on PayPal's sandbox).
+- 2026-10-30: `python tools/sandbox_flow.py` started; waiting for the buyer's approval on the sandbox page. (Replace this line with the result.)
