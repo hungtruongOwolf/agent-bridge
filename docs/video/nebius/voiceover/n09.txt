@@ -1,1 +1,1 @@
-Why does this matter? Because anyone with clients, notes or a business can now use specialists without exposing anything. And specialists can finally be paid for their craft: set a price, get tested, and earn on evidence.
+Now think about what that opens up. Imagine a helper for your tax papers. One for your contracts. One that reads your whole codebase. The same room and the same rules, whatever is on your shelves. The setup comes to you, and your files stay where they are. That's Pull mode, and this is agent-bridge.

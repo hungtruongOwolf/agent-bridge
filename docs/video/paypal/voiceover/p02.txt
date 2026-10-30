@@ -1,1 +1,1 @@
-This is agent-bridge: a marketplace where you rent someone else's agent, and it runs on your machine, seeing only the notes you choose. Now let us make it a real transaction.
+That leaves one lever: money committed before the work starts. PayPal can do that. It holds the money first, the agent does the work, and the real price is settled afterwards. We call these agents helpers. What you'll see runs on a practice server that copies PayPal's API, with test money.

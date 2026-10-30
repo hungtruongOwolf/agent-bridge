@@ -1,19 +1,15 @@
-Soon, your AI agent will hire other agents. So who pays? And what happens when the work is bad, or the agent cheats? Agents need money that follows evidence, not trust.
+Someone spends months tuning an AI agent until it's really good at one job. How do they get paid? On a normal website, that's easy. The work happens on your server, and you keep the door locked until the customer pays. But in our marketplace, agent-bridge, agents run on the customer's own computer, next to their private files. The work and the result are already on the other side of the door. You can't lock anything. And if builders can't get paid, the best agents never get shared.
 
-This is agent-bridge: a marketplace where you rent someone else's agent, and it runs on your machine, seeing only the notes you choose. Now let us make it a real transaction.
+That leaves one lever: money committed before the work starts. PayPal can do that. It holds the money first, the agent does the work, and the real price is settled afterwards. We call these agents helpers. What you'll see runs on a practice server that copies PayPal's API, with test money.
 
-I ask a helper a question. First, it asks me to approve a hold for its price: forty cents. Nothing is charged yet. I approve on the payment page, and the chat carries on by itself.
+Let me be the buyer. I ask a question, and PayPal asks me to approve a hold of forty cents, the most this helper can charge. I approve it on PayPal's page. The author never sees my card. They only give an email for payouts. That forty cents is my ceiling. The helper can't charge more, and nothing has been taken yet.
 
-The helper does the work on my machine. Now there is an answer, so a small floor fee is captured. The rest stays on hold.
+The helper works on my machine, and the money waits. If the run fails, the hold is released and I pay nothing. This one finished. It read three files and made two model calls, so it's a standard run: twenty-five cents. That's what the author earns if I accept. The other fifteen are released back to me. PayPal can capture part of a hold, and that's what lets the price be set after the work.
 
-When I send my next message, I am saying the last answer was good enough. The rest is paid, and the author is paid less the platform fee. Every step is written down in plain words.
+Now it's my call. If the answer helped, I accept, and the author gets paid out through PayPal. If it didn't, I say so, and only a small fee is kept. The rest comes back to me. I can send most of it back, but never all of it.
 
-If an answer is not helpful, I say so. The author keeps only the deposit, and the rest is released back to me.
+A full refund needs more than my word. Say a helper cheats and gets shut down mid-run. I can't just say so, because anyone could. So the money stays held until the certifier, our independent tester, has flagged that helper. If it has, I get everything back and the author earns nothing. If it hasn't, my claim is rejected and the author keeps the fee.
 
-Authors choose how to charge: one price, by files read, by tokens used, by how hard the question was, or a monthly plan. The hold is always the maximum, and I only pay the real price.
+Authors pick how to charge. One flat price, or a price that follows the work: files read, model calls, or whether the run was light, standard or deep. There's also a monthly plan that covers a set number of answers. It doesn't renew by itself, and it can be stopped. Before publishing, authors see what a light, standard or deep run would cost.
 
-What if the agent cheats? My word alone cannot cancel a payment, because I could lie. So the money waits for evidence. If independent testers have already reproduced that exact cheating, the hold is refunded and the author earns nothing.
-
-Underneath, every payment call is safe to repeat, so a lost reply never charges twice. Accepting and stopping cannot both win. A crash in the middle is recovered from a written record. These are tested, including a race test.
-
-We are honest about one gap: someone running an agent locally could keep its output without paying. The floor fee, the held dispute and the testers limit that loss. They do not remove it. agent-bridge is open source. Agents that pay agents, on evidence.
+That's what a market for agents needs. A builder gets paid per job, even when the agent runs on someone else's machine. I set the ceiling, the price follows the work, a bad result costs a small fee, and a proven cheat costs nothing. Anyone with a good agent can sell it, and anyone can hire one without trusting a stranger. That's agent-bridge, on PayPal, with test money.

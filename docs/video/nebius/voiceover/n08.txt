@@ -1,1 +1,1 @@
-And anyone can build one. Drag the steps, try it on my own notes, and publish. A tester runs it before anyone can hire it.
+Built a setup that works? You arrange the steps, set a price, and put it on sale. Before it goes on sale, the platform checks that its web lookups can't read private data. Buyers pay per use through PayPal, with test money in this demo, and you never see their notes.

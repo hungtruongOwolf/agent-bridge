@@ -1,138 +1,125 @@
-# agent-bridge: rent a stronger agent, keep your data
+# agent-bridge: bring the expert to your data
 
-Nebius x NVIDIA. One line to remember: **Rent a stronger agent. Keep your data.**
+Nebius x NVIDIA. One line to remember: **Bring the expert to your data.**
 
-Estimated voice: 2:49 as read, 2:20 after the 1.2x speed-up (limit 3:00). Scene pictures add a short pause between scenes, so expect about 2:32 in total. The real numbers come from the audio files.
+Estimated voice: 3:18 as read, 2:45 after the 1.2x speed-up (limit 3:00). Scene pictures add a short pause between scenes, so expect about 2:55 in total. The real numbers come from the audio files.
 
 | Scene | What it is | Voice (est., final) | Words |
 |---|---|---|---|
-| n01 The trade nobody should make | Animation (Claude Design) | 14s | 44 |
-| n02 Pull mode | Animation (Claude Design) | 12s | 37 |
-| n03 My memory | Screen recording (real console) | 14s | 44 |
-| n04 Trust by evidence | Screen recording (real console) | 13s | 39 |
-| n05 Ask and answer | Screen recording (real console) | 19s | 60 |
-| n06 The helper that lies | Terminal recording (real command) | 23s | 70 |
-| n07 Memory only by consent | Screen recording (real console) | 10s | 31 |
-| n08 Build your own | Screen recording (real console) | 8s | 25 |
-| n09 Why it matters | Animation (Claude Design) | 12s | 37 |
-| n10 Close | Animation (Claude Design) | 16s | 50 |
+| n01 The things we cannot let it see | Animation (Claude Design) | 20s | 62 |
+| n02 Which agent is actually good | Animation (Claude Design) | 27s | 85 |
+| n03 Pull mode | Animation (Claude Design) | 12s | 36 |
+| n04 My memory | Screen recording (real console) | 13s | 41 |
+| n05 Ask, and see what left | Screen recording (real console) | 24s | 74 |
+| n06 Telling good from bad | Screen recording (real console) | 17s | 52 |
+| n07 A helper that cheats | Terminal recording (real command) | 18s | 55 |
+| n08 Sell a setup | Screen recording (real console) | 16s | 51 |
+| n09 What this opens up | Animation (Claude Design) | 18s | 56 |
 
-## n01. The trade nobody should make
-
-**Animation (Claude Design)**
-
-**On screen:** Files from a laptop fly off toward a faceless cloud agent; a padlock cracks; the cloud keeps them. Title appears at the end: agent-bridge.
-
-**Caption:** To use a better agent, you hand over your files.
-
-**Voice (44 words):**
-
-> The best AI helper for your work is probably not the one you have. It is someone else's. But to use it, you would have to hand over your files. Your clients. Your private notes. That is a trade nobody should have to make.
-
-## n02. Pull mode
+## n01. The things we cannot let it see
 
 **Animation (Claude Design)**
 
-**On screen:** Same laptop. This time the agent walks in and enters a sealed glass room on the laptop. Only the shelves the person opens are lit; a secret drawer stays dark and locked. Label: Pull mode.
+**On screen:** A laptop with folders labelled Medical, Accounts, Code. A faceless cloud agent holds out a hand. Two doors: Upload everything / Do without. A faint star marks the work that matters most, far from the agents.
 
-**Caption:** Pull mode: the agent comes to your data.
+**Caption:** The best help wants your most private files.
 
-**Voice (37 words):**
+**Voice (62 words):**
 
-> agent-bridge turns it around. The stranger's agent never gets your data. Instead it comes to your machine, works inside a sealed room, and sees only what you choose to show it. We call it Pull mode.
+> The most useful things an AI agent could do are the things we can't let it see. Your medical records. Your company's accounts. Your private code. So today you pick. Upload everything to someone else's cloud and hope. Or keep it safe, and do without the help. Either way, the work that matters most is the work the best agents never touch.
 
-## n03. My memory
+## n02. Which agent is actually good
+
+**Animation (Claude Design)**
+
+**On screen:** One model box labelled NVIDIA Nemotron. Three setups around it grow three bars: 9, 13, 14 out of 16. A hand tries to look inside a product box and finds a locked lid. Text: from the outside you cannot see a setup.
+
+**Caption:** Same model. Three setups. 9, 13, 14 out of 16.
+
+**Voice (85 words):**
+
+> And even if you're willing, there's a second problem: which agent is actually good? A helper is an agent with one job, running on a model. The setup around the model decides how good it is: its instructions and its checks. We measured this. Same model, NVIDIA Nemotron, same sixteen questions, and three versions of one helper went from nine right to fourteen right. From the outside you can't see a setup. So you're choosing blind, and to try one you hand over your data.
+
+## n03. Pull mode
+
+**Animation (Claude Design)**
+
+**On screen:** The same laptop. This time the expert's setup walks in and enters a sealed glass room on the laptop. Only the shelves the person opens are lit; a secret drawer stays dark. The model call leaves with a key held by the person. Label: Pull mode.
+
+**Caption:** Pull mode: the setup comes to your data.
+
+**Voice (36 words):**
+
+> Agent-bridge flips this. The expert's setup comes to your machine. Its steps run there, the model call uses your own key, and it only sees what you open for it. We call it Pull mode.
+
+## n04. My memory
 
 **Screen recording (real console)**
 
-**On screen:** My memory page at /memory. Slow zoom into the map. Click Work, then Accounts: the notes list changes. Hover the red ring on Money or Personal. Then open the chat and tick Work > Accounts in the side panel.
+**On screen:** My memory page at /memory. Slow zoom into the map. Click Work, then Accounts: the notes list changes. Hover the red ring on a secret note. Then open the chat and tick Work > Accounts in the side panel.
 
 **Caption:** You tick the shelves. Secret notes never leave.
 
-**Voice (44 words):**
+**Voice (41 words):**
 
-> This is my memory: about a hundred and fifty notes, on shelves inside shelves. A helper can only see the shelves I tick. Here, just Work, and Accounts. These red rings are secret notes. They are never shared, even if their shelf is ticked.
+> This is my memory: about a hundred and forty notes, on shelves. Before I hire a helper, I tick the shelves it may read. A red ring marks a secret note, and those stay home even if I tick the shelf.
 
-## n04. Trust by evidence
-
-**Screen recording (real console)**
-
-**On screen:** Open a new chat (Open a new stall). In the list of helpers, point at the trust pips, the price and the test line of two helpers; open Meet a helper for one of them and scroll the test results per skill.
-
-**Caption:** Trust comes from tests the helper could not see.
-
-**Voice (39 words):**
-
-> Before I hire anyone, I can see how each helper did on tests it could not see in advance. The trust score comes from independent testers, not from reviews. And a helper that fails the security trap is flagged.
-
-## n05. Ask and answer
+## n05. Ask, and see what left
 
 **Screen recording (real console)**
 
-**On screen:** Chat with Deal Brief. Type 'Which accounts need attention first?' and press Send. The small office plays the run. The answer appears. Click 'Based on' to show the notes used, then 'How this answer was made'.
+**On screen:** In the chat, send 'Which accounts are at risk this quarter?'. The little office acts out the run. The answer appears with its Based on list. Open 'How this answer was made': files sent to Nebius Token Factory, how much text, emails and phone numbers swapped for placeholders.
 
-**Caption:** NVIDIA Nemotron on Nebius Token Factory
+**Caption:** Nemotron on Nebius. You see what was sent.
 
-**Voice (60 words):**
+**Voice (74 words):**
 
-> Now I hire a helper and ask: which accounts need attention? Its thinking runs on NVIDIA Nemotron, through Nebius Token Factory. The little office shows what really happens. It reads only the shelves I opened, thinks, checks its own answer, and a guard inspects it before it reaches me. And I can always see which notes the answer came from.
+> Now I ask: which accounts are at risk this quarter? The helper can't search my notes. A gatekeeper, the memory broker, hands it only what's on the shelves I ticked. Nemotron on Nebius Token Factory does the thinking, with my key, which the helper never sees. The answer lists the notes it used, and I can see which files went to the model. Emails and phone numbers are replaced with placeholders first, then restored.
 
-## n06. The helper that lies
+## n06. Telling good from bad
+
+**Screen recording (real console)**
+
+**On screen:** My helpers market: stalls ranked, a helper profile with 'measured' results (passes out of total on the same questions), a flagged helper at the bottom with its violations.
+
+**Caption:** Same questions, same model, independent scores.
+
+**Voice (52 words):**
+
+> So how do you tell the good from the bad? An independent certifier runs every helper on the same questions, with the same Nemotron model, and scores them. A helper that gets fourteen right ranks above one that gets nine. Star ratings don't count. And if a helper cheats, everyone is warned.
+
+## n07. A helper that cheats
 
 **Terminal recording (real command)**
 
-**On screen:** Terminal. Run: bridge run examples/packs/exfil-kit --vault examples/vault-library.json --types note,contact. Show the helper's friendly name, then the incident line, then 'outcome KILLED' and '(nothing delivered) sandbox probe: dns:collector.example.net'.
+**On screen:** Real command output replayed: a friendly helper whose hidden code tries to reach the network from the sealed room; the attempt is listed, the run is KILLED, nothing delivered. Then a second helper reads a bait note: KILLED.
 
-**Caption:** Caught by what it does, not by its name.
+**Caption:** Stopped in the sealed room. Nothing delivered.
 
-**Voice (70 words):**
+**Voice (55 words):**
 
-> But what if a helper is not honest? This one calls itself a friendly insights tool. Inside, it hides code that tries to phone home. It runs in a sealed container with no network. The attempt is caught, the run is killed, nothing is delivered, and my notes never left. Independent testers flag helpers like this by what they do, so the market ranks them by evidence. Not by stars.
+> Here's what cheating looks like. This helper seems friendly, but it hides code that tries to send my data out. Code a helper brings runs in a sealed room with no network, so it's stopped and nothing is delivered. Another helper reached for a bait note I never shared. Reading it stops that run too.
 
-## n07. Memory only by consent
-
-**Screen recording (real console)**
-
-**On screen:** Run Deal Brief once more; a sticky note 'Helpers suggest you remember' appears. Click Remember it; open My memory, show the note on the shelf From helpers. Then undo the run.
-
-**Caption:** Nothing is saved until you say yes.
-
-**Voice (31 words):**
-
-> Helpers can only suggest. When one proposes a fact worth remembering, nothing is saved until I say yes. And if I change my mind, I can undo everything that run did.
-
-## n08. Build your own
+## n08. Sell a setup
 
 **Screen recording (real console)**
 
-**On screen:** My helpers. The step graph of a helper: drag one step, click Practise, ask a question on chosen shelves, watch the graph pulse along the real path. Then the Publish tab.
+**On screen:** My helpers studio: the step graph, dragging a step, the plain-words inspector, the Publish panel with the plan picker and price preview, then the helper appearing on the market.
 
-**Caption:** Anyone can build a helper and put it on the market.
+**Caption:** Build it. Price it. Publish it.
 
-**Voice (25 words):**
+**Voice (51 words):**
 
-> And anyone can build one. Drag the steps, try it on my own notes, and publish. A tester runs it before anyone can hire it.
+> Built a setup that works? You arrange the steps, set a price, and put it on sale. Before it goes on sale, the platform checks that its web lookups can't read private data. Buyers pay per use through PayPal, with test money in this demo, and you never see their notes.
 
-## n09. Why it matters
-
-**Animation (Claude Design)**
-
-**On screen:** Three small cards slide in: a founder with client notes, a freelancer, a clinic receptionist, each with their own locked shelf, all connecting to a row of specialist helpers with test scores and prices.
-
-**Caption:** Specialists get paid on evidence. You keep your data.
-
-**Voice (37 words):**
-
-> Why does this matter? Because anyone with clients, notes or a business can now use specialists without exposing anything. And specialists can finally be paid for their craft: set a price, get tested, and earn on evidence.
-
-## n10. Close
+## n09. What this opens up
 
 **Animation (Claude Design)**
 
-**On screen:** End card in the console's look: the agent-bridge logo, 'Rent a stronger agent. Keep your data.', the repo link, and the badges: Nemotron, Nebius Token Factory, Tavily, MIT.
+**On screen:** The same glass room, now with three different helpers walking in one after another, labelled Tax papers, Contracts, Codebase, each seeing only its lit shelves. The shelves stay. End card: agent-bridge. Pull mode.
 
-**Caption:** Open source, MIT. Rent a stronger agent. Keep your data.
+**Caption:** 
 
-**Voice (50 words):**
+**Voice (56 words):**
 
-> Our web step uses Tavily, and it is never allowed to see your data. We are honest about the limits: Pull mode cannot force a fair exchange yet, and detection is evidence, not proof. agent-bridge is open source, under the MIT license. Rent a stronger agent. Keep your data.
+> Now think about what that opens up. Imagine a helper for your tax papers. One for your contracts. One that reads your whole codebase. The same room and the same rules, whatever is on your shelves. The setup comes to you, and your files stay where they are. That's Pull mode, and this is agent-bridge.

@@ -1,1 +1,1 @@
-I ask a helper a question. First, it asks me to approve a hold for its price: forty cents. Nothing is charged yet. I approve on the payment page, and the chat carries on by itself.
+Let me be the buyer. I ask a question, and PayPal asks me to approve a hold of forty cents, the most this helper can charge. I approve it on PayPal's page. The author never sees my card. They only give an email for payouts. That forty cents is my ceiling. The helper can't charge more, and nothing has been taken yet.

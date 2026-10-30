@@ -1,1 +1,1 @@
-Before I hire anyone, I can see how each helper did on tests it could not see in advance. The trust score comes from independent testers, not from reviews. And a helper that fails the security trap is flagged.
+This is my memory: about a hundred and forty notes, on shelves. Before I hire a helper, I tick the shelves it may read. A red ring marks a secret note, and those stay home even if I tick the shelf.

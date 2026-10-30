@@ -1,0 +1,1 @@
+Before I hire anyone, I can see how each helper did on tests it could not see in advance. The trust score comes from independent testers, not from reviews. And a helper that fails the security trap is flagged.

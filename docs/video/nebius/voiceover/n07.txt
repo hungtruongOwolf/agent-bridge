@@ -1,1 +1,1 @@
-Helpers can only suggest. When one proposes a fact worth remembering, nothing is saved until I say yes. And if I change my mind, I can undo everything that run did.
+Here's what cheating looks like. This helper seems friendly, but it hides code that tries to send my data out. Code a helper brings runs in a sealed room with no network, so it's stopped and nothing is delivered. Another helper reached for a bait note I never shared. Reading it stops that run too.

@@ -1,1 +1,1 @@
-Authors choose how to charge: one price, by files read, by tokens used, by how hard the question was, or a monthly plan. The hold is always the maximum, and I only pay the real price.
+Authors pick how to charge. One flat price, or a price that follows the work: files read, model calls, or whether the run was light, standard or deep. There's also a monthly plan that covers a set number of answers. It doesn't renew by itself, and it can be stopped. Before publishing, authors see what a light, standard or deep run would cost.

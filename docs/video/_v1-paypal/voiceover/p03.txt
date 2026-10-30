@@ -1,0 +1,1 @@
+I ask a helper a question. First, it asks me to approve a hold for its price: forty cents. Nothing is charged yet. I approve on the payment page, and the chat carries on by itself.

@@ -1,1 +1,1 @@
-If an answer is not helpful, I say so. The author keeps only the deposit, and the rest is released back to me.
+A full refund needs more than my word. Say a helper cheats and gets shut down mid-run. I can't just say so, because anyone could. So the money stays held until the certifier, our independent tester, has flagged that helper. If it has, I get everything back and the author earns nothing. If it hasn't, my claim is rejected and the author keeps the fee.

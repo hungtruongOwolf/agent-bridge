@@ -1,1 +1,1 @@
-This is my memory: about a hundred and fifty notes, on shelves inside shelves. A helper can only see the shelves I tick. Here, just Work, and Accounts. These red rings are secret notes. They are never shared, even if their shelf is ticked.
+Agent-bridge flips this. The expert's setup comes to your machine. Its steps run there, the model call uses your own key, and it only sees what you open for it. We call it Pull mode.

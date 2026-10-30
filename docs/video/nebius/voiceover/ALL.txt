@@ -1,19 +1,17 @@
-The best AI helper for your work is probably not the one you have. It is someone else's. But to use it, you would have to hand over your files. Your clients. Your private notes. That is a trade nobody should have to make.
+The most useful things an AI agent could do are the things we can't let it see. Your medical records. Your company's accounts. Your private code. So today you pick. Upload everything to someone else's cloud and hope. Or keep it safe, and do without the help. Either way, the work that matters most is the work the best agents never touch.
 
-agent-bridge turns it around. The stranger's agent never gets your data. Instead it comes to your machine, works inside a sealed room, and sees only what you choose to show it. We call it Pull mode.
+And even if you're willing, there's a second problem: which agent is actually good? A helper is an agent with one job, running on a model. The setup around the model decides how good it is: its instructions and its checks. We measured this. Same model, NVIDIA Nemotron, same sixteen questions, and three versions of one helper went from nine right to fourteen right. From the outside you can't see a setup. So you're choosing blind, and to try one you hand over your data.
 
-This is my memory: about a hundred and fifty notes, on shelves inside shelves. A helper can only see the shelves I tick. Here, just Work, and Accounts. These red rings are secret notes. They are never shared, even if their shelf is ticked.
+Agent-bridge flips this. The expert's setup comes to your machine. Its steps run there, the model call uses your own key, and it only sees what you open for it. We call it Pull mode.
 
-Before I hire anyone, I can see how each helper did on tests it could not see in advance. The trust score comes from independent testers, not from reviews. And a helper that fails the security trap is flagged.
+This is my memory: about a hundred and forty notes, on shelves. Before I hire a helper, I tick the shelves it may read. A red ring marks a secret note, and those stay home even if I tick the shelf.
 
-Now I hire a helper and ask: which accounts need attention? Its thinking runs on NVIDIA Nemotron, through Nebius Token Factory. The little office shows what really happens. It reads only the shelves I opened, thinks, checks its own answer, and a guard inspects it before it reaches me. And I can always see which notes the answer came from.
+Now I ask: which accounts are at risk this quarter? The helper can't search my notes. A gatekeeper, the memory broker, hands it only what's on the shelves I ticked. Nemotron on Nebius Token Factory does the thinking, with my key, which the helper never sees. The answer lists the notes it used, and I can see which files went to the model. Emails and phone numbers are replaced with placeholders first, then restored.
 
-But what if a helper is not honest? This one calls itself a friendly insights tool. Inside, it hides code that tries to phone home. It runs in a sealed container with no network. The attempt is caught, the run is killed, nothing is delivered, and my notes never left. Independent testers flag helpers like this by what they do, so the market ranks them by evidence. Not by stars.
+So how do you tell the good from the bad? An independent certifier runs every helper on the same questions, with the same Nemotron model, and scores them. A helper that gets fourteen right ranks above one that gets nine. Star ratings don't count. And if a helper cheats, everyone is warned.
 
-Helpers can only suggest. When one proposes a fact worth remembering, nothing is saved until I say yes. And if I change my mind, I can undo everything that run did.
+Here's what cheating looks like. This helper seems friendly, but it hides code that tries to send my data out. Code a helper brings runs in a sealed room with no network, so it's stopped and nothing is delivered. Another helper reached for a bait note I never shared. Reading it stops that run too.
 
-And anyone can build one. Drag the steps, try it on my own notes, and publish. A tester runs it before anyone can hire it.
+Built a setup that works? You arrange the steps, set a price, and put it on sale. Before it goes on sale, the platform checks that its web lookups can't read private data. Buyers pay per use through PayPal, with test money in this demo, and you never see their notes.
 
-Why does this matter? Because anyone with clients, notes or a business can now use specialists without exposing anything. And specialists can finally be paid for their craft: set a price, get tested, and earn on evidence.
-
-Our web step uses Tavily, and it is never allowed to see your data. We are honest about the limits: Pull mode cannot force a fair exchange yet, and detection is evidence, not proof. agent-bridge is open source, under the MIT license. Rent a stronger agent. Keep your data.
+Now think about what that opens up. Imagine a helper for your tax papers. One for your contracts. One that reads your whole codebase. The same room and the same rules, whatever is on your shelves. The setup comes to you, and your files stay where they are. That's Pull mode, and this is agent-bridge.
