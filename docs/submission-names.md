@@ -19,9 +19,9 @@ Paste these into Devpost and YouTube. Thumbnails: `docs/video/thumbnails/thumb-n
 
 ## PayPal AI
 
-- **Project name:** Payceiling: agents paid per job, even on your machine  (alternatives: Runfee, Settled)
+- **Project name:** Agora: a marketplace where anyone can sell an agent and be paid per job  (alternatives: Bazaar, Handshake)
 - **First line of the description:** Built on the open-source agent-bridge platform.
-- **Tagline (under 60 chars):** Get paid per job, even when the agent runs on your PC.
+- **Tagline (under 60 chars):** A market for agents, paid per job on the buyer's machine.
 - **Short description:** An agent running on the buyer's machine cannot lock its result, so the only lever left is money committed
   first. The buyer approves a PayPal hold (the ceiling, 40 cents in the demo); when the run ends the real price is captured
   (25 cents for a standard run), the rest is released, "not helpful" keeps only a small fee, and a full refund needs the certifier's
