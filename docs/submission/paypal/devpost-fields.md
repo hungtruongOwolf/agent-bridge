@@ -47,7 +47,7 @@ Five plans: one flat price; by files read; by thinking used (tokens); by how har
 
 ### What you see in the demo
 
-![Receipts: 25 cents charged out of a 40 cent hold; not helpful keeps only the deposit.](https://raw.githubusercontent.com/hungtruongOwolf/agent-bridge/main/docs/submission/paypal/gallery/g04-receipts.png)
+![Receipts: 25 cents charged out of a 40 cent hold; not helpful keeps only the deposit.](https://raw.githubusercontent.com/hungtruongOwolf/agent-bridge/main/docs/submission/paypal/gallery/05-receipts.png)
 
 Every answer has a receipt in plain words: *"Standard: 2 thinking steps, 3 files read: 25¢ of the 40¢ hold."* The author's payout shows 23 cents because of a small platform fee. Everything is labelled as test money.
 
@@ -74,7 +74,7 @@ On 2026-10-30 we ran the whole flow on PayPal's sandbox with the same client the
 - **Pricing from recorded facts.** The engine keeps a hash-chained journal of each run. Price plans read files handed over, tokens used, model calls and programs run from that journal.
 - **The console.** A small pixel-art market floor where each chat is a stall; the approval page tells the console tab, so the chat carries on by itself once the buyer approves.
 
-![Each money step is one PayPal call.](https://raw.githubusercontent.com/hungtruongOwolf/agent-bridge/main/docs/submission/paypal/gallery/g05-paypal-api.png)
+![Each money step is one PayPal call.](https://raw.githubusercontent.com/hungtruongOwolf/agent-bridge/main/docs/submission/paypal/gallery/09-paypal-calls.png)
 
 The platform underneath is the open-source **agent-bridge** project (the helper runs in a sealed room with a bounded exit, memory shelves the buyer opens, and a certifier that scores helpers on the same questions with NVIDIA Nemotron on Nebius Token Factory). This submission is about the money.
 
@@ -130,19 +130,19 @@ There is no hosted demo: it runs on the viewer's own machine, which is the point
 
 All in `docs/submission/paypal/gallery/` (1920 x 1280, all under 1 MB).
 
-| # | File | What it shows |
+| # | File (already numbered in upload order) | What it shows |
 |---|---|---|
-| 1 | `g01-cover.png` | The cover: "Paid per job. Even on your PC." with the 40 → 25 + 15 coins |
-| 2 | `g10-sandbox-proof.png` | Proof: the whole flow ran on PayPal's own sandbox, each step read back |
-| 3 | `g02-approve.png` | The real approval card: "Approve a hold of 40¢" |
-| 4 | `g03-paypal-page.png` | The practice PayPal page: "Pay $0.40 USD, Approve the hold" |
-| 5 | `g04-receipts.png` | Receipts: 25¢ charged of the 40¢ hold; not helpful = deposit only |
-| 6 | `g09-hosted-earnings.png` | The Earnings ledger (AG Grid) on the hosted demo |
-| 7 | `g08-hosted-office.png` | The hosted demo: market floor with sample history |
-| 8 | `g06-plans.png` | The Publish panel: plan picker with light / standard / deep prices |
-| 9 | `g05-paypal-api.png` | Which PayPal call does each money step |
+| 1 | `01-cover.png` | The cover: "Paid per job. Even on your PC." with the 40 → 25 + 15 coins |
+| 2 | `02-sandbox-proof.png` | Proof: the whole flow ran on PayPal's own sandbox, each step read back |
+| 3 | `03-approve-hold.png` | The real approval card: "Approve a hold of 40¢" |
+| 4 | `04-paypal-approval-page.png` | The practice PayPal page: "Pay $0.40 USD, Approve the hold" |
+| 5 | `05-receipts.png` | Receipts: 25¢ charged of the 40¢ hold; not helpful = deposit only |
+| 6 | `06-earnings.png` | The Earnings ledger (AG Grid) on the hosted demo |
+| 7 | `07-hosted-demo.png` | The hosted demo: market floor with sample history |
+| 8 | `08-pricing-plans.png` | The Publish panel: plan picker with light / standard / deep prices |
+| 9 | `09-paypal-calls.png` | Which PayPal call does each money step |
 
-(`g07-earnings.png` is the local version of the Earnings picture; skip it if you use g09.)
+Select the nine files in the gallery folder (they sort in this order), or add them one at a time in this order. Files in `gallery/unused/` are not for upload.
 
 The story uses different pictures (the five diagrams in `story/`), plus the receipts and the PayPal-calls images again.
 

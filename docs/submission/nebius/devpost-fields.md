@@ -108,15 +108,17 @@ python nvidia-nemotron nebius-token-factory tavily docker javascript html5 css j
 
 All in `docs/submission/nebius/gallery/` (1920 x 1280).
 
-| # | File | Shows |
+| # | File (already numbered in upload order) | Shows |
 |---|---|---|
-| 1 | `ng01-cover.png` | Cover: "Bring the expert to your data", same model 9 to 14 of 16 |
-| 2 | `ng02-shelves.png` | Memory shelves, "Secret: never shared" |
-| 3 | `ng03-what-went.png` | "What went to the model": files sent to Nebius Token Factory |
-| 4 | `ng04-placeholders.png` | Placeholders, restored on my machine |
-| 5 | `ng05-ranking.png` | Ranked helpers; a cheat flagged for everyone |
-| 6 | `ng06-market.png` | The market floor |
-| 7 | `ng07-studio.png` | The studio: arrange steps, set a price, publish |
+| 1 | `01-cover.png` | Cover: "Bring the expert to your data", same model 9 to 14 of 16 |
+| 2 | `02-memory-shelves.png` | Memory shelves, "Secret: never shared" |
+| 3 | `03-what-went-to-model.png` | "What went to the model": files sent to Nebius Token Factory |
+| 4 | `04-placeholders.png` | Placeholders, restored on my machine |
+| 5 | `05-ranking.png` | Ranked helpers; a cheat flagged for everyone |
+| 6 | `06-market-floor.png` | The market floor |
+| 7 | `07-studio.png` | The studio: arrange steps, set a price, publish |
+
+Select all seven files in the folder (they sort in this order), or add them one at a time in this order.
 
 The story uses different pictures (the four diagrams in `story/`).
 
