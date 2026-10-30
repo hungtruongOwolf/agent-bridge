@@ -1,7 +1,7 @@
 # Agora (PayPal AI): "Additional info" page, field by field
 
 Nothing here is entered for you. Fields marked CONFIRM are about you or your choices; only you can say them.
-Every claim below was checked against the repo on 2026-10-30 (git history, README, `docs/paypal-setup.md`, `pytest tests/payments`: 80 passed).
+Every claim below was checked against the repo on 2026-10-30 (git history, README, `docs/paypal-setup.md`, `pytest tests/payments`: 92 passed).
 
 ## The PayPal sandbox: done (2026-10-30), use Text A
 
