@@ -1,0 +1,20 @@
+Fonts bundled with the agent-bridge console
+===========================================
+
+These font files are NOT ours. They are copied from the munder-difflin project
+(https://github.com/HarnessMD/munder-difflin, MIT licence, Copyright (c) 2026 Chaitanya Giri),
+which ships them under the SIL Open Font License, Version 1.1.
+
+  press-start-2p-latin-400.woff2
+    Press Start 2P (latin subset, weight 400)
+    Copyright (c) 2012, Cody "CodeMan38" Boisclair (cody@zone38.net)
+    https://fonts.google.com/specimen/Press+Start+2P
+
+  inter-latin-var.woff2
+    Inter (latin subset, variable, weights 400 to 700)
+    Copyright (c) 2016 The Inter Project Authors
+    https://github.com/rsms/inter
+
+The SIL Open Font License 1.1 (full text: https://openfontlicense.org/open-font-license-official-text/)
+permits use, study, copying, merging, embedding, redistributing and selling these fonts, as long as this
+notice stays with every copy and the fonts are not sold on their own.

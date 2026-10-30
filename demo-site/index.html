@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent Bridge</title>
+<link rel="stylesheet" href="/static/style.css">
+<meta name="color-scheme" content="light">
+</head>
+<body data-token="replay">
+<header class="top">
+  <div class="logo"><canvas id="logo" width="22" height="26" style="width:33px;height:39px" aria-hidden="true"></canvas><h1>Agent Bridge</h1></div>
+  <form class="assistant" id="askform" autocomplete="off">
+    <input id="ask" type="text" placeholder="Ask for help, like: which accounts need attention?" aria-label="What do you need help with?">
+    <button class="btn go2" type="submit">Find a helper</button>
+    <a class="btn" href="/help" data-link title="How this works">? Help</a>
+    <button class="btn mic" id="mic" type="button" aria-pressed="false" title="Speak to your assistant">Talk</button>
+  </form>
+  <a class="coins" id="coinbtn" href="/wallet" data-link title="See every payment"><b id="coinlabel">Coins</b><span id="coinchip"></span></a>
+</header>
+<div class="recs" id="recs" aria-live="polite"></div>
+
+<nav class="tabs" aria-label="Where do you want to be?">
+  <a href="/" data-link data-nav="office">My office</a>
+  <a href="/helpers" data-link data-nav="studio">My helpers</a>
+  <a href="/memory" data-link data-nav="memory">My memory</a>
+</nav>
+
+<!-- The market floor: one stall for every chat you have open, all in one picture. -->
+<section id="view-office" class="view">
+  <div class="panel welcome" id="welcome" hidden>
+    <div class="title">Welcome</div>
+    <div class="body">
+      <p class="big">Helpers answer questions using your own notes. You stay in control.</p>
+      <ol class="steps3">
+        <li><b>1</b><span>Pick a helper</span></li>
+        <li><b>2</b><span>Tick what it may look at</span></li>
+        <li><b>3</b><span>Ask your question</span></li>
+      </ol>
+      <div class="acts"><button class="linkbtn" id="welcomehide" type="button">Hide this</button></div>
+    </div>
+  </div>
+  <div class="cols floorgrid">
+    <div class="market panel">
+      <div class="title">Your market floor</div>
+      <div class="body"><div class="stalls" id="stalls" aria-label="Your chats, one stall each"></div></div>
+    </div>
+    <aside class="square" id="square" aria-live="polite" aria-label="The market square"></aside>
+  </div>
+  <div class="panel hirepanel" id="hirepanel" hidden>
+    <div class="title">Who do you want to talk with?</div>
+    <div class="body"><div id="picker" class="picker"></div></div>
+  </div>
+  <div class="panel" id="notespanel" hidden>
+    <div class="title">Helpers suggest you remember</div>
+    <div class="body"><div id="notes"></div></div>
+  </div>
+</section>
+
+<!-- One chat = one small office. -->
+<section id="view-chat" class="view cols chatview" hidden>
+  <aside class="stack chatleft">
+    <a class="btn" href="/" data-link>← All my chats</a>
+    <div class="panel minioffice">
+      <div class="title" id="officetitle">This chat's office</div>
+      <div class="body">
+        <div class="floorwrap"><canvas id="floor" role="img" aria-label="This chat's office: a safe with your shelves, a glass room where the helper works, a guard, and your assistant"></canvas></div>
+        <p class="caption" id="caption" aria-live="polite"></p>
+      </div>
+    </div>
+    <div class="panel" id="sidepanel" hidden>
+      <div class="title">What the helper sees</div><div class="body" id="sidebody"></div>
+    </div>
+  </aside>
+  <div class="chatmid panel">
+    <div class="convohead" id="convohead"></div>
+    <div class="convo" id="convo" role="log" aria-relevant="additions"></div>
+    <p class="small budget" id="budgetline"></p>
+    <p class="small warnline" id="chatnote" role="alert"></p>
+    <form id="composer" class="composer" hidden autocomplete="off">
+      <div id="hint" class="hint" aria-live="polite"></div>
+      <textarea id="draft" rows="2" maxlength="1000" placeholder="Write a message. Enter sends, Shift+Enter makes a new line." aria-label="Your message"></textarea>
+      <div class="composerrow">
+        <span></span>
+        <button class="btn go2" id="send" type="submit">Send</button>
+      </div>
+    </form>
+  </div>
+</section>
+
+<!-- Build, test, publish and manage your own helpers. -->
+<section id="view-studio" class="view studioview" hidden>
+  <div class="panel studiobar"><div class="title">Helpers I built</div><div class="body">
+    <div class="chips" id="helperlist"></div>
+    <details class="more" id="newbox">
+      <summary>+ Build a new helper</summary>
+      <form id="newform" class="newform" autocomplete="off">
+        <label class="fld"><span class="small">Name (letters and dashes)</span><input id="newname" type="text" maxlength="41" placeholder="my-first-helper" required></label>
+        <label class="fld"><span class="small">Start with</span><select id="newtemplate"></select></label>
+        <button class="btn go2" type="submit">Create it</button>
+      </form>
+    </details>
+    <p class="small warnline" id="studionote" role="status"></p>
+  </div></div>
+  <div class="cols studiocols">
+  <div class="stack studiomid">
+    <div class="panel" id="studioempty" hidden><div class="title">Your own helpers</div><div class="body">
+      <p class="big">Build your own helper and offer it to others.</p>
+      <ol class="steps3"><li><b>1</b><span>Name it</span></li><li><b>2</b><span>Practise on your notes</span></li><li><b>3</b><span>Publish it</span></li></ol>
+      <p class="small muted">Start above: give your helper a name and press Create.</p>
+    </div></div>
+    <div id="studiomain" class="stack" hidden>
+      <div class="panel"><div class="title" id="helpertitle">Helper</div><div class="body">
+        <div id="problems" aria-live="polite"></div>
+        <div class="gtools">
+          <span class="small muted">Add a step:</span>
+          <button class="btn" id="addfiles" type="button">Look through files</button>
+          <button class="btn" id="addweb" type="button">Look on the web</button>
+          <button class="btn" id="addthink" type="button">Think</button>
+          <button class="btn" id="addcheck" type="button">Check</button>
+          <button class="btn" id="addprogram" type="button">Run a program</button>
+          <button class="btn" id="adddeliver" type="button">Hand over</button>
+          <span class="gspace"></span>
+          <button class="btn" id="gzoomout" type="button" aria-label="Zoom out" title="Zoom out">−</button>
+          <button class="btn" id="gzoomin" type="button" aria-label="Zoom in" title="Zoom in">+</button>
+          <button class="btn" id="gfit" type="button" title="Fit everything on screen">Fit</button>
+          <button class="btn" id="tidy" type="button">Tidy up</button>
+        </div>
+        <label class="small"><input type="checkbox" id="showdata" checked> Show what each step reads</label>
+        <div class="graphwrap"><svg id="graph" role="img" aria-label="The steps this helper runs, as a picture. Use the panel on the right to change them without dragging."></svg></div>
+        <details class="more"><summary>How to read this picture</summary><p class="small">Scroll to zoom, drag the background to move. Green dot: drag it onto the next step. Red dot: where to go if the check fails. Grey lines show what each step reads. 🔒 marks steps that hold your private notes.</p></details>
+      </div></div>
+    </div>
+  </div>
+  <aside class="studioright" id="studiopanel">
+    <div class="panel"><div class="title">This helper</div><div class="body">
+      <div class="ptabs" role="tablist">
+        <button id="ptab-steps" role="tab" type="button">Step</button>
+        <button id="ptab-about" role="tab" type="button">Describe</button>
+        <button id="ptab-try" role="tab" type="button">Practise</button>
+        <button id="ptab-publish" role="tab" type="button">Publish</button>
+        <button id="ptab-text" role="tab" type="button">Advanced</button>
+      </div>
+      <div id="panelbody"></div>
+    </div></div>
+  </aside>
+  </div>
+</section>
+
+<section id="view-memory" class="view memview" hidden>
+  <div class="panel memintro"><div class="title">My memory</div><div class="body">
+    <div class="introrow">
+      <p>Your notes, kept on shelves. Helpers only see the shelves you tick. <b>Secret</b> files are never shared.</p>
+      <button class="btn go2 bigbtn" id="addbtn" type="button">+ Add to memory</button>
+    </div>
+    <details class="more"><summary>More about memory</summary><p class="small">Nothing is saved behind your back. Memory changes only when you write something here or say yes to a helper's suggestion.</p></details>
+    <div id="suggest"></div>
+    <p class="small warnline" id="memnote" role="status"></p>
+  </div></div>
+  <div class="cols memtop">
+  <div class="panel mapwrap"><div class="title">Map of my memory</div><div class="body">
+    <div class="maptools">
+      <span class="small muted" id="memstats"></span>
+      <span class="gspace"></span>
+      <button class="btn" id="mapzoomout" type="button" aria-label="Zoom out" title="Zoom out">−</button>
+      <button class="btn" id="mapzoomin" type="button" aria-label="Zoom in" title="Zoom in">+</button>
+      <button class="btn" id="mapfit" type="button" title="Fit everything on screen">Fit</button>
+      <button class="btn" id="mapexpand" type="button">Open all</button>
+      <button class="btn" id="mapfold" type="button">Fold all</button>
+    </div>
+    <div class="graphwrap mapview"><svg id="memmap" role="img" aria-label="A map of your memory: shelves inside shelves, with the chats that may look at each one"></svg></div>
+    <div class="legend2 small muted">
+      <span>Bigger bubble = more files</span>
+      <span><i class="sw" style="background:#D96A62"></i>Red ring = secret files, never shared</span>
+      <span><i class="sw" style="background:#CFE5E9"></i>Dotted line = a chat that may look here</span>
+    </div>
+  </div></div>
+    <div class="panel inspector"><div class="title" id="shelftitle">Files</div><div class="body">
+      <div class="memsearch"><input id="memq" type="search" placeholder="Search your memory" aria-label="Search your memory"></div>
+      <div id="shelfactions" class="acts"></div>
+      <div class="acts"><button class="btn" id="selectmode" type="button">Select several</button><button class="btn" id="opentrash" type="button">Trash</button></div>
+      <div id="bulkbar" class="bulkbar" hidden></div>
+      <div id="memlist"></div>
+      <button class="btn" id="memmore" type="button" hidden>Show more</button>
+    </div></div>
+  </div>
+  <div class="panel backup"><div class="title">Backup and restore</div><div class="body">
+    <p class="small muted">Everything in memory, secret notes included, as one file only you keep.</p>
+    <div class="acts">
+      <button class="btn" id="memexport" type="button">Download a backup</button>
+      <label class="small fieldrow">Put one back <input id="memrestore" type="file" accept=".json,application/json" aria-label="Choose a backup file"></label>
+    </div>
+  </div></div>
+</section>
+
+<datalist id="shelfnames"></datalist>
+
+<dialog id="adddlg" class="profile wide" aria-label="Add to memory"><div id="adddlgbody"></div></dialog>
+
+<dialog id="wallet" class="profile" aria-label="Payments">
+  <div id="walletbody"></div>
+  <div class="acts"><button class="btn" data-close type="button">Close</button></div>
+</dialog>
+
+<dialog id="help" class="profile" aria-label="How this works">
+  <h2>How this works</h2>
+  <ol class="helplist">
+    <li><b>My office</b>: all your chats. Each one is a small stall with a helper.</li>
+    <li><b>My memory</b>: your notes on shelves. A helper only sees the shelves you tick.</li>
+    <li><b>My helpers</b>: build your own helper and put it on the market.</li>
+    <li><b>Secret</b> notes never leave. A guard checks every answer.</li>
+    <li><b>Coins</b> are demo money. Nothing real is charged.</li>
+  </ol>
+  <div class="acts"><button class="btn" data-close type="button">Got it</button></div>
+</dialog>
+
+<dialog id="profile" class="profile" aria-label="About this helper">
+  <div id="profilebody"></div>
+  <div class="acts"><button class="btn" data-close type="button">Close</button></div>
+</dialog>
+
+<script src="/shim.js"></script>
+<script type="module" src="/static/js/main.js"></script>
+</body>
+</html>

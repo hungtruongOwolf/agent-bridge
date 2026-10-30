@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Practice PayPal: what is held, captured and paid out</title>
+<style>
+  body { margin: 0; background: #f5f7fa; font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; color: #2c2e2f; }
+  main { max-width: 760px; margin: 30px auto; padding: 0 16px; }
+  .note { background: #fff4d6; border: 1px solid #e8cf85; border-radius: 8px; padding: 12px 14px; margin-bottom: 20px; }
+  h1 { font-size: 24px; margin: 0 0 14px; }
+  table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 8px rgba(0,0,0,.1); }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid #e6e9ec; }
+  th { background: #eef2f6; font-size: 13px; }
+  .tot { display: flex; gap: 12px; margin: 0 0 18px; flex-wrap: wrap; }
+  .tot div { background: #fff; padding: 10px 14px; border-radius: 8px; box-shadow: 0 1px 8px rgba(0,0,0,.1); }
+  .tot b { display: block; font-size: 22px; }
+</style>
+</head>
+<body>
+<main>
+  <div class="note">Practice server. This imitates the PayPal sandbox. No real money, no real PayPal account. This page shows what the practice server holds for the replay.</div>
+  <h1>Orders</h1>
+  <div class="tot" id="tot"></div>
+  <table><thead><tr><th>Order</th><th>Hold</th><th>Captured</th><th>Refunded</th><th>Paid to author</th><th>State</th></tr></thead><tbody id="rows"></tbody></table>
+</main>
+<script>
+  (async () => {
+    const R = await (await fetch("/fixtures/replay.json")).json();
+    let phase = 0;
+    try { phase = (JSON.parse(localStorage.getItem("agent-bridge-replay") || "{}")).phase || 0; } catch (e) { /* start */ }
+    const by = R.snaps["/api/payments"], ks = Object.keys(by).map(Number).sort((a, b) => a - b);
+    let pick = ks[0]; ks.forEach((k) => { if (k <= phase) pick = k; });
+    const p = by[pick], c = (n) => (n || 0) + "\u00a2";
+    document.getElementById("tot").innerHTML = ["captured", "paid_out", "on_hold"].map((k) => `<div><span>${{ captured: "Captured", paid_out: "Paid to authors", on_hold: "On hold" }[k]}</span><b>${c(p.summary[k])}</b></div>`).join("");
+    document.getElementById("rows").innerHTML = p.items.length ? p.items.map((i) =>
+      `<tr><td>${i.reference || i.run_id}</td><td>${c(i.price)}</td><td>${c(i.captured)}</td><td>${c(i.refunded)}</td><td>${c(i.payout)}</td><td>${i.state_text || i.state}</td></tr>`).join("")
+      : `<tr><td colspan="6">Nothing yet.</td></tr>`;
+  })();
+</script>
+</body>
+</html>

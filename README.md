@@ -58,6 +58,11 @@ model calls, web lookups, programs run), never from anything the helper says abo
 
 Code: `src/bridge/hub/pricing.py` (plans and validation), `src/bridge/payments/subscriptions.py` (monthly plans), `Ledger.reprice` (price below the hold).
 
+## Try it without installing anything
+
+`demo-site/` is a static, interactive replay of the console: a recording of a real run on the practice PayPal server, with the real screens, no server, no keys and no model
+(deploy steps in `demo-site/README.md`; live address: [DEMO URL after deploy]). Test money.
+
 ## Quickstart
 
 Requirements: Python 3.11+, a Nebius Token Factory key, a Tavily key. Docker is needed only for packs

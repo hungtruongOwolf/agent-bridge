@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Approve the hold</title>
+<style>
+  body { margin: 0; background: #f5f7fa; font: 16px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; color: #2c2e2f; }
+  main { max-width: 520px; margin: 40px auto; background: #fff; border-radius: 12px; box-shadow: 0 2px 14px rgba(0,0,0,.12); padding: 28px 30px 24px; }
+  .note { background: #fff4d6; border: 1px solid #e8cf85; border-radius: 8px; padding: 12px 14px; font-size: 15px; margin-bottom: 26px; }
+  h1 { font-size: 34px; margin: 0 0 8px; }
+  p { color: #5e6469; margin: 0 0 22px; }
+  button { font: inherit; font-weight: 600; background: #0070ba; color: #fff; border: 0; border-radius: 24px; padding: 12px 26px; cursor: pointer; }
+  button:hover { background: #005ea6; }
+  .cancel { background: none; color: #0070ba; padding-left: 18px; }
+  .ref { margin-top: 26px; font-size: 13px; color: #8a9097; }
+  #done { display: none; }
+</style>
+</head>
+<body>
+<main>
+  <div class="note">Practice server. This imitates the PayPal sandbox. No real money, no real PayPal account.</div>
+  <div id="ask">
+    <h1 id="amount">Pay $0.40 USD</h1>
+    <p>agent-bridge asks you to put a hold of <b id="amount2">$0.40</b> on your account. Nothing is charged until a helper has answered.</p>
+    <button id="yes" type="button">Approve the hold</button><button id="no" class="cancel" type="button">Cancel</button>
+    <div class="ref" id="ref"></div>
+  </div>
+  <div id="done"><h1 id="word">Approved</h1><p id="msg"></p></div>
+</main>
+<script>
+  const KEY = "agent-bridge-replay", q = new URLSearchParams(location.search);
+  const run = q.get("run") || "", cents = parseInt(q.get("price") || "40", 10), usd = "$" + (cents / 100).toFixed(2);
+  document.getElementById("amount").textContent = "Pay " + usd + " USD";
+  document.getElementById("amount2").textContent = usd;
+  document.getElementById("ref").textContent = "Reference: " + run;
+  function finish(word) {
+    // the same two signals the console's own return page sends, so the chat in the other tab carries on by itself
+    try {
+      const s = Object.assign({ phase: 0, shelves: [], approved: {} }, JSON.parse(localStorage.getItem(KEY) || "{}"));
+      if (word === "approved") s.approved[run] = true;
+      localStorage.setItem(KEY, JSON.stringify(s));
+    } catch (e) { /* the chat has the "I approved, continue" button as well */ }
+    try { const c = new BroadcastChannel("agent-bridge-paypal"); c.postMessage(word); c.close(); } catch (e) { /* older browsers use the storage event */ }
+    try { localStorage.setItem("agent-bridge-paypal", word + ":" + Date.now()); } catch (e) { /* optional */ }
+    document.getElementById("ask").style.display = "none";
+    document.getElementById("done").style.display = "block";
+    document.getElementById("word").textContent = word === "approved" ? "Approved" : "Cancelled";
+    document.getElementById("msg").textContent = word === "approved"
+      ? "You approved the hold. This tab can be closed: the chat carries on by itself." : "You cancelled. Nothing was held or charged. You can close this tab.";
+  }
+  document.getElementById("yes").onclick = () => finish("approved");
+  document.getElementById("no").onclick = () => finish("cancelled");
+</script>
+</body>
+</html>
