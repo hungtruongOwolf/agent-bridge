@@ -13,7 +13,7 @@ Written 2026-10-30. Tick items off as they are done.
   (see B1) or setup instructions a judge can follow without our Nebius key (a no-key mode, see B3). Re-run the quickstart from a clean clone and fix anything that fails.
 - [ ] **A3. Repo public** with the MIT licence visible in the About section; README explains how PayPal and AI are used (done: "How it uses PayPal and AI").
 - [ ] **A4. Video** uploaded to YouTube (public), no third-party music or trademarks (our music is synthesized; check the logos on screen), link into the form.
-- [ ] **A5. Fill the form** from `devpost-fields.md` and `additional-info.md`, replace `[YOUTUBE LINK]` and `https://agora-replay.vercel.app`.
+- [ ] **A5. Fill the form** from `devpost-fields.md` and `additional-info.md`, replace `[YOUTUBE LINK]` (the demo URL is already `https://agora-replay.vercel.app`).
 
 ## B. Raise the score (the criteria: implementation, design, impact, innovation, presentation)
 
@@ -35,3 +35,8 @@ Written 2026-10-30. Tick items off as they are done.
 - [ ] Update `docs/video/PRODUCTION.md` and the CLAUDE.md hand-off with the version 2 video work, the submission images (`tools/submission`) and `demo-site/`.
 - [ ] Update the README "~310 tests" figure; re-run `pytest` and put the real number in both Devpost texts ("About 660").
 - [ ] If the sandbox works, re-record the money scenes (p03 to p05) against it, or add a short sandbox clip to the video.
+
+## E. Sponsor review (2026-10-30)
+
+- Astropods: read, not a fit (agent governance for organizations; no documented SDK or spend hooks; no prize).
+- Deploy: the Vercel replay is live at https://agora-replay.vercel.app (the long per-deployment address asks for a Vercel login: do not use it).
