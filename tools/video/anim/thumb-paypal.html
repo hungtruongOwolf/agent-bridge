@@ -1,0 +1,32 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Thumbnail (PayPal)</title>
+<body>
+<script type="module">
+import { stage, label, fontFace, person, K, px, box, W, H, coin, lock, laptop, AGENT, ME } from "./lib.js";
+import { glow, vignette } from "./fx.js";
+fontFace();
+const S = stage(), c = S.c;
+const disc = (x, y, r, fill) => { c.fillStyle = K.ink; c.beginPath(); c.arc(x, y, r + 1.5, 0, 7); c.fill(); c.fillStyle = fill; c.beginPath(); c.arc(x, y, r, 0, 7); c.fill(); c.fillStyle = "rgba(255,255,255,.55)"; c.beginPath(); c.arc(x - r * 0.4, y - r * 0.4, r * 0.18, 0, 7); c.fill(); };
+window.seek = () => {
+  const g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, "#EAF4FF"); g.addColorStop(1, "#C9E3FA");
+  c.fillStyle = g; c.fillRect(0, 0, W, H);
+  glow(c, 55, 128, 110, K.lemon, 0.55); glow(c, 270, 120, 100, K.skyL, 0.5);
+  disc(55, 128, 27, K.lemon);                                   // the hold
+  px(c, 92, 127, 22, 3, K.ink); px(c, 110, 123, 3, 11, K.ink); px(c, 113, 125, 3, 7, K.ink);
+  disc(150, 108, 19, K.mint);                                   // paid out
+  disc(150, 152, 13, K.lemon);                                  // given back
+  laptop(c, 248, 112, 58, 38);
+  person(c, 236, 160, { ...AGENT, pose: "idle", facing: "r" }, 0);
+  vignette(c, 0.14);
+};
+const t1 = label(S.text, "PAID PER JOB.", { x: 8, y: 6, size: 100, weight: 900, color: K.ink, w: 310 });
+const t2 = label(S.text, "EVEN ON YOUR PC.", { x: 8, y: 30, size: 100, weight: 900, color: "#0B6BCB", w: 310 });
+[t1, t2].forEach((e) => { e.style.textShadow = "6px 6px 0 rgba(26,19,32,.18)"; e.style.letterSpacing = "-0.02em"; });
+const mid = (txt, cx, cy, size, extra = {}) => { const e = label(S.text, txt, Object.assign({ x: cx - 30, y: cy - 7, size, weight: 900, align: "center", w: 60 }, extra)); return e; };
+mid("40¢", 55, 128, 52); mid("25¢", 150, 108, 40); mid("15¢", 150, 152, 30);
+label(S.text, "paid to the author", { x: 176, y: 100, size: 30, weight: 800, color: K.ink });
+label(S.text, "released back to you", { x: 170, y: 148, size: 26, weight: 700, color: K.ink700 });
+label(S.text, "PayPal hold · test money", { x: 8, y: 58, size: 34, weight: 800, bg: K.lemon, pad: 10, border: true, shadow: true });
+window.ready = true;
+</script>
