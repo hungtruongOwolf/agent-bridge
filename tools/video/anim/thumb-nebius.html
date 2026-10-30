@@ -7,9 +7,13 @@ import { stage, label, fontFace, person, K, px, box, W, H, laptop, folder, shelf
 import { glow, vignette } from "./fx.js";
 fontFace();
 const S = stage(), c = S.c;
+const RATIO = new URLSearchParams(location.search).get("r") === "32";   // 3:2 version (1500 x 1000 style): a taller canvas, art moved down
+const DY = RATIO ? 33 : 0;
+if (RATIO) { const cv = c.canvas; cv.height = H + DY; cv.style.height = (H + DY) * 4 + "px"; c.imageSmoothingEnabled = false; S.root.style.height = (H + DY) * 4 + "px"; document.body.style.height = (H + DY) * 4 + "px"; }
 window.seek = () => {
-  const g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, "#FFF8E7"); g.addColorStop(1, "#F1E3B8");
-  c.fillStyle = g; c.fillRect(0, 0, W, H);
+  const g = c.createLinearGradient(0, 0, 0, H + DY); g.addColorStop(0, "#FFF8E7"); g.addColorStop(1, "#F1E3B8");
+  c.fillStyle = g; c.fillRect(0, 0, W, H + DY);
+  c.save(); c.translate(0, DY);
   glow(c, 230, 120, 130, K.skyL, 0.7); glow(c, 40, 160, 90, K.lilacL, 0.6);
   // the sealed room with the person's shelves
   glassRoom(c, 150, 76, 150, 86);
@@ -22,13 +26,13 @@ window.seek = () => {
   // the expert walks in
   person(c, 118, 158, { ...AGENT, pose: "idle", facing: "r" }, 0);
   for (let i = 0; i < 4; i++) px(c, 128 + i * 5, 150, 3, 2, K.ink);   // a little trail of steps
-  vignette(c, 0.18);
+  c.restore();
 };
 const t1 = label(S.text, "BRING THE EXPERT", { x: 8, y: 6, size: 92, weight: 900, color: K.ink, w: 310 });
 const t2 = label(S.text, "TO YOUR DATA", { x: 8, y: 29, size: 92, weight: 900, color: "#7A4BD6", w: 310 });
 [t1, t2].forEach((e) => { e.style.textShadow = "6px 6px 0 rgba(26,19,32,.18)"; e.style.letterSpacing = "-0.02em"; });
 label(S.text, "Same model. 9 → 14 right out of 16.", { x: 8, y: 56, size: 38, weight: 800, bg: K.lemon, pad: 10, border: true, shadow: true });
-label(S.text, "agent-bridge  ·  NVIDIA Nemotron  ·  Nebius", { x: 8, y: 160, size: 28, weight: 800, color: K.ink700 });
-label(S.text, "PULL MODE", { x: 236, y: 166, size: 20, font: "pixel", weight: 400, color: K.ink });
+label(S.text, "agent-bridge  ·  NVIDIA  ·  Nebius", { x: 8, y: 160 + DY, size: 28, weight: 800, color: K.ink700 });
+label(S.text, "PULL MODE", { x: 236, y: 166 + DY, size: 20, font: "pixel", weight: 400, color: K.ink });
 window.ready = true;
 </script>
