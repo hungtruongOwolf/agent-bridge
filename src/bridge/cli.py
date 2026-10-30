@@ -101,8 +101,34 @@ def seed_cmd(args) -> int:
     return 0
 
 
+def judge_cmd(args) -> int:
+    """Public judge mode: the real app for many visitors, no keys. See web/judge.py."""
+    import os
+    from .web.judge import JudgeConfig, serve_judge
+
+    hosts = tuple(args.allowed_host or ()) + tuple(h for h in os.environ.get("JUDGE_ALLOWED_HOSTS", "").split(",") if h.strip())
+    cfg = JudgeConfig(allowed_hosts=hosts, packs_dir=Path(args.packs), template=Path(args.packs).parent / "judge", vault_path=Path("examples/vault-library.json" if args.vault == "examples/vault.json" else args.vault),
+                      real_model=args.judge_real_model or os.environ.get("JUDGE_REAL_MODEL") == "1",
+                      model_per_hour=args.judge_model_per_hour, model_per_visitor_hour=args.judge_model_per_visitor_hour)
+    port = int(os.environ.get("PORT") or args.port) if args.port == 8787 else args.port
+    httpd, hub = serve_judge(cfg, args.host, port)
+    print(f"judge mode on http://{args.host}:{httpd.server_address[1]}  hosts: {', '.join(sorted(hub.hosts))}")
+    print("model:", "live (capped) with recorded fallback" if hub.live is not None else "recorded (no keys needed)", "| temp root:", hub.root)
+    try:
+        httpd.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    return 0
+
+
 def serve_cmd(args) -> int:
     from .web.server import App, serve
+
+    if args.judge_mode:
+        return judge_cmd(args)
+    if args.host not in ("127.0.0.1", "localhost", "::1"):
+        print("--host other than 127.0.0.1 is only allowed together with --judge-mode")
+        return 2
 
     world = open_world(args.state)
     ledger, author_email, mode, dashboard = None, "", "test", ""
@@ -271,6 +297,12 @@ def main(argv: list[str] | None = None) -> int:
     sv.add_argument("--payments", choices=["test", "paypal", "paypal-mock"], default="test",
                     help="test = fake money kept in a file; paypal = PayPal sandbox (needs credentials in .env); "
                          "paypal-mock = a local practice server that behaves like the sandbox, with an approval page")
+    sv.add_argument("--judge-mode", action="store_true", help="public judge mode: recorded model, practice PayPal, one private copy per visitor (opt-in)")
+    sv.add_argument("--host", default="127.0.0.1", help="address to bind (not 127.0.0.1 only with --judge-mode)")
+    sv.add_argument("--allowed-host", action="append", help="judge mode: a Host name the server answers to (repeat); RENDER_EXTERNAL_HOSTNAME is added by itself")
+    sv.add_argument("--judge-real-model", action="store_true", help="judge mode: use NEBIUS_API_KEY from the environment, with hard hourly caps")
+    sv.add_argument("--judge-model-per-hour", type=int, default=60)
+    sv.add_argument("--judge-model-per-visitor-hour", type=int, default=12)
     sv.set_defaults(fn=serve_cmd)
     dd = sub.add_parser("demo-data", help="fill a state folder with every case the application handles, for a demo")
     dd.add_argument("--state", default=".bridge-demo")

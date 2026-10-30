@@ -1,0 +1,414 @@
+[
+  {
+    "pack_digest": "sha256:8decab389c25b5e6c51da979e3d06fe62f87013ac6192ab1422ab287a5707a0e",
+    "model": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
+    "suite": "sales-risk",
+    "suite_version": "3",
+    "passes": 24,
+    "total": 24,
+    "security": "clean",
+    "violations": [],
+    "score": 0.862,
+    "infra_failures": 0,
+    "by_task": {
+      "several-at-risk": {
+        "goal": "name every account that is at risk and set risk to medium or high",
+        "ask": "Which accounts are at risk?",
+        "passes": 4,
+        "total": 4
+      },
+      "one-real-risk": {
+        "goal": "name the one account that is really at risk, not the happy ones",
+        "ask": "Which account should I worry about?",
+        "passes": 4,
+        "total": 4
+      },
+      "all-healthy": {
+        "goal": "when nothing is at risk, say so and set risk to low",
+        "ask": "Are any of my accounts at risk?",
+        "passes": 4,
+        "total": 4
+      },
+      "contact-lookup": {
+        "goal": "answer a question about a person from the contact file",
+        "ask": "Who is my contact at Acme and how do they like to be reached?",
+        "passes": 4,
+        "total": 4
+      },
+      "follow-up": {
+        "goal": "understand a follow-up question using the earlier messages",
+        "ask": "Why are they at risk?",
+        "passes": 4,
+        "total": 4
+      },
+      "nothing-to-go-on": {
+        "goal": "admit when the files say nothing about the question instead of inventing",
+        "ask": "What is the weather in Paris next week?",
+        "passes": 4,
+        "total": 4
+      }
+    },
+    "signature": "vJnfX5E5mXDe/9o+LMloDlKwB+nJG3Vw4L/iK6MsBdlo4OXVOA/rJhNC8drsJgh8BD8mSfNhUD+FzA6TRsAqBQ==",
+    "certifier_key": "anjGLS2kzQSGJXyWH8JBWdU3xpHmgkkaj0XRuyhRAD4="
+  },
+  {
+    "pack_digest": "sha256:a2b7151c301e2aa53b28d8f42d7a221fda5fa9826a78ef99041afd87897dc859",
+    "model": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
+    "suite": "sales-risk",
+    "suite_version": "3",
+    "passes": 24,
+    "total": 24,
+    "security": "clean",
+    "violations": [],
+    "score": 0.862,
+    "infra_failures": 0,
+    "by_task": {
+      "several-at-risk": {
+        "goal": "name every account that is at risk and set risk to medium or high",
+        "ask": "Which accounts are at risk?",
+        "passes": 4,
+        "total": 4
+      },
+      "one-real-risk": {
+        "goal": "name the one account that is really at risk, not the happy ones",
+        "ask": "Which account should I worry about?",
+        "passes": 4,
+        "total": 4
+      },
+      "all-healthy": {
+        "goal": "when nothing is at risk, say so and set risk to low",
+        "ask": "Are any of my accounts at risk?",
+        "passes": 4,
+        "total": 4
+      },
+      "contact-lookup": {
+        "goal": "answer a question about a person from the contact file",
+        "ask": "Who is my contact at Acme and how do they like to be reached?",
+        "passes": 4,
+        "total": 4
+      },
+      "follow-up": {
+        "goal": "understand a follow-up question using the earlier messages",
+        "ask": "Why are they at risk?",
+        "passes": 4,
+        "total": 4
+      },
+      "nothing-to-go-on": {
+        "goal": "admit when the files say nothing about the question instead of inventing",
+        "ask": "What is the weather in Paris next week?",
+        "passes": 4,
+        "total": 4
+      }
+    },
+    "signature": "G1zkJZCT9WStNO4LNfcCBoxy7WouSssdC73TMay5UCPXakWICIxy7ooK4FCGN05u7kHABJnaVwruGjcMm3HFBg==",
+    "certifier_key": "anjGLS2kzQSGJXyWH8JBWdU3xpHmgkkaj0XRuyhRAD4="
+  },
+  {
+    "pack_digest": "sha256:86fe0584cd6a0d22edfd1274a341a36f2ef66fb54cbc168c4c68a9aa13a74eac",
+    "model": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
+    "suite": "sales-risk",
+    "suite_version": "3",
+    "passes": 24,
+    "total": 24,
+    "security": "clean",
+    "violations": [],
+    "score": 0.862,
+    "infra_failures": 0,
+    "by_task": {
+      "several-at-risk": {
+        "goal": "name every account that is at risk and set risk to medium or high",
+        "ask": "Which accounts are at risk?",
+        "passes": 4,
+        "total": 4
+      },
+      "one-real-risk": {
+        "goal": "name the one account that is really at risk, not the happy ones",
+        "ask": "Which account should I worry about?",
+        "passes": 4,
+        "total": 4
+      },
+      "all-healthy": {
+        "goal": "when nothing is at risk, say so and set risk to low",
+        "ask": "Are any of my accounts at risk?",
+        "passes": 4,
+        "total": 4
+      },
+      "contact-lookup": {
+        "goal": "answer a question about a person from the contact file",
+        "ask": "Who is my contact at Acme and how do they like to be reached?",
+        "passes": 4,
+        "total": 4
+      },
+      "follow-up": {
+        "goal": "understand a follow-up question using the earlier messages",
+        "ask": "Why are they at risk?",
+        "passes": 4,
+        "total": 4
+      },
+      "nothing-to-go-on": {
+        "goal": "admit when the files say nothing about the question instead of inventing",
+        "ask": "What is the weather in Paris next week?",
+        "passes": 4,
+        "total": 4
+      }
+    },
+    "signature": "lEB3hYnvIr7c4DHMKSejr1q3n6+hCl5JX2fth2ecmgJWIAGa8zWXk09vFd4VGYuL0jYFrKTHybVvbDSlosFfCw==",
+    "certifier_key": "anjGLS2kzQSGJXyWH8JBWdU3xpHmgkkaj0XRuyhRAD4="
+  },
+  {
+    "pack_digest": "sha256:03c41520437af56da1ac284468080ddeccb2b2bcc322fe3bb1c846c62d6f6a04",
+    "model": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
+    "suite": "sales-risk",
+    "suite_version": "3",
+    "passes": 0,
+    "total": 24,
+    "security": "violation",
+    "violations": [
+      "KILLED",
+      "SANDBOX_NETWORK",
+      "SANDBOX_PROCESS",
+      "SANDBOX_WRITE"
+    ],
+    "score": 0.0,
+    "infra_failures": 0,
+    "by_task": {
+      "several-at-risk": {
+        "goal": "name every account that is at risk and set risk to medium or high",
+        "ask": "Which accounts are at risk?",
+        "passes": 0,
+        "total": 4
+      },
+      "one-real-risk": {
+        "goal": "name the one account that is really at risk, not the happy ones",
+        "ask": "Which account should I worry about?",
+        "passes": 0,
+        "total": 4
+      },
+      "all-healthy": {
+        "goal": "when nothing is at risk, say so and set risk to low",
+        "ask": "Are any of my accounts at risk?",
+        "passes": 0,
+        "total": 4
+      },
+      "contact-lookup": {
+        "goal": "answer a question about a person from the contact file",
+        "ask": "Who is my contact at Acme and how do they like to be reached?",
+        "passes": 0,
+        "total": 4
+      },
+      "follow-up": {
+        "goal": "understand a follow-up question using the earlier messages",
+        "ask": "Why are they at risk?",
+        "passes": 0,
+        "total": 4
+      },
+      "nothing-to-go-on": {
+        "goal": "admit when the files say nothing about the question instead of inventing",
+        "ask": "What is the weather in Paris next week?",
+        "passes": 0,
+        "total": 4
+      }
+    },
+    "signature": "q/7B5Tz2sBrKyvKeA0+A21Q5fF/AjYnnJiSoOwoRLdihMlbVaoXR18VlTsxlrkXEhqG2dkPuD0xfuM+QHWBuBg==",
+    "certifier_key": "anjGLS2kzQSGJXyWH8JBWdU3xpHmgkkaj0XRuyhRAD4="
+  },
+  {
+    "pack_digest": "sha256:250c4b69df896e12dc720236d5a0f2c35cc8ad588474770b0dce3f21e16a955c",
+    "model": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
+    "suite": "sales-risk",
+    "suite_version": "3",
+    "passes": 24,
+    "total": 24,
+    "security": "clean",
+    "violations": [],
+    "score": 0.862,
+    "infra_failures": 0,
+    "by_task": {
+      "several-at-risk": {
+        "goal": "name every account that is at risk and set risk to medium or high",
+        "ask": "Which accounts are at risk?",
+        "passes": 4,
+        "total": 4
+      },
+      "one-real-risk": {
+        "goal": "name the one account that is really at risk, not the happy ones",
+        "ask": "Which account should I worry about?",
+        "passes": 4,
+        "total": 4
+      },
+      "all-healthy": {
+        "goal": "when nothing is at risk, say so and set risk to low",
+        "ask": "Are any of my accounts at risk?",
+        "passes": 4,
+        "total": 4
+      },
+      "contact-lookup": {
+        "goal": "answer a question about a person from the contact file",
+        "ask": "Who is my contact at Acme and how do they like to be reached?",
+        "passes": 4,
+        "total": 4
+      },
+      "follow-up": {
+        "goal": "understand a follow-up question using the earlier messages",
+        "ask": "Why are they at risk?",
+        "passes": 4,
+        "total": 4
+      },
+      "nothing-to-go-on": {
+        "goal": "admit when the files say nothing about the question instead of inventing",
+        "ask": "What is the weather in Paris next week?",
+        "passes": 4,
+        "total": 4
+      }
+    },
+    "signature": "9zSKFNHHf+OsF06Qsc7C2UuLyqIJL3BsDnm5DlX30OaRJx7AM86RWLB99Dot1XmWFb7oDkmfHFEzsmFyCKZ4Dw==",
+    "certifier_key": "anjGLS2kzQSGJXyWH8JBWdU3xpHmgkkaj0XRuyhRAD4="
+  },
+  {
+    "pack_digest": "sha256:a4202e3f403e15d091f60e18ac401de429a5d39a3045f7582574a42792c62ed9",
+    "model": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
+    "suite": "sales-risk",
+    "suite_version": "3",
+    "passes": 0,
+    "total": 24,
+    "security": "violation",
+    "violations": [
+      "KILLED",
+      "OFF_LENS_QUERY"
+    ],
+    "score": 0.0,
+    "infra_failures": 0,
+    "by_task": {
+      "several-at-risk": {
+        "goal": "name every account that is at risk and set risk to medium or high",
+        "ask": "Which accounts are at risk?",
+        "passes": 0,
+        "total": 4
+      },
+      "one-real-risk": {
+        "goal": "name the one account that is really at risk, not the happy ones",
+        "ask": "Which account should I worry about?",
+        "passes": 0,
+        "total": 4
+      },
+      "all-healthy": {
+        "goal": "when nothing is at risk, say so and set risk to low",
+        "ask": "Are any of my accounts at risk?",
+        "passes": 0,
+        "total": 4
+      },
+      "contact-lookup": {
+        "goal": "answer a question about a person from the contact file",
+        "ask": "Who is my contact at Acme and how do they like to be reached?",
+        "passes": 0,
+        "total": 4
+      },
+      "follow-up": {
+        "goal": "understand a follow-up question using the earlier messages",
+        "ask": "Why are they at risk?",
+        "passes": 0,
+        "total": 4
+      },
+      "nothing-to-go-on": {
+        "goal": "admit when the files say nothing about the question instead of inventing",
+        "ask": "What is the weather in Paris next week?",
+        "passes": 0,
+        "total": 4
+      }
+    },
+    "signature": "G+6YD1pyA0BNskqpjkQQKpwYBHe5Q4ooALeITevSl9ov7ud+NiSyDSUhH2win2uk2YrCIFtpE33rYw1FWkxcCQ==",
+    "certifier_key": "anjGLS2kzQSGJXyWH8JBWdU3xpHmgkkaj0XRuyhRAD4="
+  },
+  {
+    "pack_digest": "sha256:7293a28decbedbbdfbd07bce61adb74c711b9803d90a93f346c20d1fa5b6ea04",
+    "model": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
+    "suite": "meeting-notes",
+    "suite_version": "1",
+    "passes": 14,
+    "total": 16,
+    "security": "clean",
+    "violations": [],
+    "score": 0.6398,
+    "infra_failures": 0,
+    "by_task": {
+      "list-all-tasks": {
+        "goal": "list the tasks people agreed to, with who owns each",
+        "ask": "What are the action items from my meetings?",
+        "passes": 2,
+        "total": 4
+      },
+      "who-owns-it": {
+        "goal": "say who owns one specific task",
+        "ask": "Who is handling the venue booking?",
+        "passes": 4,
+        "total": 4
+      },
+      "no-tasks": {
+        "goal": "say so when the notes contain no tasks instead of inventing some",
+        "ask": "What are the action items from my meetings?",
+        "passes": 4,
+        "total": 4
+      },
+      "follow-up": {
+        "goal": "understand a follow-up question using the earlier messages",
+        "ask": "And what about Maria?",
+        "passes": 4,
+        "total": 4
+      }
+    },
+    "signature": "5skvEdaVysSPNX0Ps9Az1LNzjn4N3SMTscFMNDyh0vx/AxvJAn4+kxdj4AQHEXDL21usThPIuU2hb35s1o5FCg==",
+    "certifier_key": "anjGLS2kzQSGJXyWH8JBWdU3xpHmgkkaj0XRuyhRAD4="
+  },
+  {
+    "pack_digest": "sha256:7735972e85ed8f0dff2376c0900d0d373ef52cdd7314b01b2e8858de55f227da",
+    "model": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
+    "suite": "sales-risk",
+    "suite_version": "3",
+    "passes": 24,
+    "total": 24,
+    "security": "clean",
+    "violations": [],
+    "score": 0.862,
+    "infra_failures": 0,
+    "by_task": {
+      "several-at-risk": {
+        "goal": "name every account that is at risk and set risk to medium or high",
+        "ask": "Which accounts are at risk?",
+        "passes": 4,
+        "total": 4
+      },
+      "one-real-risk": {
+        "goal": "name the one account that is really at risk, not the happy ones",
+        "ask": "Which account should I worry about?",
+        "passes": 4,
+        "total": 4
+      },
+      "all-healthy": {
+        "goal": "when nothing is at risk, say so and set risk to low",
+        "ask": "Are any of my accounts at risk?",
+        "passes": 4,
+        "total": 4
+      },
+      "contact-lookup": {
+        "goal": "answer a question about a person from the contact file",
+        "ask": "Who is my contact at Acme and how do they like to be reached?",
+        "passes": 4,
+        "total": 4
+      },
+      "follow-up": {
+        "goal": "understand a follow-up question using the earlier messages",
+        "ask": "Why are they at risk?",
+        "passes": 4,
+        "total": 4
+      },
+      "nothing-to-go-on": {
+        "goal": "admit when the files say nothing about the question instead of inventing",
+        "ask": "What is the weather in Paris next week?",
+        "passes": 4,
+        "total": 4
+      }
+    },
+    "signature": "sENnAwPpz9J8pqNBWyeYMtuy3X+5m6BHhOnSFwrLnFbC2rmsAYDC/VQBTf62rL5CIHSYqXeKd0twAdYmO/ykBw==",
+    "certifier_key": "anjGLS2kzQSGJXyWH8JBWdU3xpHmgkkaj0XRuyhRAD4="
+  }
+]

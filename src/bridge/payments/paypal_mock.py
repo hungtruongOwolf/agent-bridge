@@ -201,6 +201,37 @@ def _page(title: str, body: str) -> bytes:
     return (PAGE.format(title=html.escape(title), body=body)).encode()
 
 
+def checkout_page(api: MockPayPal, token: str, prefix: str = "") -> tuple[int, bytes]:
+    """The buyer's approval page. `prefix` is where the practice server is mounted when it shares a port with the console ("/practice")."""
+    o = api.s.orders.get(token)
+    if o is None:
+        return 404, _page("Not found", "<p>That payment was not found.</p>")
+    tok = urllib.parse.quote(o["id"])
+    body = (f"<h1 style='margin:0 0 6px'>Pay ${money(o['amount'])} USD</h1><p style='color:#52606d'>agent-bridge asks you to put a hold of "
+            f"<b>${money(o['amount'])}</b> on your account. Nothing is charged until a helper has answered.</p>"
+            f"<form method=post action='{prefix}/checkoutnow/approve?token={tok}' style='display:inline'><button style='background:#0070ba;color:#fff;border:0;"
+            f"border-radius:20px;padding:12px 26px;font-size:16px;cursor:pointer'>Approve the hold</button></form> "
+            f"<form method=post action='{prefix}/checkoutnow/cancel?token={tok}' style='display:inline'><button style='background:none;border:0;"
+            f"color:#0070ba;font-size:15px;cursor:pointer;margin-left:10px'>Cancel</button></form>"
+            f"<p style='font-size:13px;color:#7b8794;margin-top:22px'>Reference: {html.escape(o['reference'])} · Order {html.escape(o['id'])}</p>")
+    return 200, _page("Approve the hold", body)
+
+
+def state_page(api: MockPayPal) -> bytes:
+    t = api.s.totals()
+    rows = "".join(f"<tr><td>{html.escape(o['id'])}</td><td>{html.escape(o['reference'])}</td><td>${money(o['amount'])}</td><td>{o['status']}</td></tr>" for o in api.s.orders.values())
+    pay = "".join(f"<tr><td>{html.escape(p['to'])}</td><td>${money(p['amount'])}</td></tr>" for p in api.s.payouts.values())
+    body = (f"<h1 style='margin:0 0 12px'>Practice PayPal</h1><p>On hold ${money(t['held'])} · Captured ${money(t['captured'])} · "
+            f"Refunded ${money(t['refunded'])} · Paid out ${money(t['paid_out'])}</p><h3>Orders</h3><table cellpadding=6>{rows}</table>"
+            f"<h3>Payouts to authors</h3><table cellpadding=6>{pay}</table>")
+    return _page("Practice PayPal", body)
+
+
+def buyer_decision(api: MockPayPal, action: str, token: str) -> str | None:
+    """The buyer pressed Approve or Cancel: the address to send them back to, or None when there is no such payment."""
+    return api.approve(token) if action == "approve" else api.cancel(token)
+
+
 def make_handler(api: MockPayPal):
     class H(BaseHTTPRequestHandler):
         def log_message(self, *a):
@@ -233,7 +264,7 @@ def make_handler(api: MockPayPal):
             if u.path in ("/checkoutnow/approve", "/checkoutnow/cancel"):
                 token = urllib.parse.parse_qs(u.query).get("token", [""])[0]
                 self.rfile.read(int(self.headers.get("Content-Length") or 0))
-                target = api.approve(token) if u.path.endswith("approve") else api.cancel(token)
+                target = buyer_decision(api, "approve" if u.path.endswith("approve") else "cancel", token)
                 if not target:
                     return self._send(404, _page("Not found", "<p>That payment was not found.</p>"), "text/html; charset=utf-8")
                 return self._send(303, b"", "text/plain", {"Location": target})
@@ -243,29 +274,13 @@ def make_handler(api: MockPayPal):
             u = urllib.parse.urlsplit(self.path)
             q = urllib.parse.parse_qs(u.query)
             if u.path == "/checkoutnow":
-                o = api.s.orders.get(q.get("token", [""])[0])
-                if o is None:
-                    return self._send(404, _page("Not found", "<p>That payment was not found.</p>"), "text/html; charset=utf-8")
-                tok = urllib.parse.quote(o["id"])
-                body = (f"<h1 style='margin:0 0 6px'>Pay ${money(o['amount'])} USD</h1><p style='color:#52606d'>agent-bridge asks you to put a hold of "
-                        f"<b>${money(o['amount'])}</b> on your account. Nothing is charged until a helper has answered.</p>"
-                        f"<form method=post action='/checkoutnow/approve?token={tok}' style='display:inline'><button style='background:#0070ba;color:#fff;border:0;"
-                        f"border-radius:20px;padding:12px 26px;font-size:16px;cursor:pointer'>Approve the hold</button></form> "
-                        f"<form method=post action='/checkoutnow/cancel?token={tok}' style='display:inline'><button style='background:none;border:0;"
-                        f"color:#0070ba;font-size:15px;cursor:pointer;margin-left:10px'>Cancel</button></form>"
-                        f"<p style='font-size:13px;color:#7b8794;margin-top:22px'>Reference: {html.escape(o['reference'])} · Order {html.escape(o['id'])}</p>")
-                return self._send(200, _page("Approve the hold", body), "text/html; charset=utf-8")
+                status, page = checkout_page(api, q.get("token", [""])[0])
+                return self._send(status, page, "text/html; charset=utf-8")
             if u.path == "/mock/state.json":
                 return self._send(200, json.dumps({"totals": api.s.totals(), "orders": api.s.orders, "auths": api.s.auths, "captures": api.s.captures,
                                                    "refunds": api.s.refunds, "payouts": api.s.payouts}).encode())
             if u.path == "/mock/state":
-                t = api.s.totals()
-                rows = "".join(f"<tr><td>{html.escape(o['id'])}</td><td>{html.escape(o['reference'])}</td><td>${money(o['amount'])}</td><td>{o['status']}</td></tr>" for o in api.s.orders.values())
-                pay = "".join(f"<tr><td>{html.escape(p['to'])}</td><td>${money(p['amount'])}</td></tr>" for p in api.s.payouts.values())
-                body = (f"<h1 style='margin:0 0 12px'>Practice PayPal</h1><p>On hold ${money(t['held'])} · Captured ${money(t['captured'])} · "
-                        f"Refunded ${money(t['refunded'])} · Paid out ${money(t['paid_out'])}</p><h3>Orders</h3><table cellpadding=6>{rows}</table>"
-                        f"<h3>Payouts to authors</h3><table cellpadding=6>{pay}</table>")
-                return self._send(200, _page("Practice PayPal", body), "text/html; charset=utf-8")
+                return self._send(200, state_page(api), "text/html; charset=utf-8")
             self._api("GET")
 
     return H

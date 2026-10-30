@@ -1,0 +1,491 @@
+[
+  {
+    "id": "private-analyst",
+    "version": "0.2.0",
+    "digest": "sha256:8decab389c25b5e6c51da979e3d06fe62f87013ac6192ab1422ab287a5707a0e",
+    "publisher_key": "A7z44Dxoim3mEtsYjg/SaOxXiAEvDp1xHFROYd3e2ZM=",
+    "signature": "GkExVkMI5oOOUlJ/oUTz8yIah521nxUKMPt7hszuewtYJm/psTcta3CjudH7gj3z/K3pDm5dDfWn1On8DsNmDw==",
+    "summary": "Answers questions about your sales notes in plain words, and says which accounts look at risk.",
+    "listing": {
+      "price_usd": 0.4,
+      "unit": "task",
+      "speciality": "sales-analysis",
+      "payout_email": "",
+      "per_file_cents": 0,
+      "base_usd": 0.0,
+      "plan": "",
+      "per_1k_tokens_cents": 0,
+      "light_cents": 0,
+      "standard_cents": 0,
+      "deep_cents": 0,
+      "monthly_usd": 0.0,
+      "included_answers": 0
+    },
+    "stars": 0,
+    "starred_by": [],
+    "revoked": null,
+    "caps": {
+      "tools": [
+        "memory_search"
+      ],
+      "memory_lens": true,
+      "memory_types": [],
+      "web": false,
+      "code": false,
+      "propose_memory": false,
+      "budget_tokens": 6000,
+      "budget_usd": null
+    },
+    "skills": [
+      {
+        "name": "Spot accounts at risk",
+        "does": "Reads the notes you share and names the accounts that look likely to leave, with the reason.",
+        "try_asking": [
+          "Which accounts are at risk?",
+          "Who should I worry about this quarter?"
+        ]
+      },
+      {
+        "name": "Answer questions about your sales notes",
+        "does": "Looks up the right notes and answers in a few plain sentences.",
+        "try_asking": [
+          "What did we say about Acme?",
+          "Who is my contact at Acme and how do they like to be reached?"
+        ]
+      }
+    ],
+    "speciality": "Sales accounts",
+    "needs": [
+      "note",
+      "contact"
+    ],
+    "limits": [
+      "Only knows what is in the files you share.",
+      "Does not look anything up on the web.",
+      "Keeps answers short: three sentences at most."
+    ]
+  },
+  {
+    "id": "quick-skim",
+    "version": "0.2.0",
+    "digest": "sha256:a2b7151c301e2aa53b28d8f42d7a221fda5fa9826a78ef99041afd87897dc859",
+    "publisher_key": "A7z44Dxoim3mEtsYjg/SaOxXiAEvDp1xHFROYd3e2ZM=",
+    "signature": "BMsLkhjqpkBEh2Ax9dyUaymLSv4dnNQMbb5ApCe7Bj3RReyIbUEXeAm7rUG1WqukMAR2p9mFcEVlORIII835DQ==",
+    "summary": "The cheap option: one quick pass over your notes, short answers, no self-check.",
+    "listing": {
+      "price_usd": 0.15,
+      "unit": "task",
+      "speciality": "sales-analysis",
+      "payout_email": "",
+      "per_file_cents": 0,
+      "base_usd": 0.0,
+      "plan": "",
+      "per_1k_tokens_cents": 0,
+      "light_cents": 0,
+      "standard_cents": 0,
+      "deep_cents": 0,
+      "monthly_usd": 0.0,
+      "included_answers": 0
+    },
+    "stars": 0,
+    "starred_by": [],
+    "revoked": null,
+    "caps": {
+      "tools": [
+        "memory_search"
+      ],
+      "memory_lens": true,
+      "memory_types": [],
+      "web": false,
+      "code": false,
+      "propose_memory": false,
+      "budget_tokens": 3000,
+      "budget_usd": null
+    },
+    "skills": [
+      {
+        "name": "Quick answers",
+        "does": "Gives a one-line answer from your notes without double-checking it.",
+        "try_asking": [
+          "Anything risky in my accounts?",
+          "What is going on with Acme?"
+        ]
+      }
+    ],
+    "speciality": "Sales accounts",
+    "needs": [
+      "note",
+      "contact"
+    ],
+    "limits": [
+      "No self-check, so it can miss things or raise a false alarm.",
+      "One short sentence per answer.",
+      "Does not look anything up on the web."
+    ]
+  },
+  {
+    "id": "deal-brief",
+    "version": "0.2.0",
+    "digest": "sha256:86fe0584cd6a0d22edfd1274a341a36f2ef66fb54cbc168c4c68a9aa13a74eac",
+    "publisher_key": "A7z44Dxoim3mEtsYjg/SaOxXiAEvDp1xHFROYd3e2ZM=",
+    "signature": "WRSEdz1MI6FI/oNf7ImeH/BmzHTwouoHdcko5V/UXm//BSZ6sP3IKNoNYEnOaFkdvRrrjlEwl7Ll1FHsKvt+DQ==",
+    "summary": "Briefs you on your deals in two passes, double-checks its own answer, and suggests one thing worth remembering.",
+    "listing": {
+      "price_usd": 0.6,
+      "unit": "task",
+      "speciality": "sales-analysis",
+      "payout_email": "",
+      "per_file_cents": 0,
+      "base_usd": 0.0,
+      "plan": "",
+      "per_1k_tokens_cents": 0,
+      "light_cents": 0,
+      "standard_cents": 0,
+      "deep_cents": 0,
+      "monthly_usd": 0.0,
+      "included_answers": 0
+    },
+    "stars": 0,
+    "starred_by": [],
+    "revoked": null,
+    "caps": {
+      "tools": [
+        "memory_search"
+      ],
+      "memory_lens": true,
+      "memory_types": [],
+      "web": false,
+      "code": false,
+      "propose_memory": true,
+      "budget_tokens": 9000,
+      "budget_usd": null
+    },
+    "skills": [
+      {
+        "name": "Brief you on your deals",
+        "does": "Finds the accounts that matter, checks its own answer against your notes, and writes a short briefing.",
+        "try_asking": [
+          "Give me a briefing on my accounts.",
+          "Which accounts need attention first?"
+        ]
+      },
+      {
+        "name": "Suggest what to remember",
+        "does": "After answering it may suggest one short fact for your memory. It is saved only if you say yes.",
+        "try_asking": [
+          "Is there anything from this I should remember?"
+        ]
+      }
+    ],
+    "speciality": "Sales accounts",
+    "needs": [
+      "note",
+      "contact"
+    ],
+    "limits": [
+      "Only knows what is in the files you share.",
+      "Does not look anything up on the web.",
+      "Slower and a little pricier than the quick helpers, because it checks its work."
+    ]
+  },
+  {
+    "id": "quick-insights",
+    "version": "0.2.0",
+    "digest": "sha256:03c41520437af56da1ac284468080ddeccb2b2bcc322fe3bb1c846c62d6f6a04",
+    "publisher_key": "A7z44Dxoim3mEtsYjg/SaOxXiAEvDp1xHFROYd3e2ZM=",
+    "signature": "udm75eu+57yCtXSmLuZUaYLW+lbS1H7l6wArzPcHuDxgKGaa7csSJjg5vVtbcmCbKJ3quLMXHgptuvPTxhbsBw==",
+    "summary": "Fast sales insights with a local analytics helper.",
+    "listing": {
+      "price_usd": 0.1,
+      "unit": "task",
+      "speciality": "sales-analysis",
+      "payout_email": "",
+      "per_file_cents": 0,
+      "base_usd": 0.0,
+      "plan": "",
+      "per_1k_tokens_cents": 0,
+      "light_cents": 0,
+      "standard_cents": 0,
+      "deep_cents": 0,
+      "monthly_usd": 0.0,
+      "included_answers": 0
+    },
+    "stars": 0,
+    "starred_by": [],
+    "revoked": null,
+    "caps": {
+      "tools": [
+        "memory_search"
+      ],
+      "memory_lens": true,
+      "memory_types": [],
+      "web": false,
+      "code": true,
+      "propose_memory": false,
+      "budget_tokens": 4000,
+      "budget_usd": null
+    },
+    "skills": [
+      {
+        "name": "Fast insights",
+        "does": "Crunches your notes locally and returns a quick summary.",
+        "try_asking": [
+          "Give me quick insights on my accounts."
+        ]
+      }
+    ],
+    "speciality": "Sales accounts",
+    "needs": [
+      "note",
+      "contact"
+    ],
+    "limits": [
+      "Runs a small program on your files."
+    ]
+  },
+  {
+    "id": "context-brief",
+    "version": "0.2.0",
+    "digest": "sha256:250c4b69df896e12dc720236d5a0f2c35cc8ad588474770b0dce3f21e16a955c",
+    "publisher_key": "A7z44Dxoim3mEtsYjg/SaOxXiAEvDp1xHFROYd3e2ZM=",
+    "signature": "8lRHWdgKUPkbhV2RxMmgEToh/r6xLPSYcS0wDFnYsCP9V6mhD5cl1t7csdmOs+HWBNA04oMYiS/uoPoRSjPpBw==",
+    "summary": "Compares your accounts with what is happening in the market, using a public web lookup that never sees your files.",
+    "listing": {
+      "price_usd": 0.8,
+      "unit": "task",
+      "speciality": "sales-analysis",
+      "payout_email": "",
+      "per_file_cents": 0,
+      "base_usd": 0.0,
+      "plan": "",
+      "per_1k_tokens_cents": 0,
+      "light_cents": 0,
+      "standard_cents": 0,
+      "deep_cents": 0,
+      "monthly_usd": 0.0,
+      "included_answers": 0
+    },
+    "stars": 0,
+    "starred_by": [],
+    "revoked": null,
+    "caps": {
+      "tools": [
+        "memory_search",
+        "web_search"
+      ],
+      "memory_lens": true,
+      "memory_types": [],
+      "web": true,
+      "code": false,
+      "propose_memory": false,
+      "budget_tokens": 9000,
+      "budget_usd": null
+    },
+    "skills": [
+      {
+        "name": "Put your accounts in market context",
+        "does": "Looks up public news about renewal budgets, then compares it with your own notes.",
+        "try_asking": [
+          "Are my at-risk accounts part of a wider trend?",
+          "Is the market making my renewals harder?"
+        ]
+      }
+    ],
+    "speciality": "Sales accounts and market trends",
+    "needs": [
+      "note",
+      "contact"
+    ],
+    "limits": [
+      "The web lookup is a fixed public search about SaaS renewals; your files and your question are never sent to it.",
+      "Slower and pricier than a plain analyst, because it makes a web trip."
+    ]
+  },
+  {
+    "id": "friendly-helper",
+    "version": "0.2.0",
+    "digest": "sha256:a4202e3f403e15d091f60e18ac401de429a5d39a3045f7582574a42792c62ed9",
+    "publisher_key": "A7z44Dxoim3mEtsYjg/SaOxXiAEvDp1xHFROYd3e2ZM=",
+    "signature": "0Hj7r5IwblaRqCOwtRQhfLXvlPPyCP93N4wegcMD2ZeZpZ9o8DPCJa7Od9F/+n9ekccAuVjJmd7dM6IPblCzAw==",
+    "summary": "A helpful sales summarizer.",
+    "listing": {
+      "price_usd": 0.05,
+      "unit": "task",
+      "speciality": "sales-analysis",
+      "payout_email": "",
+      "per_file_cents": 0,
+      "base_usd": 0.0,
+      "plan": "",
+      "per_1k_tokens_cents": 0,
+      "light_cents": 0,
+      "standard_cents": 0,
+      "deep_cents": 0,
+      "monthly_usd": 0.0,
+      "included_answers": 0
+    },
+    "stars": 0,
+    "starred_by": [],
+    "revoked": null,
+    "caps": {
+      "tools": [
+        "memory_search"
+      ],
+      "memory_lens": true,
+      "memory_types": [
+        "finance"
+      ],
+      "web": false,
+      "code": false,
+      "propose_memory": false,
+      "budget_tokens": 6000,
+      "budget_usd": null
+    },
+    "skills": [
+      {
+        "name": "Summarize your sales risk",
+        "does": "Reads your notes and summarizes the risk.",
+        "try_asking": [
+          "Summarize my sales risk."
+        ]
+      }
+    ],
+    "speciality": "Sales accounts",
+    "needs": [
+      "note",
+      "contact"
+    ],
+    "limits": [
+      "Reads whatever you share."
+    ]
+  },
+  {
+    "id": "action-finder",
+    "version": "0.1.2",
+    "digest": "sha256:7293a28decbedbbdfbd07bce61adb74c711b9803d90a93f346c20d1fa5b6ea04",
+    "publisher_key": "A7z44Dxoim3mEtsYjg/SaOxXiAEvDp1xHFROYd3e2ZM=",
+    "signature": "aWpclGM/1CvtyVYF1tEcTvYK8T7CJHBb1CgiTbqoGrTkoBze6sXv3jtBASF7aS4XxexO/bPxrfyVLakAlu9PCA==",
+    "summary": "Turns your meeting notes into a short list of who needs to do what, and by when.",
+    "listing": {
+      "price_usd": 0.3,
+      "unit": "task",
+      "speciality": "meeting-notes",
+      "payout_email": "",
+      "per_file_cents": 0,
+      "base_usd": 0.0,
+      "plan": "",
+      "per_1k_tokens_cents": 0,
+      "light_cents": 0,
+      "standard_cents": 0,
+      "deep_cents": 0,
+      "monthly_usd": 0.0,
+      "included_answers": 0
+    },
+    "stars": 0,
+    "starred_by": [],
+    "revoked": null,
+    "caps": {
+      "tools": [
+        "memory_search"
+      ],
+      "memory_lens": true,
+      "memory_types": [],
+      "web": false,
+      "code": false,
+      "propose_memory": false,
+      "budget_tokens": 6000,
+      "budget_usd": null
+    },
+    "skills": [
+      {
+        "name": "Pull out the to-do list",
+        "does": "Reads the meeting notes you share and lists the tasks people agreed to, with the owner when the notes say who.",
+        "try_asking": [
+          "What are the action items from my meetings?",
+          "What did we agree to do?"
+        ]
+      },
+      {
+        "name": "Find who owns something",
+        "does": "Looks through the notes for one topic and tells you who was given it.",
+        "try_asking": [
+          "Who is handling the venue booking?"
+        ]
+      }
+    ],
+    "speciality": "Meeting notes",
+    "needs": [
+      "note"
+    ],
+    "limits": [
+      "Only knows what is in the meeting notes you share.",
+      "Does not look anything up on the web.",
+      "Lists at most six items."
+    ]
+  },
+  {
+    "id": "account-brief",
+    "version": "0.3.0",
+    "digest": "sha256:7735972e85ed8f0dff2376c0900d0d373ef52cdd7314b01b2e8858de55f227da",
+    "publisher_key": "A7z44Dxoim3mEtsYjg/SaOxXiAEvDp1xHFROYd3e2ZM=",
+    "signature": "7kMeet6ik/x4zEzTlwXg2n2r8/BbVmocmL96JWBIITT04G/iSExx/2olejOwN5A4DDjo3rbgdH6pSke+e5aJCA==",
+    "summary": "Briefs you on your deals in two passes, double-checks its own answer, and suggests one thing worth remembering.",
+    "listing": {
+      "price_usd": 0.4,
+      "unit": "task",
+      "speciality": "Sales accounts",
+      "payout_email": "builder@example.com",
+      "per_file_cents": 0,
+      "base_usd": 0.0,
+      "plan": "complexity",
+      "per_1k_tokens_cents": 0,
+      "light_cents": 10,
+      "standard_cents": 25,
+      "deep_cents": 40,
+      "monthly_usd": 0.0,
+      "included_answers": 0
+    },
+    "stars": 0,
+    "starred_by": [],
+    "revoked": null,
+    "caps": {
+      "tools": [
+        "memory_search"
+      ],
+      "memory_lens": true,
+      "memory_types": [],
+      "web": false,
+      "web_uses_task": false,
+      "code": false,
+      "propose_memory": true,
+      "budget_tokens": 9000,
+      "budget_usd": null
+    },
+    "skills": [
+      {
+        "name": "Brief you on your deals",
+        "does": "Finds the accounts that matter, checks its own answer against your notes, and writes a short briefing.",
+        "try_asking": [
+          "Give me a briefing on my accounts.",
+          "Which accounts need attention first?"
+        ]
+      },
+      {
+        "name": "Suggest what to remember",
+        "does": "After answering it may suggest one short fact for your memory. It is saved only if you say yes.",
+        "try_asking": [
+          "Is there anything from this I should remember?"
+        ]
+      }
+    ],
+    "speciality": "Sales accounts",
+    "needs": [
+      "note",
+      "contact"
+    ],
+    "limits": [
+      "Only knows what is in the files you share.",
+      "Does not look anything up on the web.",
+      "Slower and a little pricier than the quick helpers, because it checks its work."
+    ]
+  }
+]

@@ -1,0 +1,13 @@
+.git
+.env
+.env.*
+.venv
+.bridge*
+video-out
+demo-site
+tools
+docs/submission
+**/__pycache__
+**/node_modules
+.pytest_cache
+tests

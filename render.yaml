@@ -1,0 +1,20 @@
+# Render Blueprint: one web service running judge mode (no keys needed).
+# Free plan: the service sleeps after 15 minutes without visits and takes about a minute to wake up; visitor sessions live in memory
+# and in a temp folder, so they end when it sleeps or restarts. That is fine for judging.
+services:
+  - type: web
+    name: agora
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      # RENDER_EXTERNAL_HOSTNAME is set by Render itself and is allowed automatically.
+      - key: JUDGE_ALLOWED_HOSTS        # optional: extra names (a custom domain), comma separated
+        sync: false
+      # Optional live model. Without these two the app uses its recorded model and needs no key at all.
+      - key: JUDGE_REAL_MODEL           # set to 1 to use the live model with hard hourly caps
+        sync: false
+      - key: NEBIUS_API_KEY             # secret: set it in the Render dashboard, never in this file
+        sync: false

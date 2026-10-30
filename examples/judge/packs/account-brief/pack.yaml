@@ -1,0 +1,38 @@
+id: account-brief
+version: 0.3.0
+author: demo
+summary: Briefs you on your deals in two passes, double-checks its own answer, and suggests one thing worth remembering.
+speciality: Sales accounts
+skills:
+- name: Brief you on your deals
+  does: Finds the accounts that matter, checks its own answer against your notes, and writes a short briefing.
+  try_asking:
+  - Give me a briefing on my accounts.
+  - Which accounts need attention first?
+- name: Suggest what to remember
+  does: After answering it may suggest one short fact for your memory. It is saved only if you say yes.
+  try_asking:
+  - Is there anything from this I should remember?
+needs:
+- note
+- contact
+limits:
+- Only knows what is in the files you share.
+- Does not look anything up on the web.
+- Slower and a little pricier than the quick helpers, because it checks its work.
+result_schema:
+  type: object
+  additionalProperties: false
+  required:
+  - summary
+  - risk
+  properties:
+    summary:
+      type: string
+      maxLength: 600
+    risk:
+      enum:
+      - low
+      - medium
+      - high
+      - n/a
