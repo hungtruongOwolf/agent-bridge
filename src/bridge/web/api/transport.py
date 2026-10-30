@@ -18,9 +18,9 @@ from .router import HttpError, Reply, Request, Router
 STATIC = Path(__file__).resolve().parent.parent / "static"
 STATIC_TYPES = {".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".woff2": "font/woff2",
                 ".txt": "text/plain; charset=utf-8", ".svg": "image/svg+xml", ".png": "image/png"}
-STATIC_PATH = re.compile(r"^/static/((?:(?:fonts|js(?:/[a-z0-9_-]+)?)/)?[a-z0-9][a-z0-9_.-]*)$")
+STATIC_PATH = re.compile(r"^/static/((?:(?:fonts|vendor/[a-z0-9-]+|js(?:/[a-z0-9_-]+)?)/)?[a-z0-9][a-z0-9_.-]*)$")
 # addresses the console draws itself (the browser asks for them on reload or when a link is opened); each serves the same page
-PAGE_PATH = re.compile(r"^/(?:hire|chats/[^/]+|helpers(?:/[^/]+){0,2}|memory(?:/.*)?|market/[^/]+|wallet|help|404)/?$")
+PAGE_PATH = re.compile(r"^/(?:hire|chats/[^/]+|helpers(?:/[^/]+){0,2}|memory(?:/.*)?|market/[^/]+|wallet|earnings|help|404)/?$")
 HOST_RE = re.compile(r"^(\[[0-9a-f:]+\]|[a-z0-9.-]+)(?::[0-9]{1,5})?$")
 LOCAL_HOSTS = {"127.0.0.1", "localhost", "[::1]"}
 MAX_BODY = 400_000

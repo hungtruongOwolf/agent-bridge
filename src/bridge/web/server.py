@@ -38,7 +38,7 @@ from ..studio import Studio
 from ..world import World
 from .api.router import Router
 from .api.transport import make_handler as _make_handler, serve_router
-from .routes import chat as chat_routes, core, memory as memory_routes, payments as payment_routes, studio as studio_routes
+from .routes import chat as chat_routes, core, memory as memory_routes, payments as payment_routes, studio as studio_routes, earnings as earnings_routes
 from .services.clients import LazyModel, LazySearch, LeakyModel  # noqa: F401  (kept importable from here)
 from .services.payments import PaymentsService
 from .services.runs import RunService
@@ -142,7 +142,7 @@ class App:
 
     def router(self) -> Router:
         r = Router()
-        for module in (core, memory_routes, chat_routes, studio_routes, payment_routes):
+        for module in (core, memory_routes, chat_routes, studio_routes, payment_routes, earnings_routes):
             module.register(r, self)
         return r
 

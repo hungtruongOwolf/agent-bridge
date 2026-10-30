@@ -12,6 +12,7 @@ import { studioView } from "./views/studio.js";
 import { memoryView } from "./views/memory.js";
 import { profileView } from "./views/profile.js";
 import { walletView } from "./views/wallet.js";
+import { earningsView } from "./views/earnings.js";
 import { helpView } from "./views/help.js";
 import { drawCoins } from "./components/coins.js";
 import { setupFrontDoor } from "./components/front-door.js";
@@ -31,18 +32,19 @@ const ROUTES = [
   { path: "/memory/shelf/*path", ...memory("shelf") },
   { path: "/memory/note/:id", ...memory("note") },
   { path: "/memory/trash", ...memory("trash") },
+  { path: "/earnings", view: earningsView, nav: "earnings", title: "Earnings" },
   { path: "/market/:key", view: profileView, overlay: true, title: "Meet a helper" },
   { path: "/wallet", view: walletView, overlay: true, title: "Payments" },
   { path: "/help", view: helpView, overlay: true, title: "How this works" },
   { path: "/404", view: officeView, nav: "office", title: "My office" }
 ];
 
-const VIEWS = [officeView, chatView, studioView, memoryView, profileView, walletView, helpView];
+const VIEWS = [officeView, chatView, studioView, memoryView, profileView, walletView, earningsView, helpView];
 let base = null;  // the full-page screen showing now
 let overlay = null;  // the dialog showing on top of it, if any
 
 function setSection(view) {
-  ["view-office", "view-chat", "view-studio", "view-memory"].forEach((id) => { $(id).hidden = id !== view.section; });
+  ["view-office", "view-chat", "view-studio", "view-memory", "view-earnings"].forEach((id) => { $(id).hidden = id !== view.section; });
 }
 
 function markNav(name) {

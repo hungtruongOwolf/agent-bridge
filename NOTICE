@@ -20,4 +20,6 @@ Design reference and bundled assets in the web console (src/bridge/web/static):
   All characters, buildings and animations in the console are drawn by this project's own code; no art from munder-difflin or LimeZu is included.
 - Fonts in static/fonts: Press Start 2P (Copyright (c) 2012 Cody "CodeMan38" Boisclair) and Inter (Copyright (c) 2016 The Inter Project Authors),
   both under the SIL Open Font License 1.1. See static/fonts/license.txt.
-
+- Earnings view, vendored in static/vendor (no network needed): AG Grid Community 36.2.0 and AG Charts Community 14.2.0, MIT License,
+  Copyright (c) 2015-2026 AG Grid Ltd. Licence texts are in static/vendor/ag-grid/LICENSE.txt and static/vendor/ag-charts/LICENSE.txt.
+  Only the free Community features are used.

@@ -374,3 +374,9 @@ dialog .acts{margin-top:14px}
   .pick .acts{grid-column:1 / -1;flex-direction:row}
 }
 @media (max-width:480px){.tabs a{padding:10px 12px 6px}.walletsum{grid-template-columns:1fr}}
+
+/* Earnings (AG Grid table and AG Charts bars) */
+.earnsum{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.byhelper{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.earnchart{border:2px solid var(--ink-900);background:var(--cream-50);min-height:280px;overflow:hidden}
+.earngrid{border:2px solid var(--ink-900);box-shadow:var(--shadow);overflow:hidden}

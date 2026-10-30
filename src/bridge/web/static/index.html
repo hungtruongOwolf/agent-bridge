@@ -24,6 +24,7 @@
   <a href="/" data-link data-nav="office">My office</a>
   <a href="/helpers" data-link data-nav="studio">My helpers</a>
   <a href="/memory" data-link data-nav="memory">My memory</a>
+  <a href="/earnings" data-link data-nav="earnings">Earnings</a>
 </nav>
 
 <!-- The market floor: one stall for every chat you have open, all in one picture. -->
@@ -55,6 +56,16 @@
     <div class="title">Helpers suggest you remember</div>
     <div class="body"><div id="notes"></div></div>
   </div>
+</section>
+
+<!-- What your helpers earned and what you spent. -->
+<section id="view-earnings" class="view" hidden>
+  <div class="panel"><div class="title">Earnings</div><div class="body">
+    <p class="small muted">Practice money only. Nothing real moves.</p>
+    <div class="ptabs" id="earntabs" role="tablist"></div>
+    <p class="small warnline" id="earnnote" role="alert"></p>
+    <div id="earnbody"></div>
+  </div></div>
 </section>
 
 <!-- One chat = one small office. -->
