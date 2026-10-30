@@ -13,7 +13,7 @@ Written 2026-10-30. Tick items off as they are done.
   (see B1) or setup instructions a judge can follow without our Nebius key (a no-key mode, see B3). Re-run the quickstart from a clean clone and fix anything that fails.
 - [ ] **A3. Repo public** with the MIT licence visible in the About section; README explains how PayPal and AI are used (done: "How it uses PayPal and AI").
 - [ ] **A4. Video** uploaded to YouTube (public), no third-party music or trademarks (our music is synthesized; check the logos on screen), link into the form.
-- [ ] **A5. Fill the form** from `devpost-fields.md` and `additional-info.md`, replace `[YOUTUBE LINK]` and `[DEMO URL after deploy]`.
+- [ ] **A5. Fill the form** from `devpost-fields.md` and `additional-info.md`, replace `[YOUTUBE LINK]` and `https://agora-replay.vercel.app`.
 
 ## B. Raise the score (the criteria: implementation, design, impact, innovation, presentation)
 

@@ -5,7 +5,7 @@ Project name: **agent-bridge** (subtitle: bring the expert to your data). Order 
 Before pasting:
 1. The GitHub repo must be **public** (story images load from `raw.githubusercontent.com/.../main/docs/submission/nebius/...`; until it is public they show as broken links).
 2. Upload the video to YouTube (public or unlisted) and put the link where `[YOUTUBE LINK]` appears.
-3. If the form has a demo URL field, use `[DEMO URL after deploy]` (the static replay in `demo-site/`, once you have deployed it) or `https://github.com/hungtruongOwolf/agent-bridge#quickstart`.
+3. If the form has a demo URL field, use `https://agora-replay.vercel.app` (the static replay in `demo-site/`, once you have deployed it) or `https://github.com/hungtruongOwolf/agent-bridge#quickstart`.
 
 ---
 
@@ -102,7 +102,7 @@ python nvidia-nemotron nebius-token-factory tavily docker javascript html5 css j
 
 - `https://github.com/hungtruongOwolf/agent-bridge` (code, MIT licence, README quickstart)
 - `[YOUTUBE LINK]` (2:54 demo video)
-- `[DEMO URL after deploy]` (static replay, once deployed)
+- `https://agora-replay.vercel.app` (static replay, once deployed)
 
 ## 4. Image gallery (3:2, upload in this order; the first is the cover)
 

@@ -32,7 +32,7 @@ Do not mix them: the form is signed with a statement that the information is tru
 | If it existed before, explain | N/A |
 | Additional sponsor tools | **None, used other AI tools.** (We did not use AG Grid, APIMatic, Astropods, Bryntum, Channel3, Elastic, KERNEL, Postman, Render or Zapier.) |
 | Public code repository URL | `https://github.com/hungtruongOwolf/agent-bridge` (must be public with the MIT licence by submission; the README now has a "How it uses PayPal and AI" section) |
-| Working demo / test build URL | `[DEMO URL after deploy]`: the interactive replay in `demo-site/` (deploy steps in `demo-site/README.md`). If you do not deploy it, use `https://github.com/hungtruongOwolf/agent-bridge#quickstart`. |
+| Working demo / test build URL | `https://agora-replay.vercel.app`: the interactive replay in `demo-site/` (deploy steps in `demo-site/README.md`). If you do not deploy it, use `https://github.com/hungtruongOwolf/agent-bridge#quickstart`. |
 | APIMatic Context Plugin | Leave empty (not used). |
 | AG Grid | Leave empty (not used). |
 | Contact about PayPal feedback | Yes (CONFIRM: your choice; "Yes" costs nothing and judges may value it) |
@@ -66,7 +66,7 @@ Do not mix them: the form is signed with a statement that the information is tru
 >
 > **Full demo:** needs a Nebius Token Factory API key for the helpers' model (put it in `.env`; see `.env.example`). Then `bridge seed` and `bridge serve --vault examples/vault-library.json --payments paypal-mock`, open http://127.0.0.1:8787, start a chat, press "Open the approval page", press "Approve the hold" on the practice PayPal page, and click the coins chip in the top bar to read each receipt. `docs/paypal-setup.md` has the steps for PayPal's own sandbox.
 >
-> **Interactive replay, no setup:** [DEMO URL after deploy]. It plays a real recorded run on the practice PayPal server (hire the helper, tick a shelf, approve the 40¢ hold on the practice PayPal page, read the answer and the receipt, accept, say "Not helpful"). It is a recording, and the page says so. The 2:54 video shows the same flow.
+> **Interactive replay, no setup:** https://agora-replay.vercel.app. It plays a real recorded run on the practice PayPal server (hire the helper, tick a shelf, approve the 40¢ hold on the practice PayPal page, read the answer and the receipt, accept, say "Not helpful"). It is a recording, and the page says so. The 2:54 video shows the same flow.
 
 (CONFIRM that `bridge seed` and the commands above work from a clean clone on your machine before pasting: the README quickstart was verified earlier, not re-run today.)
 

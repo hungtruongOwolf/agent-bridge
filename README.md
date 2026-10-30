@@ -61,7 +61,7 @@ Code: `src/bridge/hub/pricing.py` (plans and validation), `src/bridge/payments/s
 ## Try it without installing anything
 
 `demo-site/` is a static, interactive replay of the console: a recording of a real run on the practice PayPal server, with the real screens, no server, no keys and no model
-(deploy steps in `demo-site/README.md`; live address: [DEMO URL after deploy]). Test money.
+(deploy steps in `demo-site/README.md`; live address: https://agora-replay.vercel.app). Test money.
 
 ## Quickstart
 
