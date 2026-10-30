@@ -5,7 +5,7 @@ Paste these into Devpost and YouTube. Thumbnails: `docs/video/thumbnails/thumb-n
 
 ## Nebius x NVIDIA
 
-- **Project name:** agent-bridge Pull: bring the expert to your data
+- **Project name:** agent-bridge (subtitle: bring the expert to your data)
 - **Tagline (under 60 chars):** The expert's setup runs on your machine, not the other way round.
 - **Short description:** Your most useful files are the ones you cannot upload. In Pull mode an expert's agent setup runs on your own
   machine, reads only the shelves of memory you tick, and thinks with NVIDIA Nemotron on Nebius Token Factory using your own key.
@@ -19,7 +19,8 @@ Paste these into Devpost and YouTube. Thumbnails: `docs/video/thumbnails/thumb-n
 
 ## PayPal AI
 
-- **Project name:** agent-bridge Pay: hold first, settle by the work
+- **Project name:** Payceiling: agents paid per job, even on your machine  (alternatives: Runfee, Settled)
+- **First line of the description:** Built on the open-source agent-bridge platform.
 - **Tagline (under 60 chars):** Get paid per job, even when the agent runs on your PC.
 - **Short description:** An agent running on the buyer's machine cannot lock its result, so the only lever left is money committed
   first. The buyer approves a PayPal hold (the ceiling, 40 cents in the demo); when the run ends the real price is captured
