@@ -51,6 +51,12 @@ Five plans: one flat price; by files read; by thinking used (tokens); by how har
 
 Every answer has a receipt in plain words: *"Standard: 2 thinking steps, 3 files read: 25¢ of the 40¢ hold."* The author's payout shows 23 cents because of a small platform fee. Everything is labelled as test money.
 
+### Verified on PayPal's own sandbox
+
+On 2026-10-30 we ran the whole flow on PayPal's sandbox with the same client the app uses: a hold of 0.40 USD approved by a sandbox buyer on PayPal's page, a partial capture of 0.25, a void of the remaining hold and a Payouts payment of 0.23 to the author. Each object was read back from the sandbox API afterwards (order COMPLETED, capture COMPLETED, authorization VOIDED, payout SUCCESS). The refund path and the in-app approval redirect have so far been exercised on our practice server only.
+
+![The whole flow ran on PayPal's own sandbox; each step read back from the API.](https://raw.githubusercontent.com/hungtruongOwolf/agent-bridge/main/docs/submission/paypal/story/d5-sandbox.png)
+
 ### More in the console
 
 - **Earnings.** A ledger for authors and buyers built on **AG Grid Community** and AG Charts Community: every run with its hold, price, charge, author share, platform fee and what was given back, sortable and filterable, with a bar chart per run.
@@ -84,7 +90,9 @@ The platform underneath is the open-source **agent-bridge** project (the helper 
 - A money state machine that is race-safe, restart-safe and retry-safe. We checked that the payment tests really fail when idempotency or the state guard is removed.
 - Money that follows evidence: an honest result is paid, a proven cheat is refunded, an outage costs nothing.
 - Five pricing plans, with a preview of what each run would cost before an author publishes.
-- About 720 automated tests across the platform.
+- The whole money flow run on PayPal's own sandbox (hold, partial capture, void, payout), not only on a practice server.
+- A hosted, no-key judge mode: anyone can open the real app and click through the flow with test money (each visitor gets a private copy with a sample history).
+- About 730 automated tests across the platform.
 
 ## What we learned
 
@@ -92,7 +100,7 @@ When the work runs on the customer's machine, payment design stops being a check
 
 ## What's next
 
-- Run the whole flow on the **live PayPal sandbox**. Today it is verified against a local practice server that copies PayPal's API, not against PayPal's own sandbox.
+- Run the refund path and the in-app approval redirect on PayPal's own sandbox too (the hold, partial capture, void and payout have already been run there).
 - Real holdback and reserve periods; a human adjudicator for disputes the certifier can't reproduce.
 - Hosted mode, where the agent runs on someone else's machine, and legal review before any real money.
 
@@ -106,10 +114,10 @@ All money in this project is **test money**. No real money moves. On PayPal's ow
 ## 2. Built with (add each as a tag, 25 max)
 
 ```
-python, paypal, paypal-rest-api, paypal-orders-v2, paypal-payouts, javascript, html5, css, docker, json-schema, jsonschema, pyyaml, cryptography, ed25519, nvidia-nemotron, nebius-token-factory, puppeteer, ffmpeg
+python paypal paypal-rest-api paypal-orders-v2 paypal-payouts javascript html5 css docker json-schema pyyaml cryptography ed25519 nvidia-nemotron nebius-token-factory ag-grid ag-charts channel3 postman render agentic-commerce ai-agents
 ```
 
-(18 tags. Add `agentic-commerce` and `ai-agents` if Devpost offers them.)
+(23 tags, space separated; if Devpost only takes one tag per entry, add them one by one.)
 
 ## 3. Try it out links
 
@@ -125,13 +133,17 @@ All in `docs/submission/paypal/gallery/` (1920 x 1280, all under 1 MB).
 | # | File | What it shows |
 |---|---|---|
 | 1 | `g01-cover.png` | The cover: "Paid per job. Even on your PC." with the 40 → 25 + 15 coins |
-| 2 | `g02-approve.png` | The real approval card: "Approve a hold of 40¢" |
-| 3 | `g03-paypal-page.png` | The practice PayPal page: "Pay $0.40 USD, Approve the hold" |
-| 4 | `g04-receipts.png` | Receipts: 25¢ charged of the 40¢ hold; not helpful = deposit only |
-| 5 | `g06-plans.png` | The Publish panel: plan picker with light / standard / deep prices |
-| 6 | `g05-paypal-api.png` | Which PayPal call does each money step |
-| 7 | `g07-earnings.png` | The Earnings ledger (AG Grid) |
+| 2 | `g10-sandbox-proof.png` | Proof: the whole flow ran on PayPal's own sandbox, each step read back |
+| 3 | `g02-approve.png` | The real approval card: "Approve a hold of 40¢" |
+| 4 | `g03-paypal-page.png` | The practice PayPal page: "Pay $0.40 USD, Approve the hold" |
+| 5 | `g04-receipts.png` | Receipts: 25¢ charged of the 40¢ hold; not helpful = deposit only |
+| 6 | `g09-hosted-earnings.png` | The Earnings ledger (AG Grid) on the hosted demo |
+| 7 | `g08-hosted-office.png` | The hosted demo: market floor with sample history |
+| 8 | `g06-plans.png` | The Publish panel: plan picker with light / standard / deep prices |
+| 9 | `g05-paypal-api.png` | Which PayPal call does each money step |
 
-The story uses different pictures (the four diagrams in `story/`), plus the receipts and the PayPal-calls images again.
+(`g07-earnings.png` is the local version of the Earnings picture; skip it if you use g09.)
 
-Picture captions to paste where Devpost asks for one: 1 "Agora: paid per job, even on the buyer's PC", 2 "The buyer approves a hold: the ceiling", 3 "Approval on the (practice) PayPal page", 4 "The receipt: 25¢ of 40¢", 5 "Authors pick a plan", 6 "One PayPal call per money step".
+The story uses different pictures (the five diagrams in `story/`), plus the receipts and the PayPal-calls images again.
+
+Picture captions to paste where Devpost asks for one (order as in the table): 1 "Agora: paid per job, even on the buyer's PC", 2 "The whole flow, run on PayPal's own sandbox", 2 "The buyer approves a hold: the ceiling", 3 "Approval on the (practice) PayPal page", 4 "The receipt: 25¢ of 40¢", 5 "Authors pick a plan", 6 "One PayPal call per money step".
