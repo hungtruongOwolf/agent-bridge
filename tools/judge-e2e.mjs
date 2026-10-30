@@ -1,6 +1,8 @@
-/* End-to-end check of judge mode with headless Chrome: two independent visitors, each hires Account Brief, approves the hold on /practice,
+/* End-to-end check of judge mode with headless Chrome: a new visitor lands in a lived-in console (sample history on /earnings in both
+   tabs, a chart, no console errors), then two independent visitors, each hires Account Brief, approves the hold on /practice,
    reads the answer and the receipt ("25¢ of the 40¢ hold"), keeps going (accept), then says "Not helpful".
-   usage: node tools/judge-e2e.mjs http://127.0.0.1:9101      (start `bridge serve --judge-mode --port 9101` first) */
+   usage: node tools/judge-e2e.mjs http://127.0.0.1:9101      (start `bridge serve --judge-mode --port 9101` first)
+   JUDGE_SHOT_DIR=some/folder also saves screenshots of /earnings (both tabs) and My office. */
 import { createRequire } from "node:module";
 const require = createRequire(new URL("./video/", import.meta.url));
 const puppeteer = require("puppeteer-core");
@@ -38,11 +40,45 @@ async function approve(browser, page) {
   await page.bringToFront();
 }
 
+const SHOTS = process.env.JUDGE_SHOT_DIR || "";
+async function snap(page, name) { if (SHOTS) await page.screenshot({ path: `${SHOTS}/${name}.png` }); }
+const state = (page) => page.evaluate(async () => { const s = await (await fetch("/api/state")).json(); return { chats: s.threads.length, captured: s.payments.captured }; });
+const earnings = (page) => page.evaluate(async () => (await fetch("/api/earnings")).json());
+
+/* A new visitor must land in a lived-in console: both tabs of /earnings have rows, the chart is drawn, nothing logs an error. */
+async function lived(page, name) {
+  const e = await earnings(page);
+  const days = new Set(e.earned.rows.map((r) => Math.floor(r.when / 86400)));
+  ok(e.earned.rows.length >= 3 && days.size >= 3, `${name}: Helpers I built has ${e.earned.rows.length} runs over ${days.size} days`);
+  ok(new Set(e.earned.rows.map((r) => r.status)).size >= 2, `${name}: those runs have different outcomes: ${[...new Set(e.earned.rows.map((r) => r.status))].join(", ")}`);
+  ok(e.spent.rows.length >= 5, `${name}: My spending has ${e.spent.rows.length} runs`);
+  await page.goto(BASE + "/earnings", { waitUntil: "networkidle2" });
+  await waitFor(page, () => document.querySelector(".earnchart canvas") && document.querySelectorAll(".earngrid .ag-row").length > 0, 20000);
+  ok(true, `${name}: /earnings draws the chart and the table (Helpers I built)`);
+  const shown = await page.$$eval(".earngrid .ag-row", (r) => r.length);
+  ok(shown >= 3, `${name}: Helpers I built shows ${shown} rows`);
+  await snap(page, "earnings-built");
+  await clickIn(page, "#earntabs button", "My spending");
+  await waitFor(page, () => document.querySelector("#earntabs [data-tab=spent][aria-selected=true]") && document.querySelectorAll(".earngrid .ag-row").length > 0, 20000);
+  ok(await page.$eval(".earnchart canvas", () => true).catch(() => false), `${name}: My spending also draws a chart and rows`);
+  await snap(page, "earnings-spent");
+  await page.goto(BASE + "/", { waitUntil: "networkidle2" });
+  await sleep(800);
+  await snap(page, "my-office");
+  const chats = await page.evaluate(() => document.querySelectorAll(".stall, .pick, [data-thread]").length);
+  ok(chats > 0, `${name}: My office shows stalls`);
+}
+
 async function visitor(browser, name) {
   const ctxt = await browser.createBrowserContext();   // own cookie jar
   const page = await ctxt.newPage();
   await page.setViewport({ width: 1280, height: 900 });
+  page.errors = [];
+  page.on("pageerror", (e) => page.errors.push(String(e)));
+  page.on("console", (m) => { if (m.type() === "error" && !/favicon\.ico|\/api\/thread\?id=/.test(m.location()?.url || "")) page.errors.push(m.text() + " " + (m.location()?.url || "")); });
   await page.goto(BASE + "/", { waitUntil: "networkidle2" });
+  page.base = { ...(await state(page)), spentRows: (await earnings(page)).spent.rows.length };
+  if (name === "A") { await lived(page, name); }
   const bar = await page.$eval("#judgebar", (e) => e.textContent);
   ok(bar.includes("recorded model") && bar.includes("Test money"), name + ": judge-mode line is visible");
   await clickIn(page, "a.stall.newstall").catch(() => {});
@@ -74,9 +110,8 @@ try {
 
   // B never asked anything: it must not see A's chat or A's payments
   await b.reload({ waitUntil: "networkidle2" });
-  const bChats = await b.evaluate(async () => (await (await fetch("/api/state")).json()).threads.length);
-  const bPay = await b.evaluate(async () => (await (await fetch("/api/state")).json()).payments.captured);
-  ok(bChats <= 1 && bPay === 0, `B sees none of A's activity (chats ${bChats}, captured ${bPay})`);
+  const bNow = await state(b);
+  ok(bNow.chats <= b.base.chats + 1 && bNow.captured === b.base.captured, `B sees none of A's activity (chats ${bNow.chats} from ${b.base.chats}, captured ${bNow.captured} from ${b.base.captured})`);
   const aId = a.url().split("/chats/")[1];
   const leak = await b.evaluate(async (id) => (await fetch("/api/thread?id=" + id)).status, aId);
   ok(leak >= 400, "B cannot open A's chat by its address (status " + leak + ")");
@@ -107,6 +142,11 @@ try {
   const bPay2 = await b.evaluate(async () => (await (await fetch("/api/state")).json()).payments);
   const aPay2 = await a.evaluate(async () => (await (await fetch("/api/state")).json()).payments);
   ok(bPay2.captured !== undefined && JSON.stringify(bPay2) !== JSON.stringify(aPay2), "B has its own ledger: " + JSON.stringify({ A: aPay2.captured, B: bPay2.captured }));
+  // A's new rows sit on top of the sample history, B's history is a separate copy
+  const aE = await earnings(a), bE = await earnings(b);
+  ok(aE.spent.rows.length === a.base.spentRows + 2 && aE.spent.rows[0].status === "Deposit only", `A: new rows were added to the history (${aE.spent.rows.length} runs)`);
+  ok(bE.spent.rows.length < aE.spent.rows.length, `B has its own copy of the history (A ${aE.spent.rows.length} runs, B ${bE.spent.rows.length})`);
+  for (const p of [a, b]) ok(p.errors.length === 0, "no console errors: " + p.errors.slice(0, 2).join(" | "));
   if (process.env.JUDGE_SHOT) await a.screenshot({ path: process.env.JUDGE_SHOT });
 } finally {
   await browser.close();

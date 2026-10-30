@@ -3,6 +3,7 @@
 Judge mode lets anyone run the real application with no keys: the real server, ledger and PayPal client code, a recorded model for the
 answers, and a practice server that copies PayPal's API (test money only). Each visitor gets a private copy that ends after two idle hours.
 See "Judge mode and hosting" in the README for what is real and what is not.
+The console starts with a sample history (chats, payments in every state, and a helper the visitor "built" that other buyers paid for), spread over the last days and made by the same code paths as a live visit: the recorded model and the practice PayPal. It is built once when the server starts (and again when it is about 12 hours old) and copied for each visitor; it is test money, not real activity.
 
 ## Deploy (about 10 minutes, no keys needed)
 

@@ -42,7 +42,7 @@ from ..pack.digest import tree_digest
 from ..payments.ledger import Ledger
 from ..payments.paypal import PayPalSandbox
 from ..payments.paypal_mock import MOCK_ID, MOCK_SECRET, MockPayPal, MockState, buyer_decision, checkout_page, state_page
-from ..world import World
+from ..world import World, _load_or_create_key
 from .api.transport import HOST_RE, MAX_BODY, PAGE_PATH, STATIC_PATH, make_handler
 
 LOCAL = ("127.0.0.1", "localhost", "[::1]")
@@ -69,6 +69,8 @@ class JudgeConfig:
     new_per_ip_minute: int = 20
     new_per_minute: int = 120
     clock: object = time.time
+    history: bool = True  # every visitor starts with a sample past (see judge_seed.py)
+    history_max_age_s: float = 12 * 3600  # the template is rebuilt when older, so "waiting for a decision" and "last days" stay true
 
 
 class Window:
@@ -213,6 +215,10 @@ class JudgeHub:
         self.pack_dirs = {tree_digest(d): d for d in sorted((cfg.template / "packs").iterdir()) if (d / "pack.yaml").exists()}
         self.per_ip: dict[str, Window] = {}
         self.minute = Window(60, self.clock)
+        self.seed_dir: Path | None = None
+        self.seed_at = 0.0
+        self.seed_n = 0
+        self.refresh_seed()
 
     # -- sessions --------------------------------------------------------------------------------
     @staticmethod
@@ -260,27 +266,56 @@ class JudgeHub:
         _close_databases(v.dir)
         shutil.rmtree(v.dir, ignore_errors=True)
 
-    def _build(self, sid: str) -> Visitor:
+    def _assemble(self, d: Path, model_factory, clock=None):
+        """An App over the folder `d`: the keys, registry and attestations in it (made when missing), a practice PayPal and a ledger of its own."""
         from .server import App
 
-        vid = self.vid_of(sid)
-        d = self.root / "v" / vid
-        d.mkdir(parents=True)
         for name in ("registry.json", "attestations.json"):
-            shutil.copy2(self.cfg.template / name, d / name)
-        author, cert = Ed25519PrivateKey.generate(), Ed25519PrivateKey.generate()
+            if not (d / name).exists():
+                shutil.copy2(self.cfg.template / name, d / name)
+        author, cert = _load_or_create_key(d / "author.key"), _load_or_create_key(d / "certifier.key")
         registry = Registry(d / "registry.json")
         market = Marketplace(registry, {self.trusted_pub, signing.public_b64(cert)}, d / "attestations.json")
         world = World(d, registry, market, author, Certifier(cert, sales_risk_suite(), runs_per_task=4, suites=self.suites))
         api = MockPayPal("/practice", MockState(d / "paypal-mock.json"))
         ledger = Ledger(PayPalSandbox(MOCK_ID, MOCK_SECRET, base_url="http://127.0.0.1:19", http=_inproc(api),
                                       return_url="/paypal/return", cancel_url="/paypal/cancel"), path=d / "ledger-paypal-mock.json")
-        model = JudgeModel(self, vid)
-        app = App(world, self.cfg.packs_dir, self.cfg.vault_path, self.root / "no.env", cell=RefusingCell(), model_factory=lambda: model,
-                  web=NoWeb(), ledger=ledger, demo_author_email="author@example.com", payments_mode="paypal-mock",
+        app = App(world, self.cfg.packs_dir, self.cfg.vault_path, self.root / "no.env", cell=RefusingCell(), model_factory=model_factory,
+                  web=NoWeb(), ledger=ledger, clock=clock, demo_author_email="author@example.com", payments_mode="paypal-mock",
                   payments_dashboard="/practice/mock/state")
         app.dirs.update(self.pack_dirs)
         app.mock = api
+        return app
+
+    def refresh_seed(self) -> None:
+        """Build the sample past once into a template folder. Visitors get a copy of it."""
+        if not self.cfg.history:
+            return
+        from .judge_seed import StoryClock, tell_story
+
+        self.seed_n += 1
+        folder = self.root / f"seed-{self.seed_n}"
+        folder.mkdir(parents=True)
+        now = self.clock()
+        recorded = RecordedModel()
+        app = self._assemble(folder, lambda: recorded, StoryClock(now))
+        tell_story(app, app.clock, now)
+        _close_databases(folder)
+        old, self.seed_dir, self.seed_at = self.seed_dir, folder, now
+        if old is not None:
+            shutil.rmtree(old, ignore_errors=True)
+
+    def _build(self, sid: str) -> Visitor:
+        vid = self.vid_of(sid)
+        d = self.root / "v" / vid
+        if self.seed_dir is not None:
+            if self.clock() - self.seed_at > self.cfg.history_max_age_s:
+                self.refresh_seed()
+            shutil.copytree(self.seed_dir, d)
+        else:
+            d.mkdir(parents=True)
+        model = JudgeModel(self, vid)
+        app = self._assemble(d, lambda: model)
         self._adapt(app)
         return Visitor(vid, app, app.router(), self.clock(), d)
 

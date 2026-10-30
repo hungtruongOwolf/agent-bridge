@@ -187,6 +187,7 @@ In Pull mode the helper runs on your machine and its author receives nothing, so
 - Real: the server, the ledger, the PayPal client code, the memory broker and the Result Guard. Payments go to a practice server that copies PayPal's API, mounted under `/practice` on the same port. Test money only.
 - Not real: answers come from a recorded model (templates, not a language model). If `JUDGE_REAL_MODEL=1` and `NEBIUS_API_KEY` are set, a live model is used with a hard cap (60 calls an hour for everyone, 12 for each visitor); past a cap the recorded model answers. A line at the bottom of every page says which.
 - Each visitor (cookie) gets a private copy: own memory (from the read-only demo library), chats and ledger, in a temp folder. At most 50 copies live at once; idle ones end after 2 hours.
+- The console starts with a sample history: about ten days of chats, payments in every state and a helper you "built" that other buyers paid for. It is made when the server starts by the same code paths as a live visit (recorded model, practice PayPal, the real ledger and chat services), then copied for each visitor; it is test money and it is not real activity.
 - Helpers that run code or search the web are refused with a plain message (no Docker inside Docker).
 - It is opt-in. The default `bridge serve` still binds 127.0.0.1 with the same token and local-Host checks. Judge mode answers only to the names you give (`--allowed-host`, `RENDER_EXTERNAL_HOSTNAME`) and every change still needs the page's token.
 

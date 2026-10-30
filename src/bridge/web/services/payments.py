@@ -32,8 +32,8 @@ class PaymentsService:
                 self.ledger.release_payouts(self.clock())
             except (ProviderError, PendingError):
                 pass  # the provider is slow; show what we know and try again on the next refresh
-            summary = self.ledger.summary()
-            summary["on_hold"] = self.ledger.on_hold()
+            summary = self.ledger.summary(self.requester)
+            summary["on_hold"] = self.ledger.on_hold(self.requester)
         return {**summary, "test_money": True, "provider": self.mode, "holdback": "demo holdback 0 s; production would hold for days"}
 
     def receipts(self) -> dict:
@@ -41,7 +41,7 @@ class PaymentsService:
         with self.lock:
             chats = {rid: t.title for t in self.threads.threads.values() for rid in t.runs}
             items = []
-            for row in list(self.ledger.rows.values())[-100:]:
+            for row in [r for r in self.ledger.rows.values() if r.requester == self.requester][-100:]:
                 rec = self.registry.records.get(row.pack_key)
                 refunded = sum(c["amount"] for c in row.captures if c["id"] in row.refunded)
                 items.append({"run_id": row.run_id, "helper": rec.id.replace("-", " ").title() if rec else row.pack_key, "chat": chats.get(row.run_id, ""),

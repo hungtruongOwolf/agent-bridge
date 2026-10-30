@@ -100,6 +100,7 @@ class Ledger:
         self._active: set[str] = {i for i, r in self.rows.items() if self._needs_attention(r)}
         self._summary: dict | None = None  # recomputed only after something changed
         self._on_hold: int | None = None
+        self._buyers: set | None = None  # every requester seen, worked out when first needed
 
     # -- persistence -----------------------------------------------------------------------------
     @staticmethod
@@ -201,6 +202,8 @@ class Ledger:
             row = Row(run_id, pack_key, author, requester, price, price * self.floor_pct // 100,
                       hold=price, accept_window_s=accept_window_s)
             self.rows[run_id] = row
+            if self._buyers is not None:
+                self._buyers.add(requester)
             self._touch(row)
             try:
                 auth = self._do(row, "authorize", lambda: self.provider.authorize(price, f"{run_id}:authorize", run_id))
@@ -426,20 +429,37 @@ class Ledger:
         return fixed
 
     # -- reporting ----------------------------------------------------------------------------------
-    def summary(self) -> dict:
+    def _others(self, requester: str | None) -> bool:
+        """True when the ledger holds payments of buyers other than `requester` (a hosted copy with a sample history)."""
+        if requester is None:
+            return False
+        if self._buyers is None:
+            self._buyers = {r.requester for r in self.rows.values()}
+        return bool(self._buyers - {requester})
+
+    def summary(self, requester: str | None = None) -> dict:
+        """Totals; with `requester`, only that buyer's own payments count when other buyers have payments here too."""
+        if self._others(requester):
+            return self._totals([r for r in self.rows.values() if r.requester == requester])
         if self._summary is None:
             self._summary = self._totals()
         return dict(self._summary)
 
-    def on_hold(self) -> int:
+    @staticmethod
+    def _held(rows) -> int:
+        return sum(max(0, r.price - r.captured() - sum(c["amount"] for c in r.captures if c["id"] in r.refunded))
+                   for r in rows if r.state not in TERMINAL and r.state != "AWAITING_APPROVAL")
+
+    def on_hold(self, requester: str | None = None) -> int:
         """What the buyer has put on hold and not yet paid or released."""
+        if self._others(requester):
+            return self._held([r for r in self.rows.values() if r.requester == requester])
         if self._on_hold is None:
-            self._on_hold = sum(max(0, r.price - r.captured() - sum(c["amount"] for c in r.captures if c["id"] in r.refunded))
-                                for r in self.rows.values() if r.state not in TERMINAL and r.state != "AWAITING_APPROVAL")
+            self._on_hold = self._held(self.rows.values())
         return self._on_hold
 
-    def _totals(self) -> dict:
-        rows = list(self.rows.values())
+    def _totals(self, rows=None) -> dict:
+        rows = list(self.rows.values()) if rows is None else rows
         return {
             "captured": sum(r.captured() for r in rows),
             "paid_out": sum(r.payout["amount"] for r in rows if r.payout["status"] == "paid"),

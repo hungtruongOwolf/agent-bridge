@@ -115,7 +115,7 @@ def test_visitor_a_cannot_read_visitor_bs_chat(srv):
     t = b.req("POST", "/api/threads", {"agent_key": brief_key(b)})[1]
     assert a.req("GET", "/api/thread?id=" + t["id"])[0] in (400, 404)
     assert b.req("GET", "/api/thread?id=" + t["id"])[0] == 200
-    assert a.req("GET", "/api/state")[1]["threads"] == []
+    assert t["id"] not in {x["id"] for x in a.req("GET", "/api/state")[1]["threads"]}  # A has the sample history, not B's new chat
     # B's token with A's cookie is no use either
     a.token = b.token
     assert a.req("POST", "/api/thread/send", {"id": t["id"], "text": "hi"})[0] == 403
