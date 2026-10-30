@@ -30,7 +30,7 @@ Do not mix them: the form is signed with a statement that the information is tru
 | Organization Name | N/A |
 | New, or existed before Oct 1, 2026? | **New.** The first commit is 2026-10-20 (186 commits, all dated 2026-10-20 to 2026-10-30). |
 | If it existed before, explain | N/A |
-| Additional sponsor tools | **AG Grid** (the Earnings ledger and chart, Community edition) and **Channel3** (the Deal Finder helper; no live call yet, see the note in the answer). Do not tick Render until it is actually deployed. Do not tick Zapier or Postman: we built a webhook and a collection but have not run them through those products. |
+| Additional sponsor tools | **AG Grid** (the Earnings ledger and chart, Community edition) and **Channel3** (the Deal Finder helper; no live call yet, see the note in the answer). Do not tick Render until it is actually deployed. **Postman** (the collection was run with Postman's newman runner against the practice server: 13 assertions passed; see docs/postman/README.md). Do not tick Zapier: the webhook was built but not run through Zapier. |
 | Public code repository URL | `https://github.com/hungtruongOwolf/agent-bridge` (must be public with the MIT licence by submission; the README now has a "How it uses PayPal and AI" section) |
 | Working demo / test build URL | `https://agora-replay.vercel.app`: the interactive replay in `demo-site/` (deploy steps in `demo-site/README.md`). If you do not deploy it, use `https://github.com/hungtruongOwolf/agent-bridge#quickstart`. |
 | APIMatic Context Plugin | Leave empty (not used). |

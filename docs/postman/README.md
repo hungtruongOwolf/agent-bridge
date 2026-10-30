@@ -32,3 +32,18 @@ Checked against PayPal's published OpenAPI schemas (developer.paypal.com/docs/ap
 capture (`final_capture`), void, refund, and create payout (`sender_batch_header`, `items[]` with `recipient_type`, `receiver`, `sender_item_id`;
 response `batch_header.payout_batch_id`). Not confirmed: anything live. The collection has not been run against the sandbox, so the status codes and
 values in the test scripts are expectations from the docs.
+
+## Run result against the practice server (2026-10-30)
+
+The same collection, run with Postman's `newman` runner against the local practice PayPal server (base_url `http://127.0.0.1:<port>`, client id
+`mock-client-id`), passed all 13 assertions on the 7 automated requests (token, create order, authorize, partial capture, void, refund, payout);
+the buyer approval (step 3) was done by one POST to `/checkoutnow/approve`. Run it yourself:
+
+```
+bridge paypal-mock --port 9510     # the practice server (leave it running in another terminal)
+npx newman run docs/postman/agora-paypal-sandbox.postman_collection.json -e docs/postman/agora-paypal-sandbox.postman_environment.json   --env-var base_url=http://127.0.0.1:9510 --env-var client_id=mock-client-id --env-var client_secret=mock-client-secret   --env-var payout_receiver_email=author@example.com --folder "1. OAuth token" --folder "2. Create order (AUTHORIZE, 0.40 USD)" --export-environment env.json
+curl -X POST "http://127.0.0.1:9510/checkoutnow/approve?token=ORDER-00001"
+npx newman run docs/postman/agora-paypal-sandbox.postman_collection.json -e env.json --folder "4. Authorize the order" ...
+```
+
+Against PayPal's own sandbox the same collection works with your sandbox credentials (see above); that run has not been made yet.
