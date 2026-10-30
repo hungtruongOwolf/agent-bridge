@@ -143,4 +143,4 @@ Based on what we observed, not guesses:
 | Bonus: Tavily | Used: `src/bridge/engine/tavily.py`, a public web step in a helper that can't read private data (live call verified). |
 | Repo | `https://github.com/hungtruongOwolf/agent-bridge` (MIT) |
 | AI tools used to build it | Claude Code (Anthropic Claude) for most of the code, tests, docs and video tooling, with the owner directing and reviewing; ElevenLabs for the voice-over. In the product: Nemotron on Nebius. (CONFIRM.) |
-| Testing instructions | Needs a Nebius Token Factory key and a Tavily key in `.env` (see `.env.example`): clone, `pip install -e ".[dev]"`, `bridge seed` (a few minutes), `bridge serve`, open http://127.0.0.1:8787. No-key check: `pytest tests/payments -q` (80 tests) and the 2:54 video. (CONFIRM from a clean clone before pasting.) |
+| Testing instructions | Needs a Nebius Token Factory key and a Tavily key in `.env` (see `.env.example`): clone, `pip install -e ".[dev]"`, `bridge seed` (a few minutes), `bridge serve`, open http://127.0.0.1:8787. No-key check: `pytest tests/payments -q` (92 tests) and the 2:54 video. (CONFIRM from a clean clone before pasting.) |

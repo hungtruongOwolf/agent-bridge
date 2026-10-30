@@ -21,7 +21,7 @@ even though it runs on the buyer's machine. Test money only.
   a helper, and Payouts for the author. Every call carries a `PayPal-Request-Id`. The client refuses any host that is not the sandbox.
 - **AI** (`src/bridge/engine/nebius.py`): the helpers think with **NVIDIA Nemotron on Nebius Token Factory**; the certifier scores helpers with
   the same model. The price is computed from what the engine recorded (files read, model calls), never from what a helper says.
-- **Status:** the client is verified against a local practice server that copies PayPal's API (80 payment tests, no keys needed:
+- **Status:** the client is verified against a local practice server that copies PayPal's API (92 payment tests, no keys needed:
   `pytest tests/payments`). See `docs/paypal-setup.md` for running it against PayPal's own sandbox and what is verified.
 
 The **Earnings** tab (`/earnings`, data from the read-only `GET /api/earnings`) lists every run of the helpers you built and, on a second tab, what you spent:
@@ -197,7 +197,7 @@ In Pull mode the helper runs on your machine and its author receives nothing, so
   without paying. The payment design (a hold, a floor fee, dispute handling) limits the loss; it does not remove it.
 - **Money is test money.** Payments run through a ledger with three providers: demo coins, a **practice PayPal** (a local emulator
   of the sandbox, run through the real client code and shown with an approval page and receipts), and the PayPal sandbox client. The
-  client is tested against the practice server (80 payment tests) and, since 2026-10-30, `bridge paypal-check` has created a real Orders v2 AUTHORIZE order on PayPal's own sandbox (credentials accepted, nothing charged); the whole flow (buyer-approved hold, partial capture, void, Payouts) was run there with `tools/sandbox_flow.py`, and every object was read back from the sandbox API (run log in `docs/paypal-setup.md`). The refund path and the app's approval redirect have only been exercised on the practice server (see `docs/paypal-setup.md`
+  client is tested against the practice server (92 payment tests) and, since 2026-10-30, `bridge paypal-check` has created a real Orders v2 AUTHORIZE order on PayPal's own sandbox (credentials accepted, nothing charged); the whole flow (buyer-approved hold, partial capture, void, Payouts) was run there with `tools/sandbox_flow.py`, and every object was read back from the sandbox API (run log in `docs/paypal-setup.md`). The refund path and the app's approval redirect have only been exercised on the practice server (see `docs/paypal-setup.md`
   for what the owner needs to provide). Nothing real moves in any mode.
 - **"Not helpful" is capped.** A buyer can mark one helper not helpful at most 5 times in 24 hours (`NOT_HELPFUL_MAX` in the ledger). The sixth press is refused with a plain message and the answer stays open, so it is auto-accepted at the deadline and the author is paid in full. The count is read from the saved ledger, so a restart does not reset it. Someone with many buyer identities could still dodge it; there is no identity check in the demo.
 - **The model service reads what a helper's steps send it** (minus the placeholders above). Information already shown to a helper cannot be taken back.

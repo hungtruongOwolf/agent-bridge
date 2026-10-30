@@ -54,7 +54,7 @@ Do not mix them: the form is signed with a statement that the information is tru
 
 > **PayPal tools:** Orders v2 with intent AUTHORIZE for the buyer's hold (the ceiling, 40 cents in the demo); capture of part of the authorization (`final_capture: false`) for the real price (25 cents); void for the released remainder; refund when the independent certifier has flagged a helper; Payouts to pay the author; OAuth client credentials; and a `PayPal-Request-Id` on every call so a lost reply never charges twice. Code: `src/bridge/payments/paypal.py` (a sandbox client that refuses any non-sandbox host) and `ledger.py` (one state machine per hire).
 >
-> **How it was verified, stated plainly:** the client has been exercised end to end against a local practice server that copies PayPal's API (approval page, authorize, capture, void, refund, payouts), with about 720 automated tests (80 of them cover payments) that need no keys (`pytest tests/payments`). It has **not yet been run against PayPal's own sandbox**; that mode (`bridge serve --payments paypal`, see `docs/paypal-setup.md`) is included and selectable but unverified. No real money moves anywhere.
+> **How it was verified, stated plainly:** the client has been exercised end to end against a local practice server that copies PayPal's API (approval page, authorize, capture, void, refund, payouts), with about 720 automated tests (92 of them cover payments) that need no keys (`pytest tests/payments`). It has **not yet been run against PayPal's own sandbox**; that mode (`bridge serve --payments paypal`, see `docs/paypal-setup.md`) is included and selectable but unverified. No real money moves anywhere.
 >
 > **AI tools:** NVIDIA Nemotron (`nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B`) on Nebius Token Factory runs the helpers' thinking steps, and the same model scores every helper in the certifier whose flag decides whether a full refund is allowed. The price of a run comes from what the engine recorded, never from what the helper says. Code: `src/bridge/engine/nebius.py`.
 
@@ -62,7 +62,7 @@ Do not mix them: the form is signed with a statement that the information is tru
 
 > No credentials are needed to check the PayPal part, and none are shared.
 >
-> **Fast check (about 1 minute, no keys):** `git clone https://github.com/hungtruongOwolf/agent-bridge && cd agent-bridge`, then `python -m venv .venv`, activate it, `pip install -e ".[dev]"`, `pytest tests/payments -q`. This runs 80 tests of the money flow (hold, partial capture, void, refund, payouts, lost replies, crash recovery, racing accept and kill) against the practice PayPal server.
+> **Fast check (about 1 minute, no keys):** `git clone https://github.com/hungtruongOwolf/agent-bridge && cd agent-bridge`, then `python -m venv .venv`, activate it, `pip install -e ".[dev]"`, `pytest tests/payments -q`. This runs 92 tests of the money flow (hold, partial capture, void, refund, payouts, lost replies, crash recovery, racing accept and kill) against the practice PayPal server.
 >
 > **Full demo:** needs a Nebius Token Factory API key for the helpers' model (put it in `.env`; see `.env.example`). Then `bridge seed` and `bridge serve --vault examples/vault-library.json --payments paypal-mock`, open http://127.0.0.1:8787, start a chat, press "Open the approval page", press "Approve the hold" on the practice PayPal page, and click the coins chip in the top bar to read each receipt. `docs/paypal-setup.md` has the steps for PayPal's own sandbox.
 >
@@ -78,7 +78,7 @@ Pick **7** (the live sandbox flow worked). Do not pick 9 or 10: they would not m
 
 > The API design maps well to what we needed: an authorization is a natural "ceiling", and partial capture plus void let the real price be set after the work. The documentation of intent AUTHORIZE with a buyer approval step, partial capture and Payouts was enough to build a full client and a practice server from. What cost us time: an authorization needs the buyer's approval first, so we had to model "waiting for approval" as its own state and carry the buyer from the app to PayPal's page and back; and authorization honor periods and the rules for capturing less than the full amount are spread over several pages. We ran the whole flow on the sandbox: token, a 0.40 hold approved on PayPal's page, a partial capture, a void and a payout all worked at the first real attempt, and reading each object back from the API made it easy to check the result. [Add anything that annoyed you while creating the sandbox app or accounts, in your own words.] We would like a single page that shows the lifecycle of an authorization (approve, authorize, partial capture, void, expiry) with the exact status values at each step.
 
-(Edit the bracket to your real experience. The paragraph above only claims what we did: read the docs, built the client and practice server, ran 80 tests. It does not claim sandbox runtime problems we did not observe.)
+(Edit the bracket to your real experience. The paragraph above only claims what we did: read the docs, built the client and practice server, ran 92 tests. It does not claim sandbox runtime problems we did not observe.)
 
 ## Which AI tools have you leveraged while working on this project?
 
