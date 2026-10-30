@@ -65,6 +65,13 @@ On 2026-10-30 we ran the whole flow on PayPal's sandbox with the same client the
 - **A Postman collection** of the PayPal sandbox calls the client makes (token, order, authorize, partial capture, void, refund, payout), not yet run against the live sandbox.
 - **A cap on "Not helpful"**: five presses a day per buyer and helper, so the small deposit can't be dodged forever.
 
+## Sponsor tools
+
+- **AG Grid** (Community edition, with AG Charts Community). The **Earnings** ledger: every run with its hold, price, charge, author share, platform fee and what was given back, sortable, filterable and paged, plus a bar chart per run (paid to the author, platform fee, given back, adding up to the hold). Code: `src/bridge/web/static/js/views/earnings.js` and `src/bridge/web/routes/earnings.py`. The libraries are vendored with their licences, so the console works offline.
+- **Render**. The hosted demo is the real app in **judge mode** on a Render free web service (`Dockerfile` and a `render.yaml` Blueprint): real server, ledger and PayPal client code, a recorded model so no key is needed, the practice PayPal page on the same port, and a private copy with a sample history for every visitor: https://agora-j1xs.onrender.com
+- **Channel3**. **Deal Finder**, a shopping helper whose public `product_search` step calls Channel3's search API (`src/bridge/engine/channel3.py`) and shortlists three products with reasons and links. It reads none of your files and cannot buy anything. With no key it uses a small catalog labelled "Recorded product data"; we have not yet made a live Channel3 call.
+- **Postman**. A collection of the PayPal sandbox calls the client makes (`docs/postman/`), run with Postman's `newman` runner against our practice server: 13 assertions passed. Run it with your sandbox credentials to use it on PayPal's own sandbox.
+
 ## How we built it
 
 - **A ledger with one state machine.** One row per hire: awaiting approval, authorized, running, result ready, settled, rejected, dispute hold, dispute upheld, voided. Every transition is checked under one lock, so *accept* and *kill* can never both win. We tested it with many racing pairs.
