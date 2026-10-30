@@ -25,6 +25,7 @@ TOOLS = ROOT / "tools" / "video"
 VIDEO = ROOT / "docs" / "video"
 OUT = ROOT / "video-out"
 FINAL = OUT / "final"
+END_HOLD = 2.4                           # the last scene stays on its end card this much longer before the fade
 LEAD, TAIL, TR = 0.5, 0.6, 0.4           # picture before the voice, after it, and the overlap of two scenes (LEAD and TAIL must match anim/fx.js)
 PRACTICE = "Practice server that copies PayPal's API. Test money."
 NO_CAPTION = {"n01", "n02", "n03", "n07", "n09", "p01", "p02", "p06", "p08"}   # these carry their own words on the picture
@@ -196,7 +197,13 @@ def build_video(video: str, data: dict, speed: float, with_music: bool) -> None:
         d = duration(audio)
         L = LEAD + d + TAIL
         print(f" {s['id']} {s['name']}: voice {d:.1f}s, scene {L:.1f}s")
-        parts.append(build_scene(video, s, L, audio))
+        part = build_scene(video, s, L, audio)
+        if s is scenes[-1]:                                    # hold the end card a little longer, so it can be read before the fade
+            ext = part.with_name(part.stem + "-end.mp4")
+            run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(part), "-vf", f"tpad=stop_mode=clone:stop_duration={END_HOLD}", "-af", f"apad=pad_dur={END_HOLD}",
+                 *ENC, "-c:a", "aac", "-b:a", "192k", "-ar", "48000", str(ext)])
+            part, L = ext, L + END_HOLD
+        parts.append(part)
         lengths.append(L)
         text = re.sub(r"\s+", " ", s["vo"]).strip()
         sentences = [x.strip() for x in re.split(r"(?<=[.?!])\s+", text) if x.strip()]
